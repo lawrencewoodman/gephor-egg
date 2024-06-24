@@ -6,6 +6,7 @@
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
 
+
 ;; TODO: rename
 (module gophser
   (start-server make-router router-add router-match)
@@ -33,6 +34,7 @@
 
 (define (start-server port router)
   (let ((requests (make-queue))
+        (connects (make-queue))
         (context (list (cons 'port port))))
 
   (define (termination-handler signum)
@@ -44,22 +46,59 @@
     (write-line "server terminated")
     (exit))
     
+
   ;; TODO: add timeout
   (define (read-selector in)
     (read-line in 255) )
 
 
   (define (client-connect in out)
-    (printf "waiting for selector~%~!")
-    (let ([selector (read-selector in)]) 
-      (printf "got selector: ~A~%~!" selector)
-      (let-values ([(_ client-address) (tcp-addresses in)])
+    (let-values ([(_ client-address) (tcp-addresses in)])
+      (printf "CONNECT: client address: ~A~%~!" client-address)
+      ;; TODO: Does in need to be in this and could it be closed first?
+      ;; TODO: Find  a neater way of doing this
+      (queue-add! connects (list (cons 'in in) (cons 'out out)
+                                 (cons 'client-address client-address) ) ) ) )
+
+
+  (define (handle-connect connect)
+    (let ((in (cdr (assoc 'in connect)))
+          (out (cdr (assoc 'out connect)))
+          (client-address (cdr (assoc 'client-address connect))))
+      (let ((selector (read-selector in)))
         (printf "client address: ~A, selector: ~A~%~!" client-address selector)
         ;; TODO: Does in need to be in this and could it be closed first?
         ;; TODO: Find  a neater way of doing this
         (queue-add! requests (list (cons 'in in) (cons 'out out) 
                                    (cons 'client-address client-address)
                                    (cons 'selector selector) ) ) ) ) )
+
+
+  (define (start-connect-handler-thread)
+    (thread-start!
+      (make-thread
+        (lambda ()
+          (let loop ()
+            (handle-exceptions ex
+              (signal ex)
+              (if (not (queue-empty? connects))
+                (let* ((connect (queue-remove! connects)))
+                  (handle-connect connect) )
+                  ;; The thread-sleep! is to prevent the server from
+                  ;; continually polling when the connects queue is empty
+                  ;; TODO: Find a better way of doing this perhaps using a mutex
+                  ;; TODO: and altering it on client-connect
+                  (thread-sleep! 0.1) ) )
+            (loop) ) ) ) ) )
+
+
+  ;; Returns a list of threads
+  (define (start-connect-handler-threads num-threads)
+    (let loop ((n num-threads) (threads '()))
+      (if (= n 0)
+          threads
+          (let ((thread (start-connect-handler-thread)))
+            (loop (- n 1) (cons thread threads) ) ) ) ) )
 
 
   ;; TODO: Need a way to handle different types of response: binary, text, etc
@@ -82,8 +121,7 @@
 
   ;; TODO: should this end in a !
   ;; TODO: should we have a way to tell thread to stop cleanly
-  ;; TODO: Rename
-  (define (requests-handler-thread-start)
+  (define (start-request-handler-thread)
     (thread-start! 
       (make-thread 
         (lambda ()
@@ -101,6 +139,15 @@
             (loop) ) ) ) ) )
 
 
+  ;; Returns a list of threads
+  (define (start-request-handler-threads num-threads)
+    (let loop ((n num-threads) (threads '()))
+      (if (= n 0)
+          threads
+          (let ((thread (start-request-handler-thread)))
+            (loop (- n 1) (cons thread threads) ) ) ) ) )
+
+
   ;; TODO: should we also set on-exit to do something?
   (define (set-termination-handler)
     (set-signal-handler! signal/hup termination-handler)
@@ -110,7 +157,8 @@
 
   (let ((listener (tcp-listen port)))
     (set-termination-handler)
-    (requests-handler-thread-start)
+    (start-request-handler-threads 5)
+    (start-connect-handler-threads 5)
     (let loop ()
       (let-values ([(in out) (tcp-accept listener)])
         (client-connect in out))
