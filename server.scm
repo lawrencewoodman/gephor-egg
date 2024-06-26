@@ -7,9 +7,10 @@
 ;;;
 
 
-;; TODO: rename
+;; TODO: rename module
+;; TODO: rename  exported functions to make consistent and more predictable?
 (module gophser
-  (start-server make-router router-add router-match)
+  (start-server make-router router-add router-match serve-url)
 
 (import scheme
         (chicken base)
@@ -22,6 +23,7 @@
         (chicken string)
         (chicken tcp)
         (chicken type)
+        fmt
         queues
         srfi-18)
 
@@ -115,8 +117,7 @@
            (handler (router-match router selector)))
       (write-line (sprintf "hello client: ~A, asking for ~A~!" client-address selector) out) 
       (if handler
-          (let ((response (handler context request)))
-            (write-string response (string-length response) out))
+          (handler context request)
           (write-line (sprintf "selector not found") out))  ; TODO: return an error gophermap
       ;; TODO: When should these be closed?
       (close-input-port in)
@@ -161,8 +162,8 @@
 
   (let ((listener (tcp-listen port)))
     (set-termination-handler)
-    (start-request-handler-threads 5)
     (start-connect-handler-threads 5)
+    (start-request-handler-threads 5)
     (let loop ()
       (let-values ([(in out) (tcp-accept listener)])
         (client-connect in out))
@@ -239,6 +240,61 @@
                  (if splat-index-b
                      #t
                      (string<? a-pat b-pat) ) ) ) ) ) ) )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Route Handlers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; Exported Definitions ------------------------------------------------------
+
+;; Serve a html page for cases when the selector begins with 'URL:' followed
+;; by a URL.  This is for clients that don't support the 'URL:' selector
+;; prefix so that they can be served a html page which points to the URL.
+;; This conforms to:
+;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
+;; TODO: rename
+;; TODO: Allow customisation such as passing in a different template?
+(define (serve-url request)
+  (let* ((selector (cdr (assv 'selector request)))
+         (in (cdr (assv 'in request)))
+         (out (cdr (assv 'out request))))
+    (if (not (equal? (substring selector 0 4) "URL:"))
+        ;; Log and error
+        (printf "ERROR: for handler: serve-url, invalid selector: ~A~%~!" selector)
+        (let* ((url (substring selector 4))
+               (response (string-translate* url-html-template
+                                            (list (cons "@URL" url)))))
+          (write-string response #f out) ) ) ) )
+
+
+;; Internal Definitions ------------------------------------------------------
+
+
+;; The HTML template used by serve-url
+(define url-html-template #<<END
+  <HTML>
+    <HEAD>
+      <META HTTP-EQUIV="refresh" content="2;URL=@URL">
+    </HEAD>
+    <BODY>
+      You are following a link from gopher to a web site.  You will be
+      automatically taken to the web site shortly.  If you do not get sent
+      there, please click
+      <A HREF="@URL">here</A> to go to the web site.
+      <P>
+      The URL linked is:
+      <P>
+      <A HREF="@URL">@URL</A>
+      <P>
+      Thanks for using gopher!
+    </BODY>
+  </HTML>
+END
+)
+
 
 )
 
