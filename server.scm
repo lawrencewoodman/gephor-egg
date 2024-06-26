@@ -295,6 +295,62 @@
 END
 )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Menu
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: define the type for menu
+(define-type menu (list-of (pair string procedure)))
+
+;; Exported Definitions ------------------------------------------------------
+
+;; TODO: Add args to type def
+;; TODO: typedef procedure?
+(: make-menu (--> menu))
+(define (make-menu)
+  '())
+
+;; Add an item to a menu
+;; TODO: should itemtype be a symbol?
+;; TODO: Create context typedef
+(: menu-item (menu (list-of (pair symbol *)) string string string string fixnum --> menu))
+(define (menu-item menu context itemtype username selector hostname port)
+;; Add optional hostname and port?  (define (menu-item menu context itemtype username selector (hostname "") (port -1))
+  (let ((hostname (if (equal? hostname "")
+                      (cdr (assv 'hostname context))
+                      hostname))
+        (port (if (= port -1)
+                  (cdr (assv 'port context))
+                  port)))
+
+    ;; Each item is added to the front of the list and therefore needs
+    ;; reversing before rending
+    ;; TODO: simplify this and add more items
+    (case itemtype
+      ('("text" "0")  (cons (list itemtype username selector hostname port) menu))
+      ('("menu" "1")  (cons (list itemtype username selector hostname port) menu))
+                      ;; TODO: is 80 the correct wrap width here?
+                      ;; TODO: Should we allow some lines to be unwrappable if they don't
+                      ;; TODO: contain spaces.
+                      ;; TODO: What is best to put as the selector, host and port
+                      ;; TOOD: Should we split the text first and then wrap an then split again
+                      ;; TODO: to allow newlines to be used in the source text?
+                      ;; TODO: Put info wrap in a seperate func
+      ('("info" "i")  (let ((lines (string-split (fmt #f (with-width 80 (wrap-lines username)))
+                                                 "\n")))
+                        (foldl (lambda (line items)
+                                 (cons (list itemtype line selector hostname port) items))
+                               menu
+                               lines)))
+      ('("html" "h")  (cons (list itemtype username selector hostname port) menu))
+      ('("image" "I") (cons (list itemtype username selector hostname port) menu))
+      (else           (begin  ; TODO: rewrite this to handle error properly
+                        (printf "ERROR: unkown item type: ~A~%~!" itemtype)
+                        menu ) ) ) ) )
+
+
+;; Internal Definitions ------------------------------------------------------
+
 
 )
 
