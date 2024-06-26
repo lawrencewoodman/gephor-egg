@@ -31,6 +31,9 @@
 ;;           here are thread safe
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  Main Server Function
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (start-server port router)
   (let ((requests (make-queue))
@@ -62,9 +65,9 @@
 
 
   (define (handle-connect connect)
-    (let ((in (cdr (assoc 'in connect)))
-          (out (cdr (assoc 'out connect)))
-          (client-address (cdr (assoc 'client-address connect))))
+    (let ((in (cdr (assv 'in connect)))
+          (out (cdr (assv 'out connect)))
+          (client-address (cdr (assv 'client-address connect))))
       (let ((selector (read-selector in)))
         (printf "client address: ~A, selector: ~A~%~!" client-address selector)
         ;; TODO: Does in need to be in this and could it be closed first?
@@ -104,10 +107,11 @@
   ;; TODO: Need a way to handle different types of response: binary, text, etc
   ;; TODO: Need to handle handlers failing
   (define (handle-request request)
-    (let* ((selector (cdr (assoc 'selector request)))
-           (in (cdr (assoc 'in request)))
-           (out (cdr (assoc 'out request)))
-           (client-address (cdr (assoc 'client-address request)))
+    (let* ((selector (cdr (assv 'selector request)))
+           (in (cdr (assv 'in request)))
+           (out (cdr (assv 'out request)))
+           (client-address (cdr (assv 'client-address request)))
+           ;; TOOD: Should handler be handler!
            (handler (router-match router selector)))
       (write-line (sprintf "hello client: ~A, asking for ~A~!" client-address selector) out) 
       (if handler
