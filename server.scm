@@ -10,13 +10,21 @@
 ;; TODO: rename module
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gophser
-  (start-server make-router router-add router-match serve-url)
+  (start-server
+   make-router router-add router-match
+   menu-item menu-item-info menu-render
+   serve-url
+   serve-path)
 
 (import scheme
         (chicken base)
+        (chicken bitwise)
         (chicken condition)
         (chicken format)
+        (chicken file)
+        (chicken file posix)
         (chicken io)
+        (chicken pathname)
         (chicken port)
         (chicken process signal)
         (chicken sort)
@@ -25,9 +33,11 @@
         (chicken type)
         fmt
         queues
+        srfi-1
         srfi-18)
 
 ;; Import notes -------------------------------------------------------------
+;; srfi-1  - List procedures
 ;; srfi-18 - Multithreading support
 ;; queues  - In the source code it says that the procedures used
 ;;           here are thread safe
@@ -37,10 +47,12 @@
 ;;;  Main Server Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (start-server port router)
+;; TODO: Should this run as a thread and return something to allow
+;; TODO: control of it?
+(define (start-server hostname port router)
   (let ((requests (make-queue))
         (connects (make-queue))
-        (context (list (cons 'port port))))
+        (context (list (cons 'hostname hostname) (cons 'port port))))
 
   (define (termination-handler signum)
     ;; TODO: What else should this do
@@ -118,6 +130,7 @@
       (write-line (sprintf "hello client: ~A, asking for ~A~!" client-address selector) out) 
       (if handler
           (handler context request)
+          ;; TODO: maybe response should be written here rather than in the handler
           (write-line (sprintf "selector not found") out))  ; TODO: return an error gophermap
       ;; TODO: When should these be closed?
       (close-input-port in)
@@ -211,7 +224,7 @@
               (if (substring=? selector pattern 0 0 splat-index)
                   proc
                   (loop (cdr routes)))
-              (if (equal? selector pattern)
+              (if (string=? selector pattern)
                   proc
                   (loop (cdr routes) ) ) ) ) ) ) )
                    
@@ -258,11 +271,10 @@
 ;; TODO: rename
 ;; TODO: Allow customisation such as passing in a different template?
 (define (serve-url request)
-  (let* ((selector (cdr (assv 'selector request)))
-         (in (cdr (assv 'in request)))
+  (let  ((selector (cdr (assv 'selector request)))
          (out (cdr (assv 'out request))))
-    (if (not (equal? (substring selector 0 4) "URL:"))
-        ;; Log and error
+    (if (not (string=? (substring selector 0 4) "URL:"))
+        ;; TODO: Log an error and write and error to client
         (printf "ERROR: for handler: serve-url, invalid selector: ~A~%~!" selector)
         (let* ((url (substring selector 4))
                (response (string-translate* url-html-template
@@ -270,7 +282,153 @@
           (write-string response #f out) ) ) ) )
 
 
+;; NOTE: When dealing with paths we must remember that a selector has no
+;; NOTE: notion of a file path.  It is purely up to the server to decide
+;; NOTE: how to understand it.
+;;
+;; local-dir must not end with a '/'
+;; TODO: Test how this handles an empty selector, the same as "/"?
+(define (serve-path context request local-dir selector-prefix)
+  (define (world-readable? filename)
+    (= 4 (bitwise-and (file-permissions filename) perm/iroth)))
+
+  (define (valid-local-dir? dir)
+    (and (absolute-pathname? dir)
+         (not (substring-index "/" dir (sub1 (string-length dir))))))
+
+  ;; NOTE: Reads a maximum of 50Mb - this could be set in context
+  ;; TODO: Do we want to choose a different maximum read size?
+  ;; TODO: Log an error if bigger than maximum size - perhaps
+  ;; TODO: check this first and send an error to client if too big
+  (define (read-file path)
+    (call-with-input-file path
+                          (lambda (port) (read-string 50000000 port))
+                          #:binary))
+
+  (let* ((selector (cdr (assv 'selector request)))
+         (out (cdr (assv 'out request)))
+         (selector-subpath (strip-selector-prefix selector-prefix selector))
+         ;; TODO: Rename local-path ?
+         (local-path (path-build local-dir selector-subpath)))
+    (cond ((not (valid-local-dir? local-dir))
+            ;; TODO: Log problematic local-dir
+            (printf "WARNING: local-dir isn't valid: ~A~%~!" local-dir)
+            ;; TODO: Create a proper argument exception and note this isn't anything
+            ;; TODO: the client has got wrong
+            (error "invalid local-dir"))
+          ((unsafe-pathname? selector-subpath)
+            ;; TODO: Log problematic selector path
+            (printf "WARNING: selector isn't safe: ~A~%~!" selector)
+            ;; TODO: Create a proper exception - perhaps invalid selector
+            (error "invalid selector"))
+          ((not (file-exists? local-path))
+            ;; TODO: log a warning that local path doesn't exist for selector
+            ;; TODO: send an error to client: "path not found"
+            (printf "WARNING: local path doesn't exist: ~A, for selector: ~A~%~!"
+                    local-path selector))
+          ((not (world-readable? local-path))
+            ;; TODO: log a warning that local path doesn't exist for selector
+            ;; TODO: send an error to client: "path not found"
+            (printf "WARNING: local path not world readable: ~A, for selector: ~A~%~!"
+                     local-path selector))
+          ;; TODO: allow or don't allow gophermap to be downloaded?
+          ((regular-file? local-path)
+            ;; TODO: log any errors reading or writing
+            ;; TODO: Log this or perhaps log all selectors higher up?
+            (let ((contents (read-file local-path)))
+              ;; TODO: change this to write binary
+              (write-string contents #f out)))
+          ((directory? local-path)
+            ;; TODO: make this look nicer
+            (write-string (menu-render
+                            ;; TODO: re-think these args
+                            (list-dir context local-path selector-prefix selector-subpath))
+                          #f
+                          out))
+          (else
+            ;; TODO: log a warning that local path isn't the right file type
+            ;; TODO: send an error to client: "path not found"
+            (printf "WARNING: unsupported file type for path: ~A, for selector: ~A~%~!" local-path selector)))))
+
+
+
 ;; Internal Definitions ------------------------------------------------------
+
+;; TODO: Move this, export? and rename?
+;; Returns the selector without the prefix or #f if the prefix isn't present
+(define (strip-selector-prefix prefix selector)
+  (let ((prefix-exists (substring=? prefix selector)))
+    (if (not prefix-exists)
+        #f
+        (substring selector (string-length prefix)))))
+
+
+;; TODO: Move this, export? and rename?
+;; TODO: rename path-join?
+;; TODO: Make this safer and more resiliant and specify needs posix support
+;; TODO: Perhaps strip out any .. or . as a selector isn't a real path
+(define (path-build . args)
+  (string-intersperse args "/"))
+
+
+;; Sort files so that directories come before regular files and then
+;; sort in alphabetical order of the filename
+(define (sort-dir-entries entries)
+  (sort entries
+        (lambda (a b)
+          (let ((a-is-dir (second a))
+                (b-is-dir (second b)))
+            (cond
+              ((and a-is-dir (not b-is-dir)) #t)
+              ((and b-is-dir (not a-is-dir)) #f)
+              (else
+                (let ((a-filename (car a))
+                      (b-filename (car b)))
+                  (string<? a-filename b-filename))))))))
+
+
+;; Detect pathnames that are unsafe because they could lead to moving beyond
+;; the intended folders or otherwise.  Backslashes are also detected
+;; because of a warning about them in the Spiffy web server source code.
+;; TODO: Should we text for nul in a string as per Spiffy?
+(define (unsafe-pathname? pathname)
+  (or (substring-index "./" pathname)
+      (substring-index ".." pathname)
+      (substring-index "\\" pathname)))
+
+
+;; TODO: Move this, export? and rename?
+;; TODO: Make sure paths are safe
+;; TODO: Should this check if path is world-readable rather than calling proc?
+;; NOTE: selector-subpath must be checked to be safe before calling list-dir
+(define (list-dir context selector-local-dir selector-prefix selector-subpath)
+  ;; Returns #f if not a valid file
+  ;; An entry consists of a list (filename is-directory selector)
+  (define (filename->dir-entry filename)
+    (let ((fullfilename (make-pathname selector-local-dir filename))
+          (selector (sprintf "~A~A~A~A"
+                             selector-prefix
+                             selector-subpath
+                             (if (string=? selector-subpath "") "" "/")
+                             filename)))
+      (cond ((directory? fullfilename)
+              (list filename #t selector))
+            ((regular-file? fullfilename)
+              (list filename #f selector))
+            (else #f))))
+
+  (let ((filenames (directory selector-local-dir))
+        (hostname (cdr (assv 'hostname context)))
+        (port (cdr (assv 'port context))))
+    (map (lambda (entry)
+           (let ((filename (car entry))
+                 (is-dir (second entry))
+                 (selector (third entry)))
+             ;; TODO: Need to support other itemtypes
+             (if is-dir
+                 (menu-item "menu" filename selector hostname port)
+                 (menu-item "text" filename selector hostname port))))
+         (sort-dir-entries (filter-map filename->dir-entry filenames) ) ) ) )
 
 
 ;; The HTML template used by serve-url
@@ -299,57 +457,62 @@ END
 ;;; Menu
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: define the type for menu
-(define-type menu (list-of (pair string procedure)))
+
+(define-type menu-item (list string string string string fixnum))
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; TODO: Add args to type def
-;; TODO: typedef procedure?
-(: make-menu (--> menu))
-(define (make-menu)
-  '())
 
 ;; Add an item to a menu
-;; TODO: should itemtype be a symbol?
-;; TODO: Create context typedef
-(: menu-item (menu (list-of (pair symbol *)) string string string string fixnum --> menu))
-(define (menu-item menu context itemtype username selector hostname port)
-;; Add optional hostname and port?  (define (menu-item menu context itemtype username selector (hostname "") (port -1))
-  (let ((hostname (if (equal? hostname "")
-                      (cdr (assv 'hostname context))
-                      hostname))
-        (port (if (= port -1)
-                  (cdr (assv 'port context))
-                  port)))
-
-    ;; Each item is added to the front of the list and therefore needs
-    ;; reversing before rending
+(: menu-item (string string string string fixnum --> menu-item))
+(define (menu-item itemtype username selector hostname port)
     ;; TODO: simplify this and add more items
-    (case itemtype
-      ('("text" "0")  (cons (list itemtype username selector hostname port) menu))
-      ('("menu" "1")  (cons (list itemtype username selector hostname port) menu))
-                      ;; TODO: is 80 the correct wrap width here?
-                      ;; TODO: Should we allow some lines to be unwrappable if they don't
-                      ;; TODO: contain spaces.
-                      ;; TODO: What is best to put as the selector, host and port
-                      ;; TOOD: Should we split the text first and then wrap an then split again
-                      ;; TODO: to allow newlines to be used in the source text?
-                      ;; TODO: Put info wrap in a seperate func
-      ('("info" "i")  (let ((lines (string-split (fmt #f (with-width 80 (wrap-lines username)))
-                                                 "\n")))
-                        (foldl (lambda (line items)
-                                 (cons (list itemtype line selector hostname port) items))
-                               menu
-                               lines)))
-      ('("html" "h")  (cons (list itemtype username selector hostname port) menu))
-      ('("image" "I") (cons (list itemtype username selector hostname port) menu))
-      (else           (begin  ; TODO: rewrite this to handle error properly
-                        (printf "ERROR: unkown item type: ~A~%~!" itemtype)
-                        menu ) ) ) ) )
+    (cond ((member itemtype '("text" "0"))
+            (list "0" username selector hostname port))
+          ((member itemtype '("menu" "1"))
+            (list "1" username selector hostname port))
+          ((member itemtype '("info" "i"))
+            ;; TODO: sort out this exception as it isn't right
+            (abort "unsupported item type: ~A, use menu-item-info"))
+          ((member itemtype '("html" "h"))
+            (list "h" username selector hostname port))
+          ((member itemtype '("image" "I"))
+            (list "I" username selector hostname port))
+          (else
+            (begin  ; TODO: rewrite this to handle error properly
+              (printf "ERROR: unkown item type: ~A~%~!" itemtype)
+              #f ) ) ) )
 
 
-;; Internal Definitions ------------------------------------------------------
+;; Return a list of menu items
+(: menu-item-info (string string string fixnum --> (listof menu-item)))
+(define (menu-item-info username selector hostname port)
+  ;; TODO: is 80 the correct wrap width here?
+  ;; TODO: Should we allow some lines to be unwrappable if they don't
+  ;; TODO: contain spaces.
+  ;; TODO: What is best to put as the selector, host and port
+  ;; TOOD: Should we split the text first and then wrap an then split again
+  ;; TODO: to allow newlines to be used in the source text?
+  ;; TODO: Rewrite a wrap func so don't need to bring in
+  ;; TODO: big fmt and associated packages
+  ;; TODO: escape characters in username such as \t ?
+  (let ((lines (string-split (fmt #f (with-width 80 (wrap-lines username))) "\n")))
+    (map (lambda (line) (list "i" line selector hostname port)) lines)))
+
+
+;; Render the menu as text ready for sending
+(: menu-render ((list-of menu-item) --> string))
+(define (menu-render menu-items)
+  (define (item-render item)
+    (apply sprintf "~A~A\t~A\t~A\t~A\r\n" item))
+
+  (let ((menu-str
+          (foldl (lambda (out-str item)
+                   (string-append out-str (item-render item)))
+                 ""
+                 menu-items)))
+    ;; Properly constructed menus should end with ".\r\n"
+    (string-append menu-str ".\r\n")))
 
 
 )
