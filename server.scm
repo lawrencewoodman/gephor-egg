@@ -11,6 +11,7 @@
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gophser
   (start-server
+   make-context make-request
    make-router router-add router-match
    menu-item menu-item-info menu-render
    serve-url
@@ -43,6 +44,29 @@
 ;;           here are thread safe
 
 
+;; Record types -------------------------------------------------------------
+
+;; TODO: should this be exported just so can be used in tests?
+;; TODO: would it be better to put in another file that can be included by
+;; TODO: the module and the tests?
+(define-record-type context
+  (make-context hostname port)
+  context?
+  (hostname context-hostname)
+  (port context-port)
+)
+
+
+;; TODO: should this be exported just so can be used in tests?
+(define-record-type request
+  (make-request selector out-port client-address)
+  request?
+  (selector request-selector)
+  (out-port request-out-port)
+  (client-address request-client-address)
+)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;  Main Server Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,7 +76,7 @@
 (define (start-server hostname port router)
   (let ((requests (make-queue))
         (connects (make-queue))
-        (context (list (cons 'hostname hostname) (cons 'port port))))
+        (context (make-context hostname port)))
 
   (define (termination-handler signum)
     ;; TODO: What else should this do
@@ -84,11 +108,11 @@
           (client-address (cdr (assv 'client-address connect))))
       (let ((selector (read-selector in)))
         (printf "client address: ~A, selector: ~A~%~!" client-address selector)
+        ;; TODO: When should these be closed?
+        (close-input-port in)
         ;; TODO: Does in need to be in this and could it be closed first?
         ;; TODO: Find  a neater way of doing this
-        (queue-add! requests (list (cons 'in in) (cons 'out out) 
-                                   (cons 'client-address client-address)
-                                   (cons 'selector selector) ) ) ) ) )
+        (queue-add! requests (make-request selector out client-address) ) ) ) )
 
 
   (define (start-connect-handler-thread)
@@ -121,20 +145,14 @@
   ;; TODO: Need a way to handle different types of response: binary, text, etc
   ;; TODO: Need to handle handlers failing
   (define (handle-request request)
-    (let* ((selector (cdr (assv 'selector request)))
-           (in (cdr (assv 'in request)))
-           (out (cdr (assv 'out request)))
-           (client-address (cdr (assv 'client-address request)))
-           ;; TOOD: Should handler be handler!
-           (handler (router-match router selector)))
-      (write-line (sprintf "hello client: ~A, asking for ~A~!" client-address selector) out) 
+    ;; TOOD: Should handler be handler!
+    (let ((handler (router-match router (request-selector request))))
       (if handler
           (handler context request)
           ;; TODO: maybe response should be written here rather than in the handler
-          (write-line (sprintf "selector not found") out))  ; TODO: return an error gophermap
-      ;; TODO: When should these be closed?
-      (close-input-port in)
-      (close-output-port out) ) )
+          ;; TODO: return an error gophermap
+          (write-line (sprintf "selector not found") (request-out-port request)))
+      (close-output-port (request-out-port request) ) ) )
     
 
   ;; TODO: should this end in a !
@@ -271,15 +289,13 @@
 ;; TODO: rename
 ;; TODO: Allow customisation such as passing in a different template?
 (define (serve-url request)
-  (let  ((selector (cdr (assv 'selector request)))
-         (out (cdr (assv 'out request))))
-    (if (not (string=? (substring selector 0 4) "URL:"))
-        ;; TODO: Log an error and write and error to client
-        (printf "ERROR: for handler: serve-url, invalid selector: ~A~%~!" selector)
-        (let* ((url (substring selector 4))
-               (response (string-translate* url-html-template
-                                            (list (cons "@URL" url)))))
-          (write-string response #f out) ) ) ) )
+  (if (not (string=? (substring (request-selector request) 0 4) "URL:"))
+      ;; TODO: Log an error and write and error to client
+      (printf "ERROR: for handler: serve-url, invalid selector: ~A~%~!" (request-selector request))
+      (let* ((url (substring (request-selector request) 4))
+             (response (string-translate* url-html-template
+                                          (list (cons "@URL" url)))))
+        (write-string response #f (request-out-port request) ) ) ) )
 
 
 ;; NOTE: When dealing with paths we must remember that a selector has no
@@ -305,9 +321,7 @@
                           (lambda (port) (read-string 50000000 port))
                           #:binary))
 
-  (let* ((selector (cdr (assv 'selector request)))
-         (out (cdr (assv 'out request)))
-         (selector-subpath (strip-selector-prefix selector-prefix selector))
+  (let* ((selector-subpath (strip-selector-prefix selector-prefix (request-selector request)))
          ;; TODO: Rename local-path ?
          (local-path (path-build local-dir selector-subpath)))
     (cond ((not (valid-local-dir? local-dir))
@@ -318,37 +332,38 @@
             (error "invalid local-dir"))
           ((unsafe-pathname? selector-subpath)
             ;; TODO: Log problematic selector path
-            (printf "WARNING: selector isn't safe: ~A~%~!" selector)
+            (printf "WARNING: selector isn't safe: ~A~%~!" (request-selector request))
             ;; TODO: Create a proper exception - perhaps invalid selector
             (error "invalid selector"))
           ((not (file-exists? local-path))
             ;; TODO: log a warning that local path doesn't exist for selector
             ;; TODO: send an error to client: "path not found"
             (printf "WARNING: local path doesn't exist: ~A, for selector: ~A~%~!"
-                    local-path selector))
+                    local-path (request-selector request)))
           ((not (world-readable? local-path))
             ;; TODO: log a warning that local path doesn't exist for selector
             ;; TODO: send an error to client: "path not found"
             (printf "WARNING: local path not world readable: ~A, for selector: ~A~%~!"
-                     local-path selector))
+                     local-path (request-selector request)))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             ;; TODO: log any errors reading or writing
             ;; TODO: Log this or perhaps log all selectors higher up?
             (let ((contents (read-file local-path)))
               ;; TODO: change this to write binary
-              (write-string contents #f out)))
+              (write-string contents #f (request-out-port request))))
           ((directory? local-path)
             ;; TODO: make this look nicer
             (write-string (menu-render
                             ;; TODO: re-think these args
                             (list-dir context local-path selector-prefix selector-subpath))
                           #f
-                          out))
+                          (request-out-port request)))
           (else
             ;; TODO: log a warning that local path isn't the right file type
             ;; TODO: send an error to client: "path not found"
-            (printf "WARNING: unsupported file type for path: ~A, for selector: ~A~%~!" local-path selector)))))
+            (printf "WARNING: unsupported file type for path: ~A, for selector: ~A~%~!"
+                     local-path (request-selector request) ) ) ) ) )
 
 
 
@@ -418,8 +433,8 @@
             (else #f))))
 
   (let ((filenames (directory selector-local-dir))
-        (hostname (cdr (assv 'hostname context)))
-        (port (cdr (assv 'port context))))
+        (hostname (context-hostname context))
+        (port (context-port context)))
     (map (lambda (entry)
            (let ((filename (car entry))
                  (is-dir (second entry))

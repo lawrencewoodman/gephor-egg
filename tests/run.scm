@@ -162,10 +162,8 @@
           ".\r\n")
           "\r\n")
         (let* ((output-port (open-output-string))
-               (context (list (cons 'hostname "localhost")
-                              (cons 'port 70)))
-               (request (list (cons 'selector "")
-                              (cons 'out output-port)))
+               (context (make-context "localhost" 70))
+               (request (make-request "" output-port "127.0.0.1"))
                (selector-prefix ""))
           (serve-path context request fixtures-dir selector-prefix)
           (get-output-string output-port)))
@@ -181,10 +179,8 @@
           ".\r\n")
           "\r\n")
         (let* ((output-port (open-output-string))
-               (context (list (cons 'hostname "localhost")
-                              (cons 'port 70)))
-               (request (list (cons 'selector "/")
-                              (cons 'out output-port)))
+               (context (make-context "localhost" 70))
+               (request (make-request "/" output-port "127.0.0.1"))
                (selector-prefix "/"))
           (serve-path context request fixtures-dir selector-prefix)
           (get-output-string output-port)))
@@ -199,10 +195,8 @@
           ".\r\n")
           "\r\n")
         (let* ((output-port (open-output-string))
-               (context (list (cons 'hostname "localhost")
-                              (cons 'port 70)))
-               (request (list (cons 'selector "/dir-a")
-                              (cons 'out output-port)))
+               (context (make-context "localhost" 70))
+               (request (make-request "/dir-a" output-port "127.0.0.1"))
                (selector-prefix "/"))
           (serve-path context request fixtures-dir selector-prefix)
           (get-output-string output-port)))
@@ -213,29 +207,25 @@
         (handle-exceptions ex
           (get-condition-property ex 'exn 'message)
           ;; Directories come before regular files and each in alphabetical order
-          (let* ((port-output (make-parameter ""))
-                 (context (list (cons 'hostname "localhost")
-                                (cons 'port 70)))
-                 (request (list (cons 'selector "../dir-a")
-                                (cons 'out (make-output-port port-output (lambda () #f)))))
+          (let* ((output-port (open-output-string))
+                 (context (make-context "localhost" 70))
+                 (request (make-request "../dir-a" output-port "127.0.0.1"))
                  (selector-prefix ""))
             (serve-path context request fixtures-dir selector-prefix)
-            (port-output))))
+          (get-output-string output-port))))
 
   ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if selector sub path contains './'"
+  (test "serve-path raises an exception if selector subpath contains './'"
         "invalid selector"
         (handle-exceptions ex
           (get-condition-property ex 'exn 'message)
           ;; Directories come before regular files and each in alphabetical order
-          (let* ((port-output (make-parameter ""))
-                 (context (list (cons 'hostname "localhost")
-                                (cons 'port 70)))
-                 (request (list (cons 'selector "./dir-a")
-                                (cons 'out (make-output-port port-output (lambda () #f)))))
+          (let* ((output-port (open-output-string))
+                 (context (make-context "localhost" 70))
+                 (request (make-request "./dir-a" output-port "127.0.0.1"))
                  (selector-prefix ""))
             (serve-path context request fixtures-dir selector-prefix)
-            (port-output))))
+            (get-output-string output-port))))
 
   ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path raises an exception if selector sub path contains a '\\'"
@@ -243,14 +233,12 @@
         (handle-exceptions ex
           (get-condition-property ex 'exn 'message)
           ;; Directories come before regular files and each in alphabetical order
-          (let* ((port-output (make-parameter ""))
-                 (context (list (cons 'hostname "localhost")
-                                (cons 'port 70)))
-                 (request (list (cons 'selector "./dir-a\\fred")
-                                (cons 'out (make-output-port port-output (lambda () #f)))))
+          (let* ((output-port (open-output-string))
+                 (context (make-context "localhost" 70))
+                 (request (make-request "dir-a\\fred" output-port "127.0.0.1"))
                  (selector-prefix ""))
             (serve-path context request fixtures-dir selector-prefix)
-            (port-output))))
+            (get-output-string output-port))))
 
 
   ;; TODO: Decide if this is the best way of handling an error
@@ -259,29 +247,25 @@
         (handle-exceptions ex
           (get-condition-property ex 'exn 'message)
           ;; Directories come before regular files and each in alphabetical order
-          (let* ((port-output (make-parameter ""))
-                 (context (list (cons 'hostname "localhost")
-                                (cons 'port 70)))
-                 (request (list (cons 'selector "/dir-a")
-                                (cons 'out (make-output-port port-output (lambda () #f)))))
+          (let* ((output-port (open-output-string))
+                 (context (make-context "localhost" 70))
+                 (request (make-request "/dir-a" output-port "127.0.0.1"))
                  (selector-prefix "")
                  (local-dir (sprintf "~A/" fixtures-dir)))
             (serve-path context request local-dir selector-prefix)
-            (port-output))))
+            (get-output-string output-port))))
 
 
   ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path returns the contents of a binary file"
         "This is text followed by a null (00)\x00 now some more text."
         ;; Directories come before regular files and each in alphabetical order
-        (let* ((port-output (make-parameter ""))
-               (context (list (cons 'hostname "localhost")
-                              (cons 'port 70)))
-               (request (list (cons 'selector "/dir-a/ac.bin")
-                              (cons 'out (make-output-port port-output (lambda () #f)))))
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "/dir-a/ac.bin" output-port "127.0.0.1"))
                (selector-prefix ""))
           (serve-path context request fixtures-dir selector-prefix)
-          (port-output)))
+          (get-output-string output-port)))
 
 
 )
