@@ -303,21 +303,9 @@
 ;; local-dir must not end with a '/'
 ;; TODO: Test how this handles an empty selector, the same as "/"?
 (define (serve-path context request local-dir selector-prefix)
-  (define (world-readable? filename)
-    (= 4 (bitwise-and (file-permissions filename) perm/iroth)))
-
   (define (valid-local-dir? dir)
     (and (absolute-pathname? dir)
          (not (substring-index "/" dir (sub1 (string-length dir))))))
-
-  ;; NOTE: Reads a maximum of 50Mb - this could be set in context
-  ;; TODO: Do we want to choose a different maximum read size?
-  ;; TODO: Log an error if bigger than maximum size - perhaps
-  ;; TODO: check this first and send an error to client if too big
-  (define (read-file path)
-    (call-with-input-file path
-                          (lambda (port) (read-string 50000000 port))
-                          #:binary))
 
   (let* ((selector-subpath (strip-selector-prefix selector-prefix (request-selector request)))
          ;; TODO: Rename local-path ?
@@ -369,6 +357,20 @@
     (if (not prefix-exists)
         #f
         (substring selector (string-length prefix)))))
+
+;; Does the file have word readable permissions?
+(define (world-readable? filename)
+  (= 4 (bitwise-and (file-permissions filename) perm/iroth)))
+
+
+;; NOTE: Reads a maximum of 50Mb - this could be set in context
+;; TODO: Do we want to choose a different maximum read size?
+;; TODO: Log an error if bigger than maximum size - perhaps
+;; TODO: check this first and send an error to client if too big
+(define (read-file path)
+  (call-with-input-file path
+                        (lambda (port) (read-string 50000000 port))
+                        #:binary))
 
 
 ;; TODO: Move this, export? and rename?
