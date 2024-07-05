@@ -148,8 +148,8 @@
     ;; TOOD: Should handler be handler!
     (let ((handler (router-match router (request-selector request))))
       (if handler
-          (handler context request)
-          ;; TODO: maybe response should be written here rather than in the handler
+          (write-string (handler context request) #f (request-out-port request))
+          ;; TODO: Should we really be passing output port in request to handler?
           ;; TODO: return an error gophermap
           (write-line (sprintf "selector not found") (request-out-port request)))
       (close-output-port (request-out-port request) ) ) )
@@ -292,10 +292,8 @@
   (if (not (string=? (substring (request-selector request) 0 4) "URL:"))
       ;; TODO: Log an error and write and error to client
       (printf "ERROR: for handler: serve-url, invalid selector: ~A~%~!" (request-selector request))
-      (let* ((url (substring (request-selector request) 4))
-             (response (string-translate* url-html-template
-                                          (list (cons "@URL" url)))))
-        (write-string response #f (request-out-port request) ) ) ) )
+      (let* ((url (substring (request-selector request) 4)))
+        (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
 
 
 ;; NOTE: When dealing with paths we must remember that a selector has no
@@ -349,16 +347,11 @@
           ((regular-file? local-path)
             ;; TODO: log any errors reading or writing
             ;; TODO: Log this or perhaps log all selectors higher up?
-            (let ((contents (read-file local-path)))
-              ;; TODO: change this to write binary
-              (write-string contents #f (request-out-port request))))
+            (read-file local-path))
           ((directory? local-path)
             ;; TODO: make this look nicer
-            (write-string (menu-render
-                            ;; TODO: re-think these args
-                            (list-dir context local-path selector-prefix selector-subpath))
-                          #f
-                          (request-out-port request)))
+            ;; TODO: re-think these args
+            (menu-render (list-dir context local-path selector-prefix selector-subpath)))
           (else
             ;; TODO: log a warning that local path isn't the right file type
             ;; TODO: send an error to client: "path not found"

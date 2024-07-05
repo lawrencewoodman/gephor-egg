@@ -165,8 +165,7 @@
                (context (make-context "localhost" 70))
                (request (make-request "" output-port "127.0.0.1"))
                (selector-prefix ""))
-          (serve-path context request fixtures-dir selector-prefix)
-          (get-output-string output-port)))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
   ;; TODO: What should happen if selector is '/' and prefix is "" ?
   (test "serve-path supportes '/' selector and '/' prefix"
@@ -182,8 +181,7 @@
                (context (make-context "localhost" 70))
                (request (make-request "/" output-port "127.0.0.1"))
                (selector-prefix "/"))
-          (serve-path context request fixtures-dir selector-prefix)
-          (get-output-string output-port)))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
   (test "serve-path supportes subpath ('/dir-a') selector and '/' prefix"
         ;; Directories come before regular files and each in alphabetical order
@@ -198,8 +196,7 @@
                (context (make-context "localhost" 70))
                (request (make-request "/dir-a" output-port "127.0.0.1"))
                (selector-prefix "/"))
-          (serve-path context request fixtures-dir selector-prefix)
-          (get-output-string output-port)))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
   ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path raises an exception if selector subpath contains '..'"
@@ -211,8 +208,7 @@
                  (context (make-context "localhost" 70))
                  (request (make-request "../dir-a" output-port "127.0.0.1"))
                  (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix)
-          (get-output-string output-port))))
+            (serve-path context request fixtures-dir selector-prefix) ) ) )
 
   ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path raises an exception if selector subpath contains './'"
@@ -224,8 +220,7 @@
                  (context (make-context "localhost" 70))
                  (request (make-request "./dir-a" output-port "127.0.0.1"))
                  (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix)
-            (get-output-string output-port))))
+            (serve-path context request fixtures-dir selector-prefix) ) ) )
 
   ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path raises an exception if selector sub path contains a '\\'"
@@ -237,8 +232,7 @@
                  (context (make-context "localhost" 70))
                  (request (make-request "dir-a\\fred" output-port "127.0.0.1"))
                  (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix)
-            (get-output-string output-port))))
+            (serve-path context request fixtures-dir selector-prefix) ) ) )
 
 
   ;; TODO: Decide if this is the best way of handling an error
@@ -252,8 +246,7 @@
                  (request (make-request "/dir-a" output-port "127.0.0.1"))
                  (selector-prefix "")
                  (local-dir (sprintf "~A/" fixtures-dir)))
-            (serve-path context request local-dir selector-prefix)
-            (get-output-string output-port))))
+            (serve-path context request local-dir selector-prefix) ) ) )
 
 
   ;; TODO: Decide if this is the best way of handling an error
@@ -264,8 +257,7 @@
                (context (make-context "localhost" 70))
                (request (make-request "/dir-a/ac.bin" output-port "127.0.0.1"))
                (selector-prefix ""))
-          (serve-path context request fixtures-dir selector-prefix)
-          (get-output-string output-port)))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
 
 )
