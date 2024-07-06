@@ -1,6 +1,7 @@
 (import scheme
         test
         (chicken base)
+        (chicken bitwise)
         (chicken condition)
         (chicken format)
         (chicken file)
@@ -117,6 +118,8 @@
           "0Some text\ttext 0\tlocalhost\t70"
           "1A menu\tmenu menu\tlocalhost\t70"
           "1A menu\tmenu 1\tlocalhost\t70"
+          "3An error\terror error\tlocalhost\t70"
+          "3An error\terror 3\tlocalhost\t70"
           "hSome html\thtml html\tlocalhost\t70"
           "hSome html\thtml h\tlocalhost\t70"
           "ISome image\timage image\tlocalhost\t70"
@@ -128,6 +131,8 @@
                (menu (cons (menu-item "0" "Some text" "text 0" "localhost" 70) menu))
                (menu (cons (menu-item "menu" "A menu" "menu menu" "localhost" 70) menu))
                (menu (cons (menu-item "1" "A menu" "menu 1" "localhost" 70) menu))
+               (menu (cons (menu-item "error" "An error" "error error" "localhost" 70) menu))
+               (menu (cons (menu-item "3" "An error" "error 3" "localhost" 70) menu))
                (menu (cons (menu-item "html" "Some html" "html html" "localhost" 70) menu))
                (menu (cons (menu-item "h" "Some html" "html h" "localhost" 70) menu))
                (menu (cons (menu-item "image" "Some image" "image image" "localhost" 70) menu))
@@ -198,61 +203,95 @@
                (selector-prefix "/"))
           (serve-path context request fixtures-dir selector-prefix) ) )
 
-  ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if selector subpath contains '..'"
-        "invalid selector"
-        (handle-exceptions ex
-          (get-condition-property ex 'exn 'message)
-          ;; Directories come before regular files and each in alphabetical order
-          (let* ((output-port (open-output-string))
-                 (context (make-context "localhost" 70))
-                 (request (make-request "../dir-a" output-port "127.0.0.1"))
-                 (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix) ) ) )
+  (test "serve-path returns an 'invalid selector' error menu if selector subpath contains '..'"
+        (string-intersperse '(
+          "3invalid selector\t../dir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "../dir-a" output-port "127.0.0.1"))
+               (selector-prefix ""))
+          (serve-path context request fixtures-dir selector-prefix) ) )
+
+  (test "serve-path returns an 'invalid selector' error menu if selector subpath contains './'"
+        (string-intersperse '(
+          "3invalid selector\t./dir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "./dir-a" output-port "127.0.0.1"))
+               (selector-prefix ""))
+          (serve-path context request fixtures-dir selector-prefix) ) )
+
+  (test "serve-path returns an 'invalid selector' error menu if selector sub path contains a '\\'"
+        (string-intersperse '(
+          "3invalid selector\tdir-a\\fred\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "dir-a\\fred" output-port "127.0.0.1"))
+               (selector-prefix ""))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
   ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if selector subpath contains './'"
-        "invalid selector"
-        (handle-exceptions ex
-          (get-condition-property ex 'exn 'message)
-          ;; Directories come before regular files and each in alphabetical order
-          (let* ((output-port (open-output-string))
-                 (context (make-context "localhost" 70))
-                 (request (make-request "./dir-a" output-port "127.0.0.1"))
-                 (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix) ) ) )
+  (test "serve-path returns a 'server error' error menu if local-dir ends with a '/'"
+        (string-intersperse '(
+          "3server error\t/dir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "/dir-a" output-port "127.0.0.1"))
+               (selector-prefix "")
+               (local-dir (sprintf "~A/" fixtures-dir)))
+          (serve-path context request local-dir selector-prefix) ) )
 
   ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if selector sub path contains a '\\'"
-        "invalid selector"
-        (handle-exceptions ex
-          (get-condition-property ex 'exn 'message)
-          ;; Directories come before regular files and each in alphabetical order
-          (let* ((output-port (open-output-string))
-                 (context (make-context "localhost" 70))
-                 (request (make-request "dir-a\\fred" output-port "127.0.0.1"))
-                 (selector-prefix ""))
-            (serve-path context request fixtures-dir selector-prefix) ) ) )
+  (test "serve-path raises an exception if local-dir is a relative dir"
+        (string-intersperse '(
+          "3server error\t/dir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "/dir-a" output-port "127.0.0.1"))
+               (selector-prefix "")
+               (local-dir "fixtures"))
+          (serve-path context request local-dir selector-prefix) ) )
+
+  (test "serve-path returns a 'path not found' error menu if path isn't world readable"
+        (string-intersperse '(
+          "3path not found\t/\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (tmpdir (create-temporary-directory))
+               (request (make-request "/" output-port "127.0.0.1"))
+               (selector-prefix "/"))
+          ;; Make tmpdir non world readable
+          (set-file-permissions! tmpdir
+                                 (bitwise-and (file-permissions tmpdir)
+                                              (bitwise-not perm/iroth)))
+          (serve-path context request tmpdir selector-prefix) ) )
+
+  (test "serve-path returns a 'path not found' error menu if path doesn't exist"
+        (string-intersperse '(
+          "3path not found\t/unknown\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "/unknown" output-port "127.0.0.1"))
+               (selector-prefix "/"))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
 
-  ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if local-dir ends with a '/'"
-        "invalid local-dir"
-        (handle-exceptions ex
-          (get-condition-property ex 'exn 'message)
-          ;; Directories come before regular files and each in alphabetical order
-          (let* ((output-port (open-output-string))
-                 (context (make-context "localhost" 70))
-                 (request (make-request "/dir-a" output-port "127.0.0.1"))
-                 (selector-prefix "")
-                 (local-dir (sprintf "~A/" fixtures-dir)))
-            (serve-path context request local-dir selector-prefix) ) ) )
-
-
-  ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path returns the contents of a binary file"
         "This is text followed by a null (00)\x00 now some more text."
-        ;; Directories come before regular files and each in alphabetical order
         (let* ((output-port (open-output-string))
                (context (make-context "localhost" 70))
                (request (make-request "/dir-a/ac.bin" output-port "127.0.0.1"))
