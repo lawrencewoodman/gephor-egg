@@ -147,11 +147,15 @@
   (define (handle-request request)
     ;; TOOD: Should handler be handler!
     (let ((handler (router-match router (request-selector request))))
-      (if handler
-          (write-string (handler context request) #f (request-out-port request))
-          ;; TODO: Should we really be passing output port in request to handler?
-          ;; TODO: return an error gophermap
-          (write-line (sprintf "selector not found") (request-out-port request)))
+      ;; TODO: Should we really be passing output port in request to handler?
+      (write-string (if handler
+                        (handler context request)
+                        (begin
+                          (printf "WARNING: no handler for selector: ~A~%"
+                                  (request-selector request))
+                          (make-rendered-error-menu context request "path not found")))
+                    #f
+                    (request-out-port request))
       (close-output-port (request-out-port request) ) ) )
     
 
