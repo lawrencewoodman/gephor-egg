@@ -34,6 +34,7 @@
         (chicken type)
         fmt
         queues
+        simple-logger
         srfi-1
         srfi-18)
 
@@ -95,19 +96,19 @@
 
   (define (client-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
-      (printf "CONNECT: client address: ~A~%" client-address)
+      (log-info "client address: ~A, connection request" client-address)
       ;; TODO: Does in need to be in this and could it be closed first?
       ;; TODO: Find  a neater way of doing this
       (queue-add! connects (list (cons 'in in) (cons 'out out)
                                  (cons 'client-address client-address) ) ) ) )
 
 
+  ;; TODO: handle timeout
   (define (handle-connect connect)
     (let ((in (cdr (assv 'in connect)))
           (out (cdr (assv 'out connect)))
           (client-address (cdr (assv 'client-address connect))))
       (let ((selector (read-selector in)))
-        (printf "client address: ~A, selector: ~A~%" client-address selector)
         ;; TODO: When should these be closed?
         (close-input-port in)
         ;; TODO: Does in need to be in this and could it be closed first?
@@ -121,10 +122,13 @@
         (lambda ()
           (let loop ()
             (handle-exceptions ex
-              (signal ex)
+              (begin
+                (log-error "connect handler thread: ~A"
+                           (get-condition-property ex 'exn 'message))
+                (signal ex))
               (if (not (queue-empty? connects))
                 (let* ((connect (queue-remove! connects)))
-                  (handle-connect connect) )
+                  (handle-connect connect))
                   ;; The thread-sleep! is to prevent the server from
                   ;; continually polling when the connects queue is empty
                   ;; TODO: Find a better way of doing this perhaps using a mutex
@@ -151,8 +155,9 @@
       (write-string (if handler
                         (handler context request)
                         (begin
-                          (printf "WARNING: no handler for selector: ~A~%"
-                                  (request-selector request))
+                          (log-warning "client address: ~A, selector: ~A, no handler for selector"
+                                       (request-client-address request)
+                                       (request-selector request) )
                           (make-rendered-error-menu context request "path not found")))
                     #f
                     (request-out-port request))
@@ -167,7 +172,10 @@
         (lambda ()
           (let loop ()
             (handle-exceptions ex
-              (signal ex)
+              (begin
+                (log-error "request handler thread: ~A"
+                           (get-condition-property ex 'exn 'message))
+                (signal ex))
               (if (not (queue-empty? requests))
                   (let* ((request (queue-remove! requests)))
                     (handle-request request) )
@@ -295,11 +303,15 @@
 ;; TODO: test
 (define (serve-url request)
   (if (not (string=? (substring (request-selector request) 0 4) "URL:"))
-      ;; TODO: Log an error and write and error to client
       (begin
-        (printf "ERROR: for handler: serve-url, invalid selector: ~A~%" (request-selector request))
+        (log-error "client address: ~A, selector: ~A, handler: serve-url, invalid selector"
+                   (request-client-address request) (request-selector request))
         (make-rendered-error-menu context request "server error"))
       (let* ((url (substring (request-selector request) 4)))
+        (log-info "client address: ~A, selector: ~A, handler: serve-url, url: ~A"
+                  (request-client-address request)
+                  (request-selector request)
+                  url)
         (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
 
 
@@ -318,48 +330,55 @@
          ;; TODO: Rename local-path ?
          (local-path (path-build local-dir selector-subpath)))
     (cond ((not (valid-local-dir? local-dir))
-            ;; TODO: Log problematic local-dir
-            (printf "WARNING: local-dir isn't valid: ~A, for selector: ~A~%"
-                     local-dir (request-selector request))
+            (log-error "client address: ~A, selector: ~A, handler: serve-path, local-dir isn't valid: ~A"
+                     (request-client-address request) (request-selector request) local-dir)
             (make-rendered-error-menu context request "server error"))
           ((unsafe-pathname? selector-subpath)
-            ;; TODO: Log problematic selector path
-            (printf "WARNING: selector isn't safe: ~A~%" (request-selector request))
+            (log-warning "client address: ~A, selector: ~A, handler: serve-path, selector isn't safe"
+                    (request-client-address request) (request-selector request))
             (make-rendered-error-menu context request "invalid selector"))
           ((not (file-exists? local-path))
-            ;; TODO: log a warning that local path doesn't exist for selector
-            (printf "WARNING: local path doesn't exist: ~A, for selector: ~A~%"
-                    local-path (request-selector request))
+            (log-warning "client address: ~A, selector: ~A, handler: serve-path, local path doesn't exist: ~A"
+                    (request-client-address request) (request-selector request) local-path)
             (make-rendered-error-menu context request "path not found"))
           ((not (world-readable? local-path))
-            ;; TODO: log a warning that local path doesn't exist for selector
-            (printf "WARNING: local path not world readable: ~A, for selector: ~A~%"
-                     local-path (request-selector request))
+            (log-warning "client address: ~A, selector: ~A, handler: serve-path, local path isn't world readable: ~A"
+                    (request-client-address request) (request-selector request) local-path)
             (make-rendered-error-menu context request "path not found"))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
-            ;; TODO: log any errors reading or writing
-            ;; TODO: Log this or perhaps log all selectors higher up?
             (handle-exceptions ex
-              (printf "ERROR: ~A, for selector: ~A~%"
-                      (get-condition-property ex 'exn 'message)
-                      (request-selector request))
+              (begin
+                (log-error "client address: ~A, selector: %A, handler: serve-path, error reading file: ~A, ~A"
+                           (request-client-address request)
+                           (request-selector request)
+                           local-path
+                           (get-condition-property ex 'exn 'message))
+                (make-rendered-error-menu context request "server error"))
+              (log-info "client address: ~A, selector: ~A, handler: serve-path, request file: ~A"
+                        (request-client-address request)
+                        (request-selector request)
+                        local-path)
               (read-file local-path)))
           ((directory? local-path)
             (handle-exceptions ex
               (begin
-                (printf "ERROR: ~A, for selector: ~A~%"
-                        (get-condition-property ex 'exn 'message)
-                        (request-selector request))
+                (log-error "client address: ~A, selector: ~A, handler: serve-path, error listing directory: ~A, ~A"
+                           (request-client-address request)
+                           (request-selector request)
+                           local-path
+                           (get-condition-property ex 'exn 'message))
                 (make-rendered-error-menu context request "server error"))
+              (log-info "client address: ~A, selector: ~A, handler: serve-path, list directory: ~A"
+                        (request-client-address request)
+                        (request-selector request)
+                        local-path)
               ;; TODO: make this look nicer
               ;; TODO: re-think these args
               (menu-render (list-dir context local-path selector-prefix selector-subpath))))
           (else
-            ;; TODO: log a warning that local path isn't the right file type
-            ;; TODO: send an error to client: "path not found"
-            (printf "WARNING: unsupported file type for path: ~A, for selector: ~A~%"
-                     local-path (request-selector request) )
+            (log-error "client address: ~A, selector: ~A, handler: serve-path, unsupported file type for path: ~A"
+                     (request-client-address request) (request-selector request) local-path)
             (make-rendered-error-menu context request "path not found") ) ) ) )
 
 
@@ -490,6 +509,7 @@ END
 
 
 ;; Add an item to a menu
+;; TODO: Should this be using signal or abort?
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
     ;; TODO: simplify this and add more items
@@ -500,16 +520,13 @@ END
           ((member itemtype '("error" "3"))
             (list "3" username selector hostname port))
           ((member itemtype '("info" "i"))
-            ;; TODO: sort out this exception as it isn't right
-            (abort "unsupported item type: ~A, use menu-item-info"))
+            (signal (sprintf "menu-item: unsupported item type: ~A, use menu-item-info" itemtype)))
           ((member itemtype '("html" "h"))
             (list "h" username selector hostname port))
           ((member itemtype '("image" "I"))
             (list "I" username selector hostname port))
           (else
-            (begin  ; TODO: rewrite this to handle error properly
-              (printf "ERROR: unkown item type: ~A~%" itemtype)
-              #f ) ) ) )
+            (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) )
 
 
 ;; Return a list of menu items
