@@ -403,9 +403,10 @@
 ;; TODO: Log an error if bigger than maximum size - perhaps
 ;; TODO: check this first and send an error to client if too big
 (define (read-file path)
-  (call-with-input-file path
-                        (lambda (port) (read-string 50000000 port))
-                        #:binary))
+  (let ((contents (call-with-input-file path
+                    (lambda (port) (read-string 50000000 port))
+                    #:binary)))
+  (if (eof-object? contents) "" contents) ) )
 
 
 ;; TODO: Move this, export? and rename?
@@ -436,6 +437,7 @@
 ;; the intended folders or otherwise.  Backslashes are also detected
 ;; because of a warning about them in the Spiffy web server source code.
 ;; TODO: Should we text for nul in a string as per Spiffy?
+;; TODO: Look also at pygopherd isrequestsecure function
 (define (unsafe-pathname? pathname)
   (or (substring-index "./" pathname)
       (substring-index ".." pathname)

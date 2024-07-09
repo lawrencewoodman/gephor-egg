@@ -236,7 +236,6 @@
                (selector-prefix ""))
           (serve-path context request fixtures-dir selector-prefix) ) )
 
-  ;; TODO: Decide if this is the best way of handling an error
   (test "serve-path returns a 'server error' error menu if local-dir ends with a '/'"
         (string-intersperse '(
           "3server error\t/dir-a\tlocalhost\t70"
@@ -249,8 +248,7 @@
                (local-dir (sprintf "~A/" fixtures-dir)))
           (serve-path context request local-dir selector-prefix) ) )
 
-  ;; TODO: Decide if this is the best way of handling an error
-  (test "serve-path raises an exception if local-dir is a relative dir"
+  (test "serve-path returns a 'server error' error menu if local-dir is a relative dir"
         (string-intersperse '(
           "3server error\t/dir-a\tlocalhost\t70"
           ".\r\n")
@@ -298,6 +296,14 @@
                (selector-prefix ""))
           (serve-path context request fixtures-dir selector-prefix) ) )
 
+
+  (test "serve-path returns the contents of an empty file"
+        ""
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "/a.txt" output-port "127.0.0.1"))
+               (selector-prefix ""))
+          (serve-path context request fixtures-dir selector-prefix) ) )
 
 )
 
