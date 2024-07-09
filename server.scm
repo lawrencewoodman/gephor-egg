@@ -448,6 +448,7 @@
 ;; TODO: Make sure paths are safe
 ;; TODO: Should this check if path is world-readable rather than calling proc?
 ;; NOTE: selector-subpath must be checked to be safe before calling list-dir
+;; TODO: Could we just pass selector into this rather than prefix and subpath ??
 (define (list-dir context selector-local-dir selector-prefix selector-subpath)
   ;; Returns #f if not a valid file
   ;; An entry consists of a list (filename is-directory selector)
@@ -504,7 +505,6 @@ END
 ;;; Menu
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (define-type menu-item (list string string string string fixnum))
 
 ;; Exported Definitions ------------------------------------------------------
@@ -512,6 +512,7 @@ END
 
 ;; Add an item to a menu
 ;; TODO: Should this be using signal or abort?
+;; TODO: Could this use symbolds rather than strings for long names?
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
     ;; TODO: simplify this and add more items
@@ -532,6 +533,7 @@ END
 
 
 ;; Return a list of menu items
+;; TODO: Rename and support info in menu-item perhaps info wrap
 (: menu-item-info (string string string fixnum --> (listof menu-item)))
 (define (menu-item-info username selector hostname port)
   ;; TODO: is 80 the correct wrap width here?
@@ -544,7 +546,7 @@ END
   ;; TODO: big fmt and associated packages
   ;; TODO: escape characters in username such as \t ?
   (let ((lines (string-split (fmt #f (with-width 80 (wrap-lines username))) "\n")))
-    (map (lambda (line) (list "i" line selector hostname port)) lines)))
+    (map (lambda (line) (list "i" line selector hostname port)) lines) ) )
 
 
 ;; Render the menu as text ready for sending
@@ -559,7 +561,7 @@ END
                  ""
                  menu-items)))
     ;; Properly constructed menus should end with ".\r\n"
-    (string-append menu-str ".\r\n")))
+    (string-append menu-str ".\r\n") ) )
 
 
 ;; Make an error menu that has been rendered and is ready for sending
