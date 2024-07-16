@@ -94,9 +94,9 @@
 
   (test "make-item-info wraps info text"
         (string-intersperse '(
-          "iThis is some interesting text that you might like to read about if you have the\tFAKE\tlocalhost\t70"
-          "itime to look at it but the main point is that it is there to see if the text\tFAKE\tlocalhost\t70"
-          "iwrapping works properly\tFAKE\tlocalhost\t70"
+          "iThis is some interesting text that you might like to read about if\tFAKE\tlocalhost\t70"
+          "iyou have the time to look at it but the main point is that it is\tFAKE\tlocalhost\t70"
+          "ithere to see if the text wrapping works properly\tFAKE\tlocalhost\t70"
           ".\r\n")
           "\r\n")
         (let* ((text (string-intersperse '(

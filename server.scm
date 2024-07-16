@@ -501,11 +501,17 @@ END
 
 
 ;; Add an item to a menu
+;; Warns if usernames > 69 characters as per RFC 1436
 ;; TODO: Should this be using signal or abort?
 ;; TODO: Could this use symbols rather than strings for long names?
-;; TODO: Warn if username > x characters ??
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
+  (let ((username (string-trim-right username char-set:whitespace))
+        (selector (string-trim-both selector char-set:whitespace)))
+    (if (>= (string-length username) 70)
+        ;; TODO: Test
+        (log-info "proc: menu-item, username: ~A, selector: ~A, hostname: ~A, port: ~A, username >= 70 characters"
+                  username selector hostname port))
     ;; TODO: simplify this and add more items
     (cond ((member itemtype '("text" "0"))
             (list "0" username selector hostname port))
@@ -523,7 +529,7 @@ END
             ;; TODO: Should this use the item type regardless if supplied as
             ;; TODO: long as it is a single character, and then just log a
             ;; TODO: warning?
-            (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) )
+            (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) ) )
 
 
 ;; TODO: Should we pass context rather than supplying hostname and port
@@ -553,20 +559,19 @@ END
 
 ;; Takes a username and wraps it at the 80th column to return a list of
 ;; menu items
-;; TODO: Rename and support info in menu-item perhaps info wrap
-;; TODO: is 80 the correct wrap width here?
+;; Wraps at 69th column as per RFC 1436
+;; TODO: Rename to ...-info-wrap ??
 (: menu-item-wrap-info (string string string fixnum --> (listof menu-item)))
 (define (menu-item-info username selector hostname port)
   ;; TODO: Should we allow some lines to be unwrappable if they don't
   ;; TODO: contain spaces.
-  ;; TODO: What is best to put as the selector, host and port
   ;; TOOD: Should we split the text first and then wrap an then split again
   ;; TODO: to allow newlines to be used in the source text?
   ;; TODO: Rewrite a wrap func so don't need to bring in
   ;; TODO: big fmt and associated packages
-  ;; TODO: escape characters in username such as \t ?
-  (let ((lines (string-split (fmt #f (with-width 80 (wrap-lines username))) "\n")))
-    (map (lambda (line) (list "i" line selector hostname port)) lines) ) )
+  ;; TODO: escape characters in username such as \t or strip out?
+  (let ((lines (string-split (fmt #f (with-width 69 (wrap-lines username))) "\n")))
+    (map (lambda (line) (menu-item "i" line selector hostname port)) lines) ) )
 
 
 ;; Render the menu as text ready for sending
