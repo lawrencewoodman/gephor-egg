@@ -1,4 +1,4 @@
-;;; A Gopher server module for Chicken Scheme
+;;; A Gopher server module based on NEX for Chicken Scheme
 ;;;
 ;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
@@ -13,7 +13,7 @@
   (start-server
    make-context make-request
    make-router router-add router-match
-   menu-item menu-item-info menu-render
+   menu-item menu-item-info menu-item-file menu-render
    serve-url
    serve-path)
 
@@ -25,6 +25,7 @@
         (chicken file)
         (chicken file posix)
         (chicken io)
+        (chicken irregex)
         (chicken pathname)
         (chicken port)
         (chicken process signal)
@@ -36,10 +37,14 @@
         queues
         simple-logger
         srfi-1
+        srfi-13
+        srfi-14
         srfi-18)
 
 ;; Import notes -------------------------------------------------------------
 ;; srfi-1  - List procedures
+;; srfi-13 - String library
+;; srfi-14 - Character set library
 ;; srfi-18 - Multithreading support
 ;; queues  - In the source code it says that the procedures used
 ;;           here are thread safe
@@ -87,12 +92,13 @@
     ;; TODO: program?
     (write-line "server terminated")
     (exit))
-    
 
-  ;; TODO: add timeout
+  ;; TODO: Add timeout
+  ;; TODO: Test this
+  ;; Read the selector and trim from the beginning and the end whitespace
+  ;; and '/' characters
   (define (read-selector in)
-    (read-line in 255) )
-
+    (trim-selector (read-line in 255) ) )
 
   (define (client-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
@@ -109,10 +115,7 @@
           (out (cdr (assv 'out connect)))
           (client-address (cdr (assv 'client-address connect))))
       (let ((selector (read-selector in)))
-        ;; TODO: When should these be closed?
         (close-input-port in)
-        ;; TODO: Does in need to be in this and could it be closed first?
-        ;; TODO: Find  a neater way of doing this
         (queue-add! requests (make-request selector out client-address) ) ) ) )
 
 
@@ -146,7 +149,6 @@
             (loop (- n 1) (cons thread threads) ) ) ) ) )
 
 
-  ;; TODO: Need a way to handle different types of response: binary, text, etc
   ;; TODO: Need to handle handlers failing
   (define (handle-request request)
     ;; TOOD: Should handler be handler!
@@ -293,7 +295,7 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; Serve a html page for cases when the selector begins with 'URL:' followed
+;; Serve an html page for cases when the selector begins with 'URL:' followed
 ;; by a URL.  This is for clients that don't support the 'URL:' selector
 ;; prefix so that they can be served a html page which points to the URL.
 ;; This conforms to:
@@ -302,7 +304,7 @@
 ;; TODO: Allow customisation such as passing in a different template?
 ;; TODO: test
 (define (serve-url request)
-  (if (not (string=? (substring (request-selector request) 0 4) "URL:"))
+  (if (not (substring=? (request-selector request) "URL:"))
       (begin
         (log-error "client address: ~A, selector: ~A, handler: serve-url, invalid selector"
                    (request-client-address request) (request-selector request))
@@ -319,79 +321,76 @@
 ;; NOTE: notion of a file path.  It is purely up to the server to decide
 ;; NOTE: how to understand it.
 ;;
-;; local-dir must not end with a '/'
 ;; TODO: Test how this handles an empty selector, the same as "/"?
-(define (serve-path context request local-dir selector-prefix)
-  (define (valid-local-dir? dir)
-    (and (absolute-pathname? dir)
-         (not (substring-index "/" dir (sub1 (string-length dir))))))
+;; TODO: How should this handle selectors with directories ending with and without "/"
+(define (serve-path context request root-dir)
 
-  (let* ((selector-subpath (strip-selector-prefix selector-prefix (request-selector request)))
-         ;; TODO: Rename local-path ?
-         (local-path (path-build local-dir selector-subpath)))
-    (cond ((not (valid-local-dir? local-dir))
-            (log-error "client address: ~A, selector: ~A, handler: serve-path, local-dir isn't valid: ~A"
-                     (request-client-address request) (request-selector request) local-dir)
+  (define (log-info* . args)
+    (apply log-info (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
+                    (request-client-address request) (request-selector request)
+                    (cdr args)))
+  (define (log-warning* . args)
+    (apply log-warning (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
+                       (request-client-address request) (request-selector request)
+                       (cdr args)))
+  (define (log-error* . args)
+    (apply log-error (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
+                     (request-client-address request) (request-selector request)
+                     (cdr args)))
+
+  ;; TODO: Rename local-path ?
+  ;; TODO: Check selector and path are safe
+  (let* ((local-path (make-pathname root-dir (request-selector request))))
+    (cond ((or (not (absolute-pathname? root-dir))
+               (substring-index "/" root-dir (sub1 (string-length root-dir))))
+            ;; TODO: Improve this error / exception
+            (log-error* "root-dir isn't valid: ~A" root-dir)
             (make-rendered-error-menu context request "server error"))
-          ((unsafe-pathname? selector-subpath)
-            (log-warning "client address: ~A, selector: ~A, handler: serve-path, selector isn't safe"
-                    (request-client-address request) (request-selector request))
+          ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
+            (log-warning* "selector isn't safe")
             (make-rendered-error-menu context request "invalid selector"))
           ((not (file-exists? local-path))
-            (log-warning "client address: ~A, selector: ~A, handler: serve-path, local path doesn't exist: ~A"
-                    (request-client-address request) (request-selector request) local-path)
+            (log-warning* "local path doesn't exist: ~A" local-path)
             (make-rendered-error-menu context request "path not found"))
           ((not (world-readable? local-path))
-            (log-warning "client address: ~A, selector: ~A, handler: serve-path, local path isn't world readable: ~A"
-                    (request-client-address request) (request-selector request) local-path)
+            (log-warning* "local path isn't world readable: ~A" local-path)
             (make-rendered-error-menu context request "path not found"))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (handle-exceptions ex
               (begin
-                (log-error "client address: ~A, selector: %A, handler: serve-path, error reading file: ~A, ~A"
-                           (request-client-address request)
-                           (request-selector request)
+                (log-error* "error reading file: ~A, ~A"
                            local-path
                            (get-condition-property ex 'exn 'message))
                 (make-rendered-error-menu context request "server error"))
-              (log-info "client address: ~A, selector: ~A, handler: serve-path, request file: ~A"
-                        (request-client-address request)
-                        (request-selector request)
-                        local-path)
+              (log-info* "request file: ~A" local-path)
               (read-file local-path)))
           ((directory? local-path)
             (handle-exceptions ex
               (begin
-                (log-error "client address: ~A, selector: ~A, handler: serve-path, error listing directory: ~A, ~A"
-                           (request-client-address request)
-                           (request-selector request)
-                           local-path
-                           (get-condition-property ex 'exn 'message))
+                (log-error* "procedure: ~A, local-path: ~A, error listing directory: ~A"
+                            (get-condition-property ex 'exn 'location "?")
+                            local-path
+                            (get-condition-property ex 'exn 'message))
                 (make-rendered-error-menu context request "server error"))
-              (log-info "client address: ~A, selector: ~A, handler: serve-path, list directory: ~A"
-                        (request-client-address request)
-                        (request-selector request)
-                        local-path)
-              ;; TODO: make this look nicer
-              ;; TODO: re-think these args
-              (menu-render (list-dir context local-path selector-prefix selector-subpath))))
+              (log-info* "list directory: ~A" local-path)
+              (if (file-exists? (make-pathname local-path "index"))
+                  ;; TODO: Check index is world readable and otherwise suitable
+                  ;; TODO: Do we want to use 'index' as filename?
+                  (let ((nex-index (read-file (make-pathname local-path "index"))))
+                    (menu-render (process-nex-index context
+                                                    (request-selector request)
+                                                    local-path
+                                                    nex-index)))
+                  (menu-render (list-dir context (request-selector request) local-path)))))
           (else
-            (log-error "client address: ~A, selector: ~A, handler: serve-path, unsupported file type for path: ~A"
-                     (request-client-address request) (request-selector request) local-path)
+            (log-error* "unsupported file type for path: ~A" local-path)
             (make-rendered-error-menu context request "path not found") ) ) ) )
 
 
 
 ;; Internal Definitions ------------------------------------------------------
 
-;; TODO: Move this, export? and rename?
-;; Returns the selector without the prefix or #f if the prefix isn't present
-(define (strip-selector-prefix prefix selector)
-  (let ((prefix-exists (substring=? prefix selector)))
-    (if (not prefix-exists)
-        #f
-        (substring selector (string-length prefix)))))
 
 ;; Does the file have word readable permissions?
 (define (world-readable? filename)
@@ -407,14 +406,6 @@
                     (lambda (port) (read-string 50000000 port))
                     #:binary)))
   (if (eof-object? contents) "" contents) ) )
-
-
-;; TODO: Move this, export? and rename?
-;; TODO: rename path-join?
-;; TODO: Make this safer and more resiliant and specify needs posix support
-;; TODO: Perhaps strip out any .. or . as a selector isn't a real path
-(define (path-build . args)
-  (string-intersperse args "/"))
 
 
 ;; Sort files so that directories come before regular files and then
@@ -449,23 +440,22 @@
 ;; TODO: Should this check if path is world-readable rather than calling proc?
 ;; NOTE: selector-subpath must be checked to be safe before calling list-dir
 ;; TODO: Could we just pass selector into this rather than prefix and subpath ??
-(define (list-dir context selector-local-dir selector-prefix selector-subpath)
+(define (list-dir context selector local-path)
   ;; Returns #f if not a valid file
   ;; An entry consists of a list (filename is-directory selector)
-  (define (filename->dir-entry filename)
-    (let ((fullfilename (make-pathname selector-local-dir filename))
-          (selector (sprintf "~A~A~A~A"
-                             selector-prefix
-                             selector-subpath
-                             (if (string=? selector-subpath "") "" "/")
+  (define (make-dir-entry filename)
+    (let ((full-local-filename (make-pathname local-path filename))
+          (selector (sprintf "~A~A~A"
+                             selector
+                             (if (string=? selector "") "" "/")
                              filename)))
-      (cond ((directory? fullfilename)
+      (cond ((directory? full-local-filename)
               (list filename #t selector))
-            ((regular-file? fullfilename)
+            ((regular-file? full-local-filename)
               (list filename #f selector))
             (else #f))))
 
-  (let ((filenames (directory selector-local-dir))
+  (let ((filenames (directory local-path))
         (hostname (context-hostname context))
         (port (context-port context)))
     (map (lambda (entry)
@@ -475,8 +465,8 @@
              ;; TODO: Need to support other itemtypes
              (if is-dir
                  (menu-item "menu" filename selector hostname port)
-                 (menu-item "text" filename selector hostname port))))
-         (sort-dir-entries (filter-map filename->dir-entry filenames) ) ) ) )
+                 (menu-item-file filename selector hostname port))))
+         (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) )
 
 
 ;; The HTML template used by serve-url
@@ -512,7 +502,8 @@ END
 
 ;; Add an item to a menu
 ;; TODO: Should this be using signal or abort?
-;; TODO: Could this use symbolds rather than strings for long names?
+;; TODO: Could this use symbols rather than strings for long names?
+;; TODO: Warn if username > x characters ??
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
     ;; TODO: simplify this and add more items
@@ -523,20 +514,49 @@ END
           ((member itemtype '("error" "3"))
             (list "3" username selector hostname port))
           ((member itemtype '("info" "i"))
-            (signal (sprintf "menu-item: unsupported item type: ~A, use menu-item-info" itemtype)))
+            (list "i" username selector hostname port))
           ((member itemtype '("html" "h"))
             (list "h" username selector hostname port))
           ((member itemtype '("image" "I"))
             (list "I" username selector hostname port))
           (else
+            ;; TODO: Should this use the item type regardless if supplied as
+            ;; TODO: long as it is a single character, and then just log a
+            ;; TODO: warning?
             (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) )
 
 
-;; Return a list of menu items
+;; TODO: Should we pass context rather than supplying hostname and port
+;; TODO: Check if this works with non POSIX style paths
+;; TODO: Document handled extensions here and where it is called such as
+;; TODO: list-dir and process-nex-index
+;; TODO: Pass an extention to itemtype map
+;; TODO: What to do with unhandled type? Test
+;; TODO: Test when file has no extension
+;; Creates a menu item for a file.  The itemtype is determined by looking at
+;; the file extension in the selector.
+(define (menu-item-file username selector hostname port)
+  (let ((extension (string-downcase (or (pathname-extension selector) ""))))
+    (cond ((member extension '("txt" "c" "cpp" "go" "scm" "py" "tcl"))
+            (menu-item "0" username selector hostname port))
+          ((member extension '("html" "htm" "htmlx"))
+            (menu-item "h" username selector hostname port))
+          ((member extension '("gif"))
+            (menu-item "g" username selector hostname port))
+          ((member extension '("png" "jpg" "jpeg" "bmp" "tif"))
+            (menu-item "I" username selector hostname port))
+          (else
+            (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
+                         username selector extension)
+            (menu-item "0" username selector hostname port) ) ) ) )
+
+
+;; Takes a username and wraps it at the 80th column to return a list of
+;; menu items
 ;; TODO: Rename and support info in menu-item perhaps info wrap
-(: menu-item-info (string string string fixnum --> (listof menu-item)))
+;; TODO: is 80 the correct wrap width here?
+(: menu-item-wrap-info (string string string fixnum --> (listof menu-item)))
 (define (menu-item-info username selector hostname port)
-  ;; TODO: is 80 the correct wrap width here?
   ;; TODO: Should we allow some lines to be unwrappable if they don't
   ;; TODO: contain spaces.
   ;; TODO: What is best to put as the selector, host and port
@@ -570,6 +590,80 @@ END
   (menu-render (list (menu-item "error" msg (request-selector request)
                                  (context-hostname context)
                                  (context-port context) ) ) ) )
+
+;; TODO: Rename index to something else
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; NEX Index
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; Exported Definitions ------------------------------------------------------
+
+;; TODO: Handle an empty index
+;; TODO: Remove blank lines at end
+(define (process-nex-index context selector local-path nex-index)
+
+  ;; TODO: Strip final '/' from path
+  (define (dir-item path username)
+    (if (absolute-pathname? path)
+        (menu-item "1" username (trim-selector path)
+                   (context-hostname context) (context-port context))
+        (let ((item-selector (sprintf "~A~A~A"
+                                      selector
+                                      (if (string=? selector "") "" "/")
+                                      (string-chomp path "/"))))
+          (menu-item "1" username item-selector
+                     (context-hostname context) (context-port context)))))
+
+  ;; TODO: Handle file not existing
+  ;; TODO: Expand file item types
+  (define (file-item path username)
+    (if (absolute-pathname? path)
+        (menu-item-file username (trim-selector path)
+                        (context-hostname context) (context-port context))
+        (let ((item-selector (sprintf "~A~A~A"
+                                      selector
+                                      (if (string=? selector "") "" "/")
+                                      path)))
+          (menu-item-file username item-selector
+                          (context-hostname context) (context-port context)))))
+
+
+  (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
+    (map (lambda (line)
+           (let ((link-match (irregex-search "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$" line)))
+             (if (irregex-match-data? link-match)
+                 (let* ((path (irregex-match-substring link-match 1))
+                        (maybe-username (irregex-match-substring link-match 2))
+                        (username (if (string=? maybe-username "")
+                                      (string-chomp path "/")
+                                      maybe-username))
+                        (is-dir (substring-index "/" path (sub1 (string-length path)))))
+                   (if is-dir
+                       (dir-item path username)
+                       (file-item path username)))
+                 ;; Current selector is used for info itemtype so that if type
+                 ;; not supported by client but still displayed then it
+                 ;; will just link to the page that it is being displayed on
+                 (menu-item "i" line selector
+                            (context-hostname context) (context-port context)))))
+         lines) ) )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Miscellaneous Internal Definitions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; A char set for trimming selectors
+(define selector-trim-char-set
+  (char-set-adjoin char-set:whitespace #\/) )
+
+;; Trim beginning and end of selector to remove whitespace and
+;; '/' characters
+(define (trim-selector selector)
+  (string-trim-both selector selector-trim-char-set) )
+
 
 )
 

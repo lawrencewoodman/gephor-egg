@@ -1,0 +1,20 @@
+
+
+---[[[ Some Title ]]]---
+
+
+Lets try out some links.  First some absolute links
+=> / Back to the beginning
+=> /dir-a/
+=> /a.txt
+
+Now some relative links
+=> dir-ba/
+=> dir-ba/ The ba directory
+=> dir-bb/ The bb directory
+=> dir-ba/baa.txt
+=> dir-ba/baa.bob
+
+This file ends with two blank lines which should be stripped.
+
+
