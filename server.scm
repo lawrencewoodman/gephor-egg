@@ -317,6 +317,9 @@
         (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
 
 
+;; TODO: Move this note about selectors not being file paths as not relevant
+;; TODO: to serve-path and in fact should specify that it must be a valid
+;; TODO: POSIX? path.
 ;; NOTE: When dealing with paths we must remember that a selector has no
 ;; NOTE: notion of a file path.  It is purely up to the server to decide
 ;; NOTE: how to understand it.
@@ -557,9 +560,8 @@ END
             (menu-item 'text username selector hostname port) ) ) ) )
 
 
-;; Takes a username and wraps it at the 80th column to return a list of
-;; menu items
-;; Wraps at 69th column as per RFC 1436
+;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
+;; return a list of menu items
 (: menu-item-info-wrap (string string string fixnum --> (listof menu-item)))
 (define (menu-item-info-wrap username selector hostname port)
   ;; TODO: Should we allow some lines to be unwrappable if they don't
@@ -607,7 +609,6 @@ END
 ;; TODO: Remove blank lines at end
 (define (process-nex-index context selector local-path nex-index)
 
-  ;; TODO: Strip final '/' from path
   (define (dir-item path username)
     (if (absolute-pathname? path)
         (menu-item 'menu username (trim-selector path)
@@ -620,7 +621,6 @@ END
                      (context-hostname context) (context-port context)))))
 
   ;; TODO: Handle file not existing
-  ;; TODO: Expand file item types
   (define (file-item path username)
     (if (absolute-pathname? path)
         (menu-item-file username (trim-selector path)
