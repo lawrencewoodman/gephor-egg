@@ -13,7 +13,7 @@
   (start-server
    make-context make-request
    make-router router-add router-match
-   menu-item menu-item-info menu-item-file menu-render
+   menu-item menu-item-info-wrap menu-item-file menu-render
    serve-url
    serve-path)
 
@@ -464,7 +464,7 @@
                  (selector (third entry)))
              ;; TODO: Need to support other itemtypes
              (if is-dir
-                 (menu-item "menu" filename selector hostname port)
+                 (menu-item 'menu filename selector hostname port)
                  (menu-item-file filename selector hostname port))))
          (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) )
 
@@ -513,17 +513,17 @@ END
         (log-info "proc: menu-item, username: ~A, selector: ~A, hostname: ~A, port: ~A, username >= 70 characters"
                   username selector hostname port))
     ;; TODO: simplify this and add more items
-    (cond ((member itemtype '("text" "0"))
+    (cond ((memq itemtype '(text 0))
             (list "0" username selector hostname port))
-          ((member itemtype '("menu" "1"))
+          ((memq itemtype '(menu 1))
             (list "1" username selector hostname port))
-          ((member itemtype '("error" "3"))
+          ((memq itemtype '(error 3))
             (list "3" username selector hostname port))
-          ((member itemtype '("info" "i"))
+          ((memq itemtype '(info i))
             (list "i" username selector hostname port))
-          ((member itemtype '("html" "h"))
+          ((memq itemtype '(html h))
             (list "h" username selector hostname port))
-          ((member itemtype '("image" "I"))
+          ((memq itemtype '(image I))
             (list "I" username selector hostname port))
           (else
             ;; TODO: Should this use the item type regardless if supplied as
@@ -544,25 +544,24 @@ END
 (define (menu-item-file username selector hostname port)
   (let ((extension (string-downcase (or (pathname-extension selector) ""))))
     (cond ((member extension '("txt" "c" "cpp" "go" "scm" "py" "tcl"))
-            (menu-item "0" username selector hostname port))
+            (menu-item 'text username selector hostname port))
           ((member extension '("html" "htm" "htmlx"))
-            (menu-item "h" username selector hostname port))
+            (menu-item 'html username selector hostname port))
           ((member extension '("gif"))
-            (menu-item "g" username selector hostname port))
+            (menu-item 'gif username selector hostname port))
           ((member extension '("png" "jpg" "jpeg" "bmp" "tif"))
-            (menu-item "I" username selector hostname port))
+            (menu-item 'image username selector hostname port))
           (else
             (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
                          username selector extension)
-            (menu-item "0" username selector hostname port) ) ) ) )
+            (menu-item 'text username selector hostname port) ) ) ) )
 
 
 ;; Takes a username and wraps it at the 80th column to return a list of
 ;; menu items
 ;; Wraps at 69th column as per RFC 1436
-;; TODO: Rename to ...-info-wrap ??
-(: menu-item-wrap-info (string string string fixnum --> (listof menu-item)))
-(define (menu-item-info username selector hostname port)
+(: menu-item-info-wrap (string string string fixnum --> (listof menu-item)))
+(define (menu-item-info-wrap username selector hostname port)
   ;; TODO: Should we allow some lines to be unwrappable if they don't
   ;; TODO: contain spaces.
   ;; TOOD: Should we split the text first and then wrap an then split again
@@ -571,7 +570,7 @@ END
   ;; TODO: big fmt and associated packages
   ;; TODO: escape characters in username such as \t or strip out?
   (let ((lines (string-split (fmt #f (with-width 69 (wrap-lines username))) "\n")))
-    (map (lambda (line) (menu-item "i" line selector hostname port)) lines) ) )
+    (map (lambda (line) (menu-item 'info line selector hostname port)) lines) ) )
 
 
 ;; Render the menu as text ready for sending
@@ -592,7 +591,7 @@ END
 ;; Make an error menu that has been rendered and is ready for sending
 ;; TODO: Is it a good idea / safe to return the selector?
 (define (make-rendered-error-menu context request msg)
-  (menu-render (list (menu-item "error" msg (request-selector request)
+  (menu-render (list (menu-item 'error msg (request-selector request)
                                  (context-hostname context)
                                  (context-port context) ) ) ) )
 
@@ -611,13 +610,13 @@ END
   ;; TODO: Strip final '/' from path
   (define (dir-item path username)
     (if (absolute-pathname? path)
-        (menu-item "1" username (trim-selector path)
+        (menu-item 'menu username (trim-selector path)
                    (context-hostname context) (context-port context))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       (string-chomp path "/"))))
-          (menu-item "1" username item-selector
+          (menu-item 'menu username item-selector
                      (context-hostname context) (context-port context)))))
 
   ;; TODO: Handle file not existing
@@ -650,7 +649,7 @@ END
                  ;; Current selector is used for info itemtype so that if type
                  ;; not supported by client but still displayed then it
                  ;; will just link to the page that it is being displayed on
-                 (menu-item "i" line selector
+                 (menu-item 'info line selector
                             (context-hostname context) (context-port context)))))
          lines) ) )
 

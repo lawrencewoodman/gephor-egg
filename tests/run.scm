@@ -89,10 +89,10 @@
           "1Somewhere interesting\t/interesting\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((menu (list (menu-item "menu" "Somewhere interesting" "/interesting" "localhost" 70))))
+        (let* ((menu (list (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70))))
           (menu-render menu)))
 
-  (test "make-item-info wraps info text"
+  (test "make-item-info-wrap wraps info text"
         (string-intersperse '(
           "iThis is some interesting text that you might like to read about if\tFAKE\tlocalhost\t70"
           "iyou have the time to look at it but the main point is that it is\tFAKE\tlocalhost\t70"
@@ -105,7 +105,7 @@
                       "if the text wrapping works properly")
                       "\n"))
                ;; TODO: what should the selector, hostname and port be?
-               (menu (menu-item-info text "FAKE" "localhost" 70)))
+               (menu (menu-item-info-wrap text "FAKE" "localhost" 70)))
           (menu-render menu)))
 
 
@@ -129,18 +129,18 @@
           ".\r\n")
           "\r\n")
         (let* ((menu-src '(
-                 ("text" "Some text" "text text" "localhost" 70)
-                 ("0" "Some text" "text 0" "localhost" 70)
-                 ("menu" "A menu" "menu menu" "localhost" 70)
-                 ("1" "A menu" "menu 1" "localhost" 70)
-                 ("error" "An error" "error error" "localhost" 70)
-                 ("3" "An error" "error 3" "localhost" 70)
-                 ("info" "Some info" "info info" "localhost" 70)
-                 ("i" "Some info" "info i" "localhost" 70)
-                 ("html" "Some html" "html html" "localhost" 70)
-                 ("h" "Some html" "html h" "localhost" 70)
-                 ("image" "Some image" "image image" "localhost" 70)
-                 ("I" "Some image" "image I" "localhost" 70)))
+                 (text "Some text" "text text" "localhost" 70)
+                 (0 "Some text" "text 0" "localhost" 70)
+                 (menu "A menu" "menu menu" "localhost" 70)
+                 (1 "A menu" "menu 1" "localhost" 70)
+                 (error "An error" "error error" "localhost" 70)
+                 (3 "An error" "error 3" "localhost" 70)
+                 (info "Some info" "info info" "localhost" 70)
+                 (i "Some info" "info i" "localhost" 70)
+                 (html "Some html" "html html" "localhost" 70)
+                 (h "Some html" "html h" "localhost" 70)
+                 (image "Some image" "image image" "localhost" 70)
+                 (I "Some image" "image I" "localhost" 70)))
                (menu (map (lambda (x) (apply menu-item x)) menu-src)))
           (menu-render menu)))
 
