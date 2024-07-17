@@ -20,6 +20,10 @@
 (define dummy)
 
 
+;; TODO: Test log output
+(log-level 100)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;  Router Tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -104,7 +108,6 @@
                       "point is that it is there to see"
                       "if the text wrapping works properly")
                       "\n"))
-               ;; TODO: what should the selector, hostname and port be?
                (menu (menu-item-info-wrap text "FAKE" "localhost" 70)))
           (menu-render menu)))
 
@@ -150,7 +153,8 @@
           "0About this Place\tdir-a/about\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (menu-item-file "About this Place" "dir-a/about" "localhost" 70))))
+        (let ((menu (list (menu-item-file menu-ext-itemtype-map
+                                          "About this Place" "dir-a/about" "localhost" 70))))
           (menu-render (reverse menu))))
 
 )
@@ -162,9 +166,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (test-group "handlers"
 
-
-  ;; TODO: Test log output
-  (log-level 100)
 
   ;; The path of the fixtures directory
   (define fixtures-dir

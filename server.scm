@@ -14,6 +14,7 @@
    make-context make-request
    make-router router-add router-match
    menu-item menu-item-info-wrap menu-item-file menu-render
+   menu-ext-itemtype-map  ; TODO: Find a better way of handling this
    serve-url
    serve-path)
 
@@ -468,7 +469,7 @@
              ;; TODO: Need to support other itemtypes
              (if is-dir
                  (menu-item 'menu filename selector hostname port)
-                 (menu-item-file filename selector hostname port))))
+                 (menu-item-file menu-ext-itemtype-map filename selector hostname port))))
          (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) )
 
 
@@ -543,21 +544,43 @@ END
 ;; TODO: What to do with unhandled type? Test
 ;; TODO: Test when file has no extension
 ;; Creates a menu item for a file.  The itemtype is determined by looking at
-;; the file extension in the selector.
-(define (menu-item-file username selector hostname port)
-  (let ((extension (string-downcase (or (pathname-extension selector) ""))))
-    (cond ((member extension '("txt" "c" "cpp" "go" "scm" "py" "tcl"))
-            (menu-item 'text username selector hostname port))
-          ((member extension '("html" "htm" "htmlx"))
-            (menu-item 'html username selector hostname port))
-          ((member extension '("gif"))
-            (menu-item 'gif username selector hostname port))
-          ((member extension '("png" "jpg" "jpeg" "bmp" "tif"))
-            (menu-item 'image username selector hostname port))
-          (else
-            (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
-                         username selector extension)
-            (menu-item 'text username selector hostname port) ) ) ) )
+;; the file extension in the selector.  Extensions are mapped to itemtypes
+;; using extension-map which is an alist of symbol pairs with the keys being
+;; extensions and the values being itemtypes.  If an extension is unknown
+;; a warning message is logged and 'text is used.
+(define (menu-item-file extension-map username selector hostname port)
+  (let* ((extension (string->symbol (string-downcase (or (pathname-extension selector) ""))))
+         (maybe-itemtype (alist-ref extension extension-map)))
+    (if maybe-itemtype
+        (menu-item maybe-itemtype username selector hostname port)
+        (begin
+          (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
+                       username selector extension)
+          (menu-item 'text username selector hostname port) ) ) ) )
+
+
+;; TODO: Where should this go?
+;; alist mapping extensions to itemtypes
+;; NOTE: This should be keep in order of most frequent lookup to make
+;; NOTE: lookups as quick as possible on average.
+;; NOTE: Don't include 'text itemtypes as this is the default for
+;; NOTE: menu-item-file
+(define menu-ext-itemtype-map '(
+  (gif . gif)
+  (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image) (rle . image)
+  (html . html) (htm . html) (xhtml . html)
+))
+
+
+;; TODO: Rethink this
+(define (valid-ext-itemtype-map? x)
+  (let* ((known-itemtypes '(text html gif image))
+         (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
+         (keys (map car x))
+         (values (map cdr x)))
+    (and (= (length keys) (length (delete-duplicates keys)))
+         (= 0 (count unknown-itemtype? values) ) ) ) )
+(assert (valid-ext-itemtype-map? menu-ext-itemtype-map))
 
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
@@ -623,13 +646,13 @@ END
   ;; TODO: Handle file not existing
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file username (trim-selector path)
+        (menu-item-file menu-ext-itemtype-map username (trim-selector path)
                         (context-hostname context) (context-port context))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       path)))
-          (menu-item-file username item-selector
+          (menu-item-file menu-ext-itemtype-map username item-selector
                           (context-hostname context) (context-port context)))))
 
 
