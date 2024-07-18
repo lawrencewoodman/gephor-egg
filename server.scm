@@ -346,6 +346,7 @@
   ;; TODO: Check selector and path are safe
   (let* ((local-path (make-pathname root-dir (request-selector request))))
     (cond ((or (not (absolute-pathname? root-dir))
+               (unsafe-pathname? root-dir)
                (substring-index "/" root-dir (sub1 (string-length root-dir))))
             ;; TODO: Improve this error / exception
             (log-error* "root-dir isn't valid: ~A" root-dir)

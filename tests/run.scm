@@ -235,7 +235,7 @@
                (request (make-request "dir-a\\fred" output-port "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
-  (test "serve-path returns a 'server error' error menu if local-dir ends with a '/'"
+  (test "serve-path returns a 'server error' error menu if root-dir ends with a '/'"
         (string-intersperse '(
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
@@ -246,7 +246,7 @@
                (local-dir (sprintf "~A/" fixtures-dir)))
           (serve-path context request local-dir) ) )
 
-  (test "serve-path returns a 'server error' error menu if local-dir is a relative dir"
+  (test "serve-path returns a 'server error' error menu if root-dir is a relative dir"
         (string-intersperse '(
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
@@ -255,6 +255,39 @@
                (context (make-context "localhost" 70))
                (request (make-request "dir-a" output-port "127.0.0.1"))
                (local-dir "fixtures"))
+          (serve-path context request local-dir) ) )
+
+  (test "serve-path returns a 'server error' error menu if root-dir contains .."
+        (string-intersperse '(
+          "3server error\tdir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "dir-a" output-port "127.0.0.1"))
+               (local-dir "../"))
+          (serve-path context request local-dir) ) )
+
+  (test "serve-path returns a 'server error' error menu if root-dir contains ./"
+        (string-intersperse '(
+          "3server error\tdir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "dir-a" output-port "127.0.0.1"))
+               (local-dir "./"))
+          (serve-path context request local-dir) ) )
+
+  (test "serve-path returns a 'server error' error menu if root-dir contains \\"
+        (string-intersperse '(
+          "3server error\tdir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((output-port (open-output-string))
+               (context (make-context "localhost" 70))
+               (request (make-request "dir-a" output-port "127.0.0.1"))
+               (local-dir "\\"))
           (serve-path context request local-dir) ) )
 
   (test "serve-path returns a 'path not found' error menu if path isn't world readable"
