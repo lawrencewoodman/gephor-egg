@@ -344,6 +344,7 @@
 
   ;; TODO: Rename local-path ?
   ;; TODO: Check selector and path are safe
+  ;; TODO: Find a better way of reducing safety check of root-dir and local-path
   (let* ((local-path (make-pathname root-dir (request-selector request))))
     (cond ((or (not (absolute-pathname? root-dir))
                (unsafe-pathname? root-dir)
@@ -524,6 +525,8 @@ END
             (list "1" username selector hostname port))
           ((memq itemtype '(error 3))
             (list "3" username selector hostname port))
+          ((memq itemtype '(binary 9))
+            (list "9" username selector hostname port))
           ((memq itemtype '(info i))
             (list "i" username selector hostname port))
           ((memq itemtype '(html h))
@@ -564,18 +567,20 @@ END
 ;; alist mapping extensions to itemtypes
 ;; NOTE: This should be keep in order of most frequent lookup to make
 ;; NOTE: lookups as quick as possible on average.
-;; NOTE: Don't include 'text itemtypes as this is the default for
-;; NOTE: menu-item-file
+;; NOTE: 'text itemtypes are included to prevent too many warnings about
+;; NOTE: unknown extensions in menu-item-file
 (define menu-ext-itemtype-map '(
+  (txt . text) (c . text) (cpp . text) (go . text) (md . text) (py . text) (tcl . text)
   (gif . gif)
   (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image) (rle . image)
   (html . html) (htm . html) (xhtml . html)
+  (mkv . binary) (mp4 . binary) (avi . binary)
 ))
 
 
 ;; TODO: Rethink this
 (define (valid-ext-itemtype-map? x)
-  (let* ((known-itemtypes '(text html gif image))
+  (let* ((known-itemtypes '(binary html image gif text ))
          (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
          (keys (map car x))
          (values (map cdr x)))
