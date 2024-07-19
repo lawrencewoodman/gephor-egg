@@ -15,6 +15,12 @@ Now some relative links
 => dir-ba/baa.txt
 => dir-ba/baa.bob
 
+Some URLs used as links
+=> http://example.com
+=> http://example.com/fred
+=> http://example.com/fred/
+=> http://example.com/fred Fred's things
+
 This file ends with two blank lines which should be stripped.
 
 

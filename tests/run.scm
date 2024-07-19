@@ -133,11 +133,11 @@
           "\r\n")
         (let* ((menu-src '(
                  (text "Some text" "text text" "localhost" 70)
-                 (0 "Some text" "text 0" "localhost" 70)
+                 (|0| "Some text" "text 0" "localhost" 70)
                  (menu "A menu" "menu menu" "localhost" 70)
-                 (1 "A menu" "menu 1" "localhost" 70)
+                 (|1| "A menu" "menu 1" "localhost" 70)
                  (error "An error" "error error" "localhost" 70)
-                 (3 "An error" "error 3" "localhost" 70)
+                 (|3| "An error" "error 3" "localhost" 70)
                  (info "Some info" "info info" "localhost" 70)
                  (i "Some info" "info i" "localhost" 70)
                  (html "Some html" "html html" "localhost" 70)
@@ -155,11 +155,142 @@
           "\r\n")
         (let ((menu (list (menu-item-file menu-ext-itemtype-map
                                           "About this Place" "dir-a/about" "localhost" 70))))
-          (menu-render (reverse menu))))
+          (menu-render menu)))
+
+
+(test "make-item-url handles gopher protocol"
+      (string-intersperse '(
+        "1A good gopher example\t\texample.com\t70"
+        "1A good gopher example\t/\texample.com\t70"
+        "1My phlog\t~myuser/phlog\texample.com\t70"
+        "0Pondering something really clever\t~myuser/phlog/something-really-clever.txt\texample.com\t70"
+        "1My phlog\t/~myuser/phlog\texample.com\t70"
+        "0Pondering something really clever\t/~myuser/phlog/something-really-clever.txt\texample.com\t70"
+        "1A good gopher example\t\texample.com\t7070"
+        "1A good gopher example\t/\texample.com\t7070"
+        "1My phlog\t~myuser/phlog\texample.com\t7070"
+        "0Pondering something really clever\t~myuser/phlog/something-really-clever.txt\texample.com\t7070"
+        "1My phlog\t/~myuser/phlog\texample.com\t7070"
+        "0Pondering something really clever\t/~myuser/phlog/something-really-clever.txt\texample.com\t7070"
+        ".\r\n")
+        "\r\n")
+      (let* ((urls '(
+               ;; NOTE: checks handles selectors that start with and without a slash
+               ("gopher://example.com" . "A good gopher example")
+               ("gopher://example.com/" . "A good gopher example")
+               ("gopher://example.com/1~myuser/phlog" . "My phlog")
+               ("gopher://example.com/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+               ("gopher://example.com/1/~myuser/phlog" . "My phlog")
+               ("gopher://example.com/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+               ("gopher://example.com:7070" . "A good gopher example")
+               ("gopher://example.com:7070/" . "A good gopher example")
+               ("gopher://example.com:7070/1~myuser/phlog" . "My phlog")
+               ("gopher://example.com:7070/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+               ("gopher://example.com:7070/1/~myuser/phlog" . "My phlog")
+               ("gopher://example.com:7070/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+             (menu (map (lambda (x)
+                          (menu-item-url "localhost" 7071 (cdr x) (car x)))
+                         urls)))
+        (menu-render menu) ) )
+
+
+(test "make-item-url handles http protocol"
+      (string-intersperse '(
+        "hA good http example\tURL:http://example.com\tlocalhost\t70"
+        "hA good http example\tURL:http://example.com/\tlocalhost\t70"
+        "hMy phlog\tURL:http://example.com/~myuser/phlog\tlocalhost\t70"
+        "hPondering something really clever\tURL:http://example.com/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
+        "hA good http example\tURL:http://example.com:8080\tlocalhost\t70"
+        "hA good http example\tURL:http://example.com:8080/\tlocalhost\t70"
+        "hMy phlog\tURL:http://example.com:8080/~myuser/phlog\tlocalhost\t70"
+        "hPondering something really clever\tURL:http://example.com:8080/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (let* ((urls '(
+               ("http://example.com" . "A good http example")
+               ("http://example.com/" . "A good http example")
+               ("http://example.com/~myuser/phlog" . "My phlog")
+               ("http://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+               ("http://example.com:8080" . "A good http example")
+               ("http://example.com:8080/" . "A good http example")
+               ("http://example.com:8080/~myuser/phlog" . "My phlog")
+               ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+             (menu (map (lambda (x)
+                          (menu-item-url "localhost" 70 (cdr x) (car x)))
+                         urls)))
+        (menu-render menu) ) )
+
+
+(test "make-item-url handles https protocol"
+      (string-intersperse '(
+        "hA good https example\tURL:https://example.com\tlocalhost\t70"
+        "hA good https example\tURL:https://example.com/\tlocalhost\t70"
+        "hMy phlog\tURL:https://example.com/~myuser/phlog\tlocalhost\t70"
+        "hPondering something really clever\tURL:https://example.com/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
+        "hA good https example\tURL:https://example.com:8443\tlocalhost\t70"
+        "hA good https example\tURL:https://example.com:8443/\tlocalhost\t70"
+        "hMy phlog\tURL:https://example.com:8443/~myuser/phlog\tlocalhost\t70"
+        "hPondering something really clever\tURL:https://example.com:8443/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (let* ((urls '(
+               ("https://example.com" . "A good https example")
+               ("https://example.com/" . "A good https example")
+               ("https://example.com/~myuser/phlog" . "My phlog")
+               ("https://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+               ("https://example.com:8443" . "A good https example")
+               ("https://example.com:8443/" . "A good https example")
+               ("https://example.com:8443/~myuser/phlog" . "My phlog")
+               ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+             (menu (map (lambda (x)
+                          (menu-item-url "localhost" 70 (cdr x) (car x)))
+                         urls)))
+        (menu-render menu) ) )
+
+
+(test "make-item-url handles ssh protocol"
+      (string-intersperse '(
+        "hsome ssh bbs\tURL:ssh://example.com\tlocalhost\t70"
+        "hsome ssh bbs\tURL:ssh://example.com/user/bob\tlocalhost\t70"
+        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com\tlocalhost\t70"
+        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com/user/bob\tlocalhost\t70"
+        "hsome ssh bbs\tURL:ssh://example.com:2320\tlocalhost\t70"
+        "hsome ssh bbs\tURL:ssh://example.com:2320/user/bob\tlocalhost\t70"
+        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320\tlocalhost\t70"
+        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320/user/bob\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (let* ((urls '(
+               ("ssh://example.com" . "some ssh bbs")
+               ("ssh://example.com/user/bob" . "some ssh bbs")
+               ("ssh://myuser@example.com" . "some ssh bbs - my user")
+               ("ssh://myuser@example.com/user/bob" . "some ssh bbs - my user")
+               ("ssh://example.com:2320" . "some ssh bbs")
+               ("ssh://example.com:2320/user/bob" . "some ssh bbs")
+               ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
+               ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
+             (menu (map (lambda (x)
+                          (menu-item-url "localhost" 70 (cdr x) (car x)))
+                         urls)))
+        (menu-render menu) ) )
+
+
+(test "make-item-url handles non lower case protocol"
+      (string-intersperse '(
+        "1A good gopher example\t\texample.com\t70"
+        "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (let* ((urls '(
+               ;; NOTE: checks handles selectors that start with and without a slash
+               ("GoPher://example.com" . "A good gopher example")
+               ("htTP://example.com" . "A good http example")))
+             (menu (map (lambda (x)
+                          (menu-item-url "localhost" 70 (cdr x) (car x)))
+                         urls)))
+        (menu-render menu) ) )
 
 )
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;  Handlers
@@ -331,6 +462,7 @@
                (request (make-request "a.txt" output-port "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
+
   (test "serve-path process 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
         (string-intersperse '(
@@ -348,6 +480,12 @@
           "1The bb directory\tdir-b/dir-bb\tlocalhost\t70"
           "0dir-ba/baa.txt\tdir-b/dir-ba/baa.txt\tlocalhost\t70"
           "0dir-ba/baa.bob\tdir-b/dir-ba/baa.bob\tlocalhost\t70"
+          "i\tdir-b\tlocalhost\t70"
+          "iSome URLs used as links\tdir-b\tlocalhost\t70"
+          "hhttp://example.com\tURL:http://example.com\tlocalhost\t70"
+          "hhttp://example.com/fred\tURL:http://example.com/fred\tlocalhost\t70"
+          "hhttp://example.com/fred/\tURL:http://example.com/fred/\tlocalhost\t70"
+          "hFred's things\tURL:http://example.com/fred\tlocalhost\t70"
           "i\tdir-b\tlocalhost\t70"
           "iThis file ends with two blank lines which should be stripped.\tdir-b\tlocalhost\t70"
           ".\r\n")

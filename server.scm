@@ -13,7 +13,8 @@
   (start-server
    make-context make-request
    make-router router-add router-match
-   menu-item menu-item-info-wrap menu-item-file menu-render
+   menu-item menu-item-info-wrap menu-item-file menu-item-url
+   menu-render
    menu-ext-itemtype-map  ; TODO: Find a better way of handling this
    serve-url
    serve-path)
@@ -507,6 +508,7 @@ END
 
 
 ;; Add an item to a menu
+;; itemtype is a symbol and therefore numbers must be escaped
 ;; Warns if usernames > 69 characters as per RFC 1436
 ;; TODO: Should this be using signal or abort?
 ;; TODO: Could this use symbols rather than strings for long names?
@@ -519,13 +521,13 @@ END
         (log-info "proc: menu-item, username: ~A, selector: ~A, hostname: ~A, port: ~A, username >= 70 characters"
                   username selector hostname port))
     ;; TODO: simplify this and add more items
-    (cond ((memq itemtype '(text 0))
+    (cond ((memq itemtype '(text |0|))
             (list "0" username selector hostname port))
-          ((memq itemtype '(menu 1))
+          ((memq itemtype '(menu |1|))
             (list "1" username selector hostname port))
-          ((memq itemtype '(error 3))
+          ((memq itemtype '(error |3|))
             (list "3" username selector hostname port))
-          ((memq itemtype '(binary 9))
+          ((memq itemtype '(binary |9|))
             (list "9" username selector hostname port))
           ((memq itemtype '(info i))
             (list "i" username selector hostname port))
@@ -561,6 +563,60 @@ END
           (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
                        username selector extension)
           (menu-item 'text username selector hostname port) ) ) ) )
+
+
+;; Supporters protocols: gopher ssh http https
+;; TODO: Expand list of supported protocols
+;; our-hostname and our-port refer to the hostname and port our server
+;; is using.  This is used to point back to our server when using URL:
+;; 'h' itemtype selectors.
+(define (menu-item-url our-hostname our-port username url)
+  (let-values (((protocol host port path itemtype) (split-url url)))
+    (case (string->symbol protocol)
+      ((gopher)
+        ;; Gopher URLs should conform to RFC 4266
+        (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
+          (menu-item itemtype username path host (or port 70))))
+      ((ssh http https)
+        ;; Conforms to: gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
+        ;; 'host' and 'port' point to the gopher server that provided the
+        ;; directory this is to support clients that don't support the
+        ;; URL: prefix.  These clients should be served a HTML page which points
+        ;; to the desired URL.
+        (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
+      (else
+        ;; TODO: Test this
+        (log-error "proc: menu-item-url, username: ~A, url ~A, protocol: ~A, unsupported protocol"
+                   username url protocol) ) ) ) )
+
+
+;; TODO: Put with internal definitions?
+(define colon-char-set (char-set #\:))
+
+;; TODO: Compile regexes to speed up
+;; Split up a URL to return values for: protocol host port path itemtype
+;; port will be #f unless present
+;; path will be "" if not present
+;; itemtype will be #f unless protocol is gopher or gophers and URL has a path
+(define (split-url url)
+  (let ((url-match (irregex-search "^(.*):\/\/([^:/]+)(:[0-9]*)?(.*)$" url)))
+    (if (irregex-match-data? url-match)
+        (let ((protocol (string-downcase (irregex-match-substring url-match 1)))
+              (host (irregex-match-substring url-match 2))
+              (port (irregex-match-substring url-match 3))
+              (path (or (irregex-match-substring url-match 4) "")))
+          (let ((port (if port
+                          (string-trim port colon-char-set)
+                          #f)))
+            (if (member protocol '("gopher" "gophers"))
+                (let ((itemtype-path-match (irregex-search "^\/(.)(.*)$" path)))
+                  (if (irregex-match-data? itemtype-path-match)
+                      (let ((itemtype (or (irregex-match-substring itemtype-path-match 1) ""))
+                            (path (or (irregex-match-substring itemtype-path-match 2) "")))
+                        (values protocol host port path itemtype))
+                      (values protocol host port path #f)))
+                (values protocol host port path #f))))
+        #f) ) )
 
 
 ;; TODO: Where should this go?
@@ -661,7 +717,17 @@ END
           (menu-item-file menu-ext-itemtype-map username item-selector
                           (context-hostname context) (context-port context)))))
 
+  (define (is-dir? path)
+    (substring-index "/" path (sub1 (string-length path))))
 
+  ;; TODO: Compile regex
+  (define (is-url? path)
+    ;; TODO: Simplify this so it just matches not searches
+    (let ((url-match (irregex-search "^(.*):\/\/([^:/]+)(:[0-9]*)?(.*)$" path)))
+      (irregex-match-data? url-match)))
+
+
+  ;; TODO: Compile regex
   (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
     (map (lambda (line)
            (let ((link-match (irregex-search "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$" line)))
@@ -669,12 +735,19 @@ END
                  (let* ((path (irregex-match-substring link-match 1))
                         (maybe-username (irregex-match-substring link-match 2))
                         (username (if (string=? maybe-username "")
-                                      (string-chomp path "/")
+                                      path
                                       maybe-username))
-                        (is-dir (substring-index "/" path (sub1 (string-length path)))))
-                   (if is-dir
-                       (dir-item path username)
-                       (file-item path username)))
+                        (chomped-username (if (string=? maybe-username "")
+                                              (string-chomp path "/")
+                                              maybe-username)))
+                   (cond
+                    ((is-url? path)
+                      (menu-item-url (context-hostname context)
+                                     (context-port context)
+                                     username
+                                     path))
+                    ((is-dir? path) (dir-item path chomped-username))
+                    (else (file-item path username))))
                  ;; Current selector is used for info itemtype so that if type
                  ;; not supported by client but still displayed then it
                  ;; will just link to the page that it is being displayed on
