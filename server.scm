@@ -551,61 +551,6 @@ END
                    username url protocol) ) ) ) )
 
 
-;; TODO: Put with internal definitions?
-(define colon-char-set (char-set #\:))
-
-;; TODO: Compile regexes to speed up
-;; Split up a URL to return values for: protocol host port path itemtype
-;; port will be #f unless present
-;; path will be "" if not present
-;; itemtype will be #f unless protocol is gopher or gophers and URL has a path
-(define (split-url url)
-  (let ((url-match (irregex-search "^(.*):\/\/([^:/]+)(:[0-9]*)?(.*)$" url)))
-    (if (irregex-match-data? url-match)
-        (let ((protocol (string-downcase (irregex-match-substring url-match 1)))
-              (host (irregex-match-substring url-match 2))
-              (port (irregex-match-substring url-match 3))
-              (path (or (irregex-match-substring url-match 4) "")))
-          (let ((port (if port
-                          (string-trim port colon-char-set)
-                          #f)))
-            (if (member protocol '("gopher" "gophers"))
-                (let ((itemtype-path-match (irregex-search "^\/(.)(.*)$" path)))
-                  (if (irregex-match-data? itemtype-path-match)
-                      (let ((itemtype (or (irregex-match-substring itemtype-path-match 1) ""))
-                            (path (or (irregex-match-substring itemtype-path-match 2) "")))
-                        (values protocol host port path itemtype))
-                      (values protocol host port path #f)))
-                (values protocol host port path #f))))
-        #f) ) )
-
-
-;; TODO: Where should this go?
-;; alist mapping extensions to itemtypes
-;; NOTE: This should be keep in order of most frequent lookup to make
-;; NOTE: lookups as quick as possible on average.
-;; NOTE: 'text itemtypes are included to prevent too many warnings about
-;; NOTE: unknown extensions in menu-item-file
-(define menu-ext-itemtype-map '(
-  (txt . text) (c . text) (cpp . text) (go . text) (md . text) (py . text) (tcl . text)
-  (gif . gif)
-  (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image) (rle . image)
-  (html . html) (htm . html) (xhtml . html)
-  (mkv . binary) (mp4 . binary) (avi . binary)
-))
-
-
-;; TODO: Rethink this
-(define (valid-ext-itemtype-map? x)
-  (let* ((known-itemtypes '(binary html image gif text ))
-         (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
-         (keys (map car x))
-         (values (map cdr x)))
-    (and (= (length keys) (length (delete-duplicates keys)))
-         (= 0 (count unknown-itemtype? values) ) ) ) )
-(assert (valid-ext-itemtype-map? menu-ext-itemtype-map))
-
-
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
 ;; return a list of menu items
 (: menu-item-info-wrap (string string string fixnum --> (listof menu-item)))
@@ -642,6 +587,66 @@ END
   (menu-render (list (menu-item 'error msg (request-selector request)
                                  (context-hostname context)
                                  (context-port context) ) ) ) )
+
+
+;; Internal Definitions ------------------------------------------------------
+
+;; Compiled Regular Expressions to split URLs
+(define url-split-regex (string->irregex "^(.*):\/\/([^:/]+)(:([0-9]*))?(.*)$"))
+(define gopher-path-split-regex (string->irregex "^\/(.)(.*)$"))
+
+
+;; Split up a URL to return values for: protocol host port path itemtype
+;; port will be #f unless present
+;; path will be "" if not present
+;; itemtype will be #f unless protocol is gopher or gophers and URL has a path
+(define (split-url url)
+  (let ((url-match (irregex-search url-split-regex url)))
+    (if (irregex-match-data? url-match)
+        (let ((protocol (string-downcase (irregex-match-substring url-match 1)))
+              (host (irregex-match-substring url-match 2))
+              (port (irregex-match-substring url-match 4))
+              (path (or (irregex-match-substring url-match 5) "")))
+          (if (member protocol '("gopher" "gophers"))
+              (let ((itemtype-path-match (irregex-search gopher-path-split-regex path)))
+                (if (irregex-match-data? itemtype-path-match)
+                    (let ((itemtype (or (irregex-match-substring itemtype-path-match 1) ""))
+                          (path (or (irregex-match-substring itemtype-path-match 2) "")))
+                      (values protocol host port path itemtype))
+                    (values protocol host port path #f)))
+              (values protocol host port path #f)))
+        #f) ) )
+
+
+;; TODO: Where should this go?
+;; alist mapping extensions to itemtypes
+;; NOTE: This should be keep in order of most frequent lookup to make
+;; NOTE: lookups as quick as possible on average.
+;; NOTE: 'text itemtypes are included to prevent too many warnings about
+;; NOTE: unknown extensions in menu-item-file
+(define menu-ext-itemtype-map '(
+  (txt . text) (c . text) (cpp . text) (go . text) (md . text) (py . text) (tcl . text)
+  (gif . gif)
+  (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image) (rle . image)
+  (html . html) (htm . html) (xhtml . html)
+  (mkv . binary) (mp4 . binary) (avi . binary)
+))
+
+
+;; TODO: Rethink this
+(define (valid-ext-itemtype-map? x)
+  (let* ((known-itemtypes '(binary html image gif text ))
+         (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
+         (keys (map car x))
+         (values (map cdr x)))
+    (and (= (length keys) (length (delete-duplicates keys)))
+         (= 0 (count unknown-itemtype? values) ) ) ) )
+(assert (valid-ext-itemtype-map? menu-ext-itemtype-map))
+
+
+
+
+
 
 ;; TODO: Rename index to something else
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -681,17 +686,14 @@ END
   (define (is-dir? path)
     (substring-index "/" path (sub1 (string-length path))))
 
-  ;; TODO: Compile regex
   (define (is-url? path)
-    ;; TODO: Simplify this so it just matches not searches
-    (let ((url-match (irregex-search "^(.*):\/\/([^:/]+)(:[0-9]*)?(.*)$" path)))
+    (let ((url-match (irregex-match url-regex path)))
       (irregex-match-data? url-match)))
 
 
-  ;; TODO: Compile regex
   (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
     (map (lambda (line)
-           (let ((link-match (irregex-search "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$" line)))
+           (let ((link-match (irregex-search index-link-split-regex line)))
              (if (irregex-match-data? link-match)
                  (let* ((path (irregex-match-substring link-match 1))
                         (maybe-username (irregex-match-substring link-match 2))
@@ -730,6 +732,12 @@ END
 ;; '/' characters
 (define (trim-selector selector)
   (string-trim-both selector selector-trim-char-set) )
+
+;; Regular expression to split a => style link
+(define index-link-split-regex (string->irregex "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$"))
+
+;; Regular expression to identify a URL in a => style link
+(define url-regex (string->irregex "^.*:\/\/[^:/]+(:[0-9]*)?.*$"))
 
 
 )
