@@ -481,5 +481,39 @@
           (serve-path context request fixtures-dir) ) )
 
 
+  (test "serve-url returns a HTML document populated with the supplied URL"
+        (string-intersperse '(
+          "<HTML>"
+          "  <HEAD>"
+          "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog\">"
+          "  </HEAD>"
+          "  <BODY>"
+          "    You are following a link from gopher to a web site.  You will be"
+          "    automatically taken to the web site shortly.  If you do not get sent"
+          "    there, please click"
+          "    <A HREF=\"https://example.com/blog\">here</A> to go to the web site."
+          "    <P>"
+          "    The URL linked is:"
+          "    <P>"
+          "    <A HREF=\"https://example.com/blog\">https://example.com/blog</A>"
+          "    <P>"
+          "    Thanks for using gopher!"
+          "  </BODY>"
+          "</HTML>")
+          "\n")
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "URL:https://example.com/blog" "127.0.0.1")))
+          (serve-url context request) ) )
+
+
+  (test "serve-url returns a 'server error' error menu if selector isn't valid"
+        (string-intersperse '(
+          "3server error\tFURL:https://example.com/blog\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
+          (serve-url context request) ) )
+
 )
 

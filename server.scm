@@ -266,8 +266,7 @@
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;; TODO: rename
 ;; TODO: Allow customisation such as passing in a different template?
-;; TODO: test
-(define (serve-url request)
+(define (serve-url context request)
   (if (not (substring=? (request-selector request) "URL:"))
       (begin
         (log-error "client address: ~A, selector: ~A, handler: serve-url, invalid selector"
@@ -439,23 +438,23 @@
 
 ;; The HTML template used by serve-url
 (define url-html-template #<<END
-  <HTML>
-    <HEAD>
-      <META HTTP-EQUIV="refresh" content="2;URL=@URL">
-    </HEAD>
-    <BODY>
-      You are following a link from gopher to a web site.  You will be
-      automatically taken to the web site shortly.  If you do not get sent
-      there, please click
-      <A HREF="@URL">here</A> to go to the web site.
-      <P>
-      The URL linked is:
-      <P>
-      <A HREF="@URL">@URL</A>
-      <P>
-      Thanks for using gopher!
-    </BODY>
-  </HTML>
+<HTML>
+  <HEAD>
+    <META HTTP-EQUIV="refresh" content="2;URL=@URL">
+  </HEAD>
+  <BODY>
+    You are following a link from gopher to a web site.  You will be
+    automatically taken to the web site shortly.  If you do not get sent
+    there, please click
+    <A HREF="@URL">here</A> to go to the web site.
+    <P>
+    The URL linked is:
+    <P>
+    <A HREF="@URL">@URL</A>
+    <P>
+    Thanks for using gopher!
+  </BODY>
+</HTML>
 END
 )
 
