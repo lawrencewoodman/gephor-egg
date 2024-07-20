@@ -657,7 +657,6 @@ END
 ;; Exported Definitions ------------------------------------------------------
 
 ;; TODO: Handle an empty index
-;; TODO: Remove blank lines at end
 (define (process-nex-index context selector local-path nex-index)
 
   (define (dir-item path username)
