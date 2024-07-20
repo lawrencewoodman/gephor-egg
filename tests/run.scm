@@ -316,9 +316,8 @@
           "0b.txt\tb.txt\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 
@@ -331,9 +330,8 @@
           "0ac.bin\tdir-a/ac.bin\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains '..'"
@@ -341,9 +339,8 @@
           "3invalid selector\t../dir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "../dir-a" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "../dir-a" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains './'"
@@ -351,9 +348,8 @@
           "3invalid selector\t./dir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "./dir-a" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "./dir-a" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains a '\\'"
@@ -361,9 +357,8 @@
           "3invalid selector\tdir-a\\fred\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a\\fred" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a\\fred" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
   (test "serve-path returns a 'server error' error menu if root-dir ends with a '/'"
@@ -371,9 +366,8 @@
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1"))
                (local-dir (sprintf "~A/" fixtures-dir)))
           (serve-path context request local-dir) ) )
 
@@ -382,9 +376,8 @@
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "fixtures"))
           (serve-path context request local-dir) ) )
 
@@ -393,9 +386,8 @@
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "../"))
           (serve-path context request local-dir) ) )
 
@@ -404,9 +396,8 @@
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "./"))
           (serve-path context request local-dir) ) )
 
@@ -415,9 +406,8 @@
           "3server error\tdir-a\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a" output-port "127.0.0.1"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "\\"))
           (serve-path context request local-dir) ) )
 
@@ -426,10 +416,9 @@
           "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
+        (let* ((context (make-context "localhost" 70))
                (tmpdir (create-temporary-directory))
-               (request (make-request "" output-port "127.0.0.1")))
+               (request (make-request "" "127.0.0.1")))
           ;; Make tmpdir non world readable
           (set-file-permissions! tmpdir
                                  (bitwise-and (file-permissions tmpdir)
@@ -441,25 +430,22 @@
           "3path not found\tunknown\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "unknown" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "unknown" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 
   (test "serve-path returns the contents of a binary file"
         "This is text followed by a null (00)\x00 now some more text."
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-a/ac.bin" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a/ac.bin" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 
   (test "serve-path returns the contents of an empty file"
         ""
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "a.txt" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "a.txt" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 
@@ -490,9 +476,8 @@
           "iThis file ends with two blank lines which should be stripped.\tdir-b\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((output-port (open-output-string))
-               (context (make-context "localhost" 70))
-               (request (make-request "dir-b" output-port "127.0.0.1")))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-b" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 

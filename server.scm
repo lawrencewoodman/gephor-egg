@@ -67,10 +67,9 @@
 
 ;; TODO: should this be exported just so can be used in tests?
 (define-record-type request
-  (make-request selector out-port client-address)
+  (make-request selector client-address)
   request?
   (selector request-selector)
-  (out-port request-out-port)
   (client-address request-client-address)
 )
 
@@ -112,13 +111,26 @@
 
 
   ;; TODO: handle timeout
+  ;; TODO: Need to handle handlers failing
   (define (handle-connect connect)
     (let ((in (cdr (assv 'in connect)))
           (out (cdr (assv 'out connect)))
           (client-address (cdr (assv 'client-address connect))))
-      (let ((selector (read-selector in)))
+      (let* ((selector (read-selector in))
+             (handler (router-match router selector))
+             (request (make-request selector client-address)))
+        ;; TODO: Should we really be passing output port in request to handler?
+        (write-string (if handler
+                          (handler context request)
+                          (begin
+                            (log-warning "client address: ~A, selector: ~A, no handler for selector"
+                                         client-address
+                                         selector)
+                            (make-rendered-error-menu context request "path not found")))
+                      #f
+                      out)
         (close-input-port in)
-        (queue-add! requests (make-request selector out client-address) ) ) ) )
+        (close-output-port out ) ) ) )
 
 
   (define (start-connect-handler-thread)
@@ -151,54 +163,6 @@
             (loop (- n 1) (cons thread threads) ) ) ) ) )
 
 
-  ;; TODO: Need to handle handlers failing
-  (define (handle-request request)
-    ;; TOOD: Should handler be handler!
-    (let ((handler (router-match router (request-selector request))))
-      ;; TODO: Should we really be passing output port in request to handler?
-      (write-string (if handler
-                        (handler context request)
-                        (begin
-                          (log-warning "client address: ~A, selector: ~A, no handler for selector"
-                                       (request-client-address request)
-                                       (request-selector request) )
-                          (make-rendered-error-menu context request "path not found")))
-                    #f
-                    (request-out-port request))
-      (close-output-port (request-out-port request) ) ) )
-    
-
-  ;; TODO: should this end in a !
-  ;; TODO: should we have a way to tell thread to stop cleanly
-  (define (start-request-handler-thread)
-    (thread-start! 
-      (make-thread 
-        (lambda ()
-          (let loop ()
-            (handle-exceptions ex
-              (begin
-                (log-error "request handler thread: ~A"
-                           (get-condition-property ex 'exn 'message))
-                (signal ex))
-              (if (not (queue-empty? requests))
-                  (let* ((request (queue-remove! requests)))
-                    (handle-request request) )
-                  ;; The thread-sleep! is to prevent the server from
-                  ;; continually polling when the requests queue is empty
-                  ;; TODO: Find a better way of doing this perhaps using a mutex
-                  ;; TODO: and altering it on client-connect
-                  (thread-sleep! 0.1) ) )
-            (loop) ) ) ) ) )
-
-
-  ;; Returns a list of threads
-  (define (start-request-handler-threads num-threads)
-    (let loop ((n num-threads) (threads '()))
-      (if (= n 0)
-          threads
-          (let ((thread (start-request-handler-thread)))
-            (loop (- n 1) (cons thread threads) ) ) ) ) )
-
 
   ;; TODO: should we also set on-exit to do something?
   (define (set-termination-handler)
@@ -209,8 +173,7 @@
 
   (let ((listener (tcp-listen port)))
     (set-termination-handler)
-    (start-connect-handler-threads 5)
-    (start-request-handler-threads 5)
+    (start-connect-handler-threads 10)
     (let loop ()
       (let-values ([(in out) (tcp-accept listener)])
         (client-connect in out))
