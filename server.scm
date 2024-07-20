@@ -113,13 +113,12 @@
   ;; TODO: handle timeout
   ;; TODO: Need to handle handlers failing
   (define (handle-connect connect)
-    (let ((in (cdr (assv 'in connect)))
-          (out (cdr (assv 'out connect)))
-          (client-address (cdr (assv 'client-address connect))))
+    (let ((in (alist-ref 'in connect))
+          (out (alist-ref 'out connect))
+          (client-address (alist-ref 'client-address connect)))
       (let* ((selector (read-selector in))
              (handler (router-match router selector))
              (request (make-request selector client-address)))
-        ;; TODO: Should we really be passing output port in request to handler?
         (write-string (if handler
                           (handler context request)
                           (begin
