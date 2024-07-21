@@ -153,8 +153,9 @@
           "0About this Place\tdir-a/about\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (menu-item-file menu-ext-itemtype-map
-                                          "About this Place" "dir-a/about" "localhost" 70))))
+        (let ((menu (list (menu-item-file "About this Place" "dir-a/about"
+                                          "localhost"
+                                          70))))
           (menu-render menu)))
 
 
