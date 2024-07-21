@@ -265,7 +265,6 @@
 ;; This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;; TODO: rename
-;; TODO: Allow customisation such as passing in a different template?
 (define (serve-url context request)
   (if (not (substring=? (request-selector request) "URL:"))
       (begin
@@ -467,11 +466,10 @@ END
 ;; Exported Definitions ------------------------------------------------------
 
 
-;; Add an item to a menu
+;; Create a menu item for the itemtype specified
 ;; itemtype is a symbol and therefore numbers must be escaped
 ;; Warns if usernames > 69 characters as per RFC 1436
 ;; TODO: Should this be using signal or abort?
-;; TODO: Could this use symbols rather than strings for long names?
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
@@ -480,26 +478,20 @@ END
         ;; TODO: Test
         (log-info "proc: menu-item, username: ~A, selector: ~A, hostname: ~A, port: ~A, username >= 70 characters"
                   username selector hostname port))
-    ;; TODO: simplify this and add more items
-    (cond ((memq itemtype '(text |0|))
-            (list "0" username selector hostname port))
-          ((memq itemtype '(menu |1|))
-            (list "1" username selector hostname port))
-          ((memq itemtype '(error |3|))
-            (list "3" username selector hostname port))
-          ((memq itemtype '(binary |9|))
-            (list "9" username selector hostname port))
-          ((memq itemtype '(info i))
-            (list "i" username selector hostname port))
-          ((memq itemtype '(html h))
-            (list "h" username selector hostname port))
-          ((memq itemtype '(image I))
-            (list "I" username selector hostname port))
-          (else
-            ;; TODO: Should this use the item type regardless if supplied as
-            ;; TODO: long as it is a single character, and then just log a
-            ;; TODO: warning?
-            (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) ) )
+    ;; TODO: Add more items
+    (case itemtype
+      ((text |0|)   (list "0" username selector hostname port))
+      ((menu |1|)   (list "1" username selector hostname port))
+      ((error |3|)  (list "3" username selector hostname port))
+      ((binary |9|) (list "9" username selector hostname port))
+      ((info i)     (list "i" username selector hostname port))
+      ((html h)     (list "h" username selector hostname port))
+      ((image I)    (list "I" username selector hostname port))
+      (else
+        ;; TODO: Should this use the item type regardless if supplied as
+        ;; TODO: long as it is a single character, and then just log a
+        ;; TODO: warning?
+        (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) ) )
 
 
 ;; TODO: Should we pass context rather than supplying hostname and port
