@@ -609,30 +609,31 @@ END
         #f) ) )
 
 
-;; TODO: Where should this go?
 ;; alist mapping extensions to itemtypes
 ;; NOTE: This should be keep in order of most frequent lookup to make
 ;; NOTE: lookups as quick as possible on average.
-;; NOTE: 'text itemtypes are included to prevent too many warnings about
-;; NOTE: unknown extensions in menu-item-file
+;; NOTE: 'text itemtypes are included for quicker lookup and to prevent too
+;; NOTE: many warnings about unknown extensions in menu-item-file
 (define menu-ext-itemtype-map '(
-  (txt . text) (c . text) (cpp . text) (go . text) (md . text) (py . text) (tcl . text)
+  (txt . text) (c . text) (cpp . text) (go . text) (lsp . text) (md . text)
+  (py . text) (rkt . text) (scm . text) (tcl . text)
   (gif . gif)
-  (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image) (rle . image)
+  (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image)
+  (rle . image)
   (html . html) (htm . html) (xhtml . html)
-  (mkv . binary) (mp4 . binary) (avi . binary)
+  (dat . binary) (mkv . binary) (mp4 . binary) (avi . binary)
 ))
 
 
 ;; TODO: Rethink this
-(define (valid-ext-itemtype-map? x)
+(define (valid-menu-ext-itemtype-map? x)
   (let* ((known-itemtypes '(binary html image gif text ))
          (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
          (keys (map car x))
          (values (map cdr x)))
     (and (= (length keys) (length (delete-duplicates keys)))
          (= 0 (count unknown-itemtype? values) ) ) ) )
-(assert (valid-ext-itemtype-map? menu-ext-itemtype-map))
+(assert (valid-menu-ext-itemtype-map? menu-ext-itemtype-map))
 
 
 
