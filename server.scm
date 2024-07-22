@@ -83,7 +83,7 @@
          (values (map cdr x)))
     (if (and (= (length keys) (length (delete-duplicates keys)))
              (= 0 (count unknown-itemtype? values) )
-             (= (length x) (count pair? x)))
+             (= 0 (count (complement pair?) x)))
         x
         (error "invalid extension-itemtype-map value") ) ) )
 
