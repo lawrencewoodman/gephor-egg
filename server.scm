@@ -95,13 +95,13 @@
 ;; NOTE: many warnings about unknown extensions in menu-item-file
 (define extension-itemtype-map
   (make-parameter
-    '((txt . text) (c . text) (cpp . text) (go . text) (lsp . text) (md . text)
-      (py . text) (rkt . text) (scm . text) (tcl . text)
+    '((txt . text) (c . text) (cpp . text) (go . text) (js . text) (lsp . text)
+      (md . text) (py . text) (rkt . text) (scm . text) (tcl . text)
       (gif . gif)
       (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image)
       (rle . image)
-      (html . html) (htm . html) (xhtml . html)
-      (dat . binary) (mkv . binary) (mp4 . binary) (avi . binary))
+      (dat . binary) (mkv . binary) (mp4 . binary) (avi . binary)
+      (html . html) (htm . html) (xhtml . html))
   guard-extension-itemtype-map) )
 
 
@@ -501,7 +501,7 @@ END
 ;; Create a menu item for the itemtype specified
 ;; itemtype is a symbol and therefore numbers must be escaped
 ;; Warns if usernames > 69 characters as per RFC 1436
-;; TODO: Should this be using signal or abort?
+;; Returns a blank info type if itemtype is unknown
 (: menu-item (string string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
@@ -515,15 +515,17 @@ END
       ((text |0|)   (list "0" username selector hostname port))
       ((menu |1|)   (list "1" username selector hostname port))
       ((error |3|)  (list "3" username selector hostname port))
+      ((binhex |4|) (list "4" username selector hostname port))
       ((binary |9|) (list "9" username selector hostname port))
       ((info i)     (list "i" username selector hostname port))
       ((html h)     (list "h" username selector hostname port))
+      ((gif g)      (list "g" username selector hostname port))
       ((image I)    (list "I" username selector hostname port))
       (else
-        ;; TODO: Should this use the item type regardless if supplied as
-        ;; TODO: long as it is a single character, and then just log a
-        ;; TODO: warning?
-        (signal (sprintf "menu-item: unknown item type: ~A" itemtype) ) ) ) ) )
+        (log-error "proc: menu-item, itemtype: ~A, username: ~A, selector: ~A, hostname: ~A, port: ~A, unknown itemtype"
+                   itemtype username selector hostname port)
+        ;; TODO: should this use our hostname and port rather than the intended target?
+        (list "i" "" "" hostname port) ) ) ) )
 
 
 ;; TODO: Should we pass context rather than supplying hostname and port
@@ -551,6 +553,7 @@ END
 ;; our-hostname and our-port refer to the hostname and port our server
 ;; is using.  This is used to point back to our server when using URL:
 ;; 'h' itemtype selectors.
+;; Returns a blank info type if protocol is unknown
 (define (menu-item-url our-hostname our-port username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
     (case (string->symbol protocol)
@@ -567,8 +570,9 @@ END
         (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
       (else
         ;; TODO: Test this
-        (log-error "proc: menu-item-url, username: ~A, url ~A, protocol: ~A, unsupported protocol"
-                   username url protocol) ) ) ) )
+        (log-error "proc: menu-item-url, username: ~A, url: ~A, protocol: ~A, unsupported protocol"
+                   username url protocol)
+        (menu-item 'info "" "" our-hostname our-port) ) ) ) )
 
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
