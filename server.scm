@@ -499,10 +499,20 @@ END
 
 
 ;; Create a menu item for the itemtype specified
-;; itemtype is a symbol and therefore numbers must be escaped
-;; Warns if usernames > 69 characters as per RFC 1436
+;;
+;; itemtype is a symbol and therefore numbers must be escaped.  It can use
+;; the single letter from RFC 1436 or a descriptive symbol, i.e. for text
+;; we can use 'text or '|0|
+;; itemtypes supported: ((text |0|) (menu |1|) (error |3|)
+;;                       (binhex |4|) (binary |9|) (info i) (html h)
+;;                       (gif g) (image I))
+;; |5| Dos Binary itemtype not supported as it is unclear what this
+;;     is and should be able to be replaced by |9| in every instance.
+;;
 ;; Returns a blank info type if itemtype is unknown
-(: menu-item (string string string string fixnum --> menu-item))
+;;
+;; Warns if usernames > 69 characters as per RFC 1436
+(: menu-item (symbol string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace)))
@@ -530,7 +540,6 @@ END
 
 ;; TODO: Should we pass context rather than supplying hostname and port
 ;; TODO: Check if this works with non POSIX style paths
-;; TODO: What to do with unhandled type? Test
 ;; TODO: Test when file has no extension
 ;; Creates a menu item for a file.  The itemtype is determined by looking at
 ;; the file extension in the selector.  Extensions are mapped to itemtypes
