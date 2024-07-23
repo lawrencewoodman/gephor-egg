@@ -21,8 +21,7 @@
 
 
 ;; TODO: Test log output
-;;(log-level 100)
-(log-level 0)
+(log-level 100)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -88,6 +87,16 @@
 ;;;  Menu Tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (test-group "menu"
+
+  ;; The path of the fixtures directory
+  ;; TODO: This is repeated for handlers, put in one place
+  (define fixtures-dir
+    (let loop ((dirs (list (current-directory) (make-pathname (current-directory) "tests"))))
+      (if (null? dirs) (error "can't find fixtures directory"))
+      (let ((try-path (make-pathname (car dirs) "fixtures")))
+        (if (and (file-exists? try-path) (directory? try-path))
+            try-path
+            (loop (cdr dirs))))))
 
   (test "make-render adds correct .<cr><lf> to end of menu"
         (string-intersperse '(
@@ -170,11 +179,12 @@
 
   (test "make-item-file handles a selector with no file extension"
         (string-intersperse '(
-          "0About this Place\tdir-a/about\tlocalhost\t70"
+          "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (menu-item-file "About this Place"
-                                          "dir-a/about"
+        (let ((menu (list (menu-item-file fixtures-dir
+                                          "A file with no extension"
+                                          "noext"
                                           "localhost"
                                           70))))
           (menu-render menu)))
@@ -347,6 +357,7 @@
           "1dir-b\tdir-b\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
           "0b.txt\tb.txt\tlocalhost\t70"
+          "9noext\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
         (let* ((context (make-context "localhost" 70))
