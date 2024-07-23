@@ -12,7 +12,6 @@
 (module gophser
   (start-server
    make-context make-request
-   extension-itemtype-map
    make-router router-add router-match
    menu-item menu-item-info-wrap menu-item-file menu-item-url
    menu-render
@@ -37,6 +36,7 @@
         (chicken type)
         fmt
         queues
+        magic
         simple-logger
         srfi-1
         srfi-13
@@ -50,6 +50,7 @@
 ;; srfi-18 - Multithreading support
 ;; queues  - In the source code it says that the procedures used
 ;;           here are thread safe
+;; magic   - Magic file type recognition
 
 
 ;; Record types -------------------------------------------------------------
@@ -72,38 +73,6 @@
   (selector request-selector)
   (client-address request-client-address)
 )
-
-
-;; Guard used by extension-itemtype-map
-;; Not exported
-(define (guard-extension-itemtype-map x)
-  (let* ((known-itemtypes '(binary html image gif text ))
-         (unknown-itemtype? (lambda (itemtype) (not (memq itemtype known-itemtypes))))
-         (keys (map car x))
-         (values (map cdr x)))
-    (if (and (= (length keys) (length (delete-duplicates keys)))
-             (= 0 (count unknown-itemtype? values) )
-             (= 0 (count (complement pair?) x)))
-        x
-        (error "invalid extension-itemtype-map value") ) ) )
-
-
-;; Paramater - value is alist mapping file extensions to itemtypes
-;; NOTE: Ideally this should be in order of most frequent lookup to make
-;; NOTE: lookups as quick as possible on average.
-;; NOTE: 'text itemtypes are included for quicker lookup and to prevent too
-;; NOTE: many warnings about unknown extensions in menu-item-file
-(define extension-itemtype-map
-  (make-parameter
-    '((txt . text) (c . text) (cpp . text) (go . text) (js . text) (lsp . text)
-      (md . text) (py . text) (rkt . text) (scm . text) (tcl . text)
-      (gif . gif)
-      (bmp . image)  (jpg . image) (jpeg . image) (png . image) (tif . image)
-      (rle . image)
-      (dat . binary) (mkv . binary) (mp4 . binary) (avi . binary)
-      (html . html) (htm . html) (xhtml . html))
-  guard-extension-itemtype-map) )
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -378,6 +347,7 @@
                   (let ((nex-index (read-file (make-pathname local-path "index"))))
                     (menu-render (process-nex-index context
                                                     (request-selector request)
+                                                    root-dir
                                                     local-path
                                                     nex-index)))
                   (menu-render (list-dir context (request-selector request) local-path)))))
@@ -460,10 +430,13 @@
            (let ((filename (car entry))
                  (is-dir (second entry))
                  (selector (third entry)))
-             ;; TODO: Need to support other itemtypes
              (if is-dir
                  (menu-item 'menu filename selector hostname port)
-                 (menu-item-file filename selector hostname port))))
+                 (menu-item-file (make-pathname local-path filename)
+                                 filename
+                                 selector
+                                 hostname
+                                 port))))
          (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) )
 
 
@@ -538,23 +511,34 @@ END
         (list "i" "" "" hostname port) ) ) ) )
 
 
+;; TODO: Test file check fail
 ;; TODO: Should we pass context rather than supplying hostname and port
 ;; TODO: Check if this works with non POSIX style paths
-;; TODO: Test when file has no extension
-;; Creates a menu item for a file.  The itemtype is determined by looking at
-;; the file extension in the selector.  Extensions are mapped to itemtypes
-;; using extension-itemtype-map paramater which is an alist of symbol pairs
-;; with the keys being extensions and the values being itemtypes.  If an
-;; extension is unknown a warning message is logged and 'text is used.
-(define (menu-item-file username selector hostname port)
-  (let* ((extension (string->symbol (string-downcase (or (pathname-extension selector) ""))))
-         (maybe-itemtype (alist-ref extension (extension-itemtype-map))))
-    (if maybe-itemtype
-        (menu-item maybe-itemtype username selector hostname port)
-        (begin
-          (log-warning "username: ~A, selector: ~A, extension: ~A, proc: menu-item-file, unknown extension"
-                       username selector extension)
-          (menu-item 'text username selector hostname port) ) ) ) )
+;; Creates a menu item for a file.
+;; local-path is the path to the file whose itemtype will be determined
+;; using libmagic.
+(define (menu-item-file local-path username selector hostname port)
+  ;; TODO: Check local-path is safe
+  ;; TODO: Catch exceptions
+  ;; TODO: test and handle files not present
+  (let* ((mime-type (identify local-path 'mime))
+         (mime-match (irregex-search mime-split-regex mime-type)))
+    (if (irregex-match-data? mime-match)
+        (let ((media-type (irregex-match-substring mime-match 1))
+              (media-subtype (irregex-match-substring mime-match 2)))
+          (let ((itemtype (cond
+                            ((string=? media-type "image")
+                               (if (string=? media-subtype "gif")
+                                   'gif
+                                   'image))
+                            ((string=? media-type "text")
+                               (if (string=? media-subtype "html")
+                                   'html)
+                                   'text)
+                            (else 'binary))))
+            (menu-item itemtype username selector hostname port)))
+        (error (sprintf "local-path: ~A, file type check failed" local-path) ) ) ) )
+
 
 
 ;; Supporters protocols: gopher ssh http https
@@ -651,6 +635,9 @@ END
         #f) ) )
 
 
+;; Compiled Regular Expression to split magic file mime types
+(define mime-split-regex (string->irregex "^([^/]+)\/([^;]+); charset=.*$"))
+
 
 ;; TODO: Rename index to something else
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -661,7 +648,7 @@ END
 ;; Exported Definitions ------------------------------------------------------
 
 ;; TODO: Handle an empty index
-(define (process-nex-index context selector local-path nex-index)
+(define (process-nex-index context selector root-dir local-path nex-index)
 
   (define (dir-item path username)
     (if (absolute-pathname? path)
@@ -677,14 +664,20 @@ END
   ;; TODO: Handle file not existing
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file username (trim-selector path)
-                        (context-hostname context) (context-port context))
+        (menu-item-file (make-pathname root-dir (trim-selector path))
+                        username
+                        (trim-selector path)
+                        (context-hostname context)
+                        (context-port context))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       path)))
-          (menu-item-file username item-selector
-                          (context-hostname context) (context-port context)))))
+          (menu-item-file (make-pathname local-path (trim-selector path))
+                          username
+                          item-selector
+                          (context-hostname context)
+                          (context-port context)))))
 
   (define (is-dir? path)
     (substring-index "/" path (sub1 (string-length path))))

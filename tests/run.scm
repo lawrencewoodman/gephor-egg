@@ -21,7 +21,8 @@
 
 
 ;; TODO: Test log output
-(log-level 100)
+;;(log-level 100)
+(log-level 0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -172,7 +173,8 @@
           "0About this Place\tdir-a/about\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (menu-item-file "About this Place" "dir-a/about"
+        (let ((menu (list (menu-item-file "About this Place"
+                                          "dir-a/about"
                                           "localhost"
                                           70))))
           (menu-render menu)))
@@ -358,7 +360,8 @@
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
           "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
           ;; TODO: Incorrect item type of ac.bin
-          "0ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
           "\r\n")
         (let* ((context (make-context "localhost" 70))
@@ -476,7 +479,7 @@
   (test "serve-path returns the contents of an empty file"
         ""
         (let* ((context (make-context "localhost" 70))
-               (request (make-request "a.txt" "127.0.0.1")))
+               (request (make-request "dir-a/empty.txt" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
 
@@ -496,7 +499,7 @@
           "1The ba directory\tdir-b/dir-ba\tlocalhost\t70"
           "1The bb directory\tdir-b/dir-bb\tlocalhost\t70"
           "0dir-ba/baa.txt\tdir-b/dir-ba/baa.txt\tlocalhost\t70"
-          "0dir-ba/baa.bob\tdir-b/dir-ba/baa.bob\tlocalhost\t70"
+          "9dir-ba/bac.bin\tdir-b/dir-ba/bac.bin\tlocalhost\t70"
           "i\tdir-b\tlocalhost\t70"
           "iSome URLs used as links\tdir-b\tlocalhost\t70"
           "hhttp://example.com\tURL:http://example.com\tlocalhost\t70"
