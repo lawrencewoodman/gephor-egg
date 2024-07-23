@@ -95,12 +95,29 @@
     (write-line "server terminated")
     (exit))
 
-  ;; TODO: Add timeout
-  ;; TODO: Test this
+  ;; TODO: Test this including timeout and breaking connection
+  ;; Exceptions, including timeouts, are caught and logged.  If an exception
+  ;; is caught #f is returned
   ;; Read the selector and trim from the beginning and the end whitespace
   ;; and '/' characters
-  (define (read-selector in)
-    (trim-selector (read-line in 255) ) )
+  (define (read-selector client-address in)
+    (condition-case (trim-selector (read-line in 255) )
+      ((exn i/o net timeout)
+        ;; TODO: Add some details about client
+        (log-warning "read selector, client address: ~A, read timeout" client-address)
+        #f)
+      (ex (exn)
+        ;; TODO: Add some details about client
+        (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
+                     client-address
+                     (get-condition-property ex 'exn 'message))
+        #f)
+      (ex ()
+        ;; TODO: Add some details about client
+        (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
+                     client-address
+                     (get-condition-property ex 'exn 'message))
+        #f) ) )
 
   (define (client-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
@@ -111,24 +128,24 @@
                                  (cons 'client-address client-address) ) ) ) )
 
 
-  ;; TODO: handle timeout
   ;; TODO: Need to handle handlers failing
   (define (handle-connect connect)
     (let ((in (alist-ref 'in connect))
           (out (alist-ref 'out connect))
           (client-address (alist-ref 'client-address connect)))
-      (let* ((selector (read-selector in))
-             (handler (router-match router selector))
-             (request (make-request selector client-address)))
-        (write-string (if handler
-                          (handler context request)
-                          (begin
-                            (log-warning "client address: ~A, selector: ~A, no handler for selector"
-                                         client-address
-                                         selector)
-                            (make-rendered-error-menu context request "path not found")))
-                      #f
-                      out)
+      (let ((selector (read-selector client-address in)))
+        (if selector
+            (let* ((handler (router-match router selector))
+                   (request (make-request selector client-address))
+                   (response
+                     (if handler
+                         (handler context request)
+                         (begin
+                           (log-warning "client address: ~A, selector: ~A, no handler for selector"
+                                        client-address
+                                        selector)
+                           (make-rendered-error-menu context request "path not found")))))
+              (write-string response #f out)))
         (close-input-port in)
         (close-output-port out ) ) ) )
 
