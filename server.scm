@@ -10,7 +10,7 @@
 ;; TODO: rename module
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gophser
-  (start-server
+  (start-server stop-server
    make-context make-request
    make-router router-add router-match
    menu-item menu-item-info-wrap menu-item-file menu-item-url
@@ -82,18 +82,12 @@
 ;; TODO: Should this run as a thread and return something to allow
 ;; TODO: control of it?
 (define (start-server hostname port router)
+  ;; server-ready-mutex used to check that server is ready to accept
+  ;; connections before returning from procedure
   (let ((requests (make-queue))
         (connects (make-queue))
-        (context (make-context hostname port)))
-
-  (define (termination-handler signum)
-    ;; TODO: What else should this do
-    ;; TODO: What message should be reported?
-    ;; TODO: Should the message go to stderr and could it be better?
-    ;; TODO: How would we handle this if this becomes a module rather than a
-    ;; TODO: program?
-    (write-line "server terminated")
-    (exit))
+        (context (make-context hostname port))
+        (server-ready-mutex (make-mutex)))
 
   ;; TODO: Test this including timeout and breaking connection
   ;; Exceptions, including timeouts, are caught and logged.  If an exception
@@ -151,24 +145,28 @@
 
 
   (define (start-connect-handler-thread)
-    (thread-start!
-      (make-thread
-        (lambda ()
-          (let loop ()
-            (handle-exceptions ex
-              (begin
-                (log-error "connect handler thread: ~A"
-                           (get-condition-property ex 'exn 'message))
-                (signal ex))
-              (if (not (queue-empty? connects))
-                (let* ((connect (queue-remove! connects)))
-                  (handle-connect connect))
-                  ;; The thread-sleep! is to prevent the server from
-                  ;; continually polling when the connects queue is empty
-                  ;; TODO: Find a better way of doing this perhaps using a mutex
-                  ;; TODO: and altering it on client-connect
-                  (thread-sleep! 0.1) ) )
-            (loop) ) ) ) ) )
+    (let ((connect-handler
+            (lambda ()
+              (let loop ()
+                (handle-exceptions ex
+                  (begin
+                    (log-error "connect handler thread: ~A"
+                               (get-condition-property ex 'exn 'message))
+                    (signal ex))
+                  (if (not (queue-empty? connects))
+                    (let* ((connect (queue-remove! connects)))
+                      (handle-connect connect))
+                      ;; The thread-sleep! is to prevent the server from
+                      ;; continually polling when the connects queue is empty
+                      ;; TODO: Find a better way of doing this perhaps using a mutex
+                      ;; TODO: and altering it on client-connect
+                      (thread-sleep! 0.1) ) )
+                (if (not (stop-requested?))
+                    (loop) ) ) ) ) )
+      (let ((thread (make-thread connect-handler)))
+        ;; thread-specific value indicates if thread has been told to stop
+        (thread-specific-set! thread #f)
+        (thread-start! thread) ) ) )
 
 
   ;; Returns a list of threads
@@ -179,23 +177,84 @@
           (let ((thread (start-connect-handler-thread)))
             (loop (- n 1) (cons thread threads) ) ) ) ) )
 
-
+  (define (termination-handler signum)
+    ;; TODO: What else should this do
+    ;; TODO: What message should be reported?
+    ;; TODO: Should the message go to stderr and could it be better?
+    ;; TODO: How would we handle this if this becomes a module rather than a
+    ;; TODO: program?
+    ;; TODO: Probably shouldn't write as this is now running as a thread
+    (write-line "server terminated")
+    (exit))
 
   ;; TODO: should we also set on-exit to do something?
-  (define (set-termination-handler)
+  (define (set-termination-handler listener)
     (set-signal-handler! signal/hup termination-handler)
     (set-signal-handler! signal/int termination-handler)
     (set-signal-handler! signal/term termination-handler) )
 
+  (define (stop-requested?)
+    (thread-specific (current-thread) ) )
 
-  (let ((listener (tcp-listen port)))
-    (set-termination-handler)
-    (start-connect-handler-threads 10)
-    (let loop ()
-      (let-values ([(in out) (tcp-accept listener)])
-        (client-connect in out))
-      (loop) ) ) ) )
+  (define (stop-connect-handler-threads threads)
+    ;; First tell the threads to stop
+    (let loop ((threads threads))
+      (if (not (null? threads))
+          (let ((thread (car threads)))
+            (thread-specific-set! thread #t)
+            (loop (cdr threads) ) ) ) )
+    ;; Then wait for them to finish
+    (let loop ((threads threads))
+      (if (not (null? threads))
+          (let ((thread (car threads)))
+            (thread-join! thread)
+            (loop (cdr threads) ) ) ) ) )
 
+
+  ;; tcp-accept but handles timeouts governed by parameter tcp-accept-timeout
+  ;; Returns accepted connection ports as values: in out
+  ;; or if timeout, values: #f #f
+  (define (tcp-accept/handle-timeout listener)
+    (condition-case (tcp-accept listener)
+      ((exn i/o net timeout) (values #f #f) ) ) )
+
+
+  ;; TODO: Document use of tcp-accept-timeout parameter and possibly change
+  ;; TODO: external parameter name to server-accept-timeout, should this
+  ;; TODO: change except for testing?  Perhaps have another parameter that
+  ;; TODO: is only exported for testing
+  ;; TODO: Tidy this up
+  (define (listen)
+    (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
+      (let ((listener (tcp-listen port)))
+        (mutex-unlock! server-ready-mutex)
+        (set-termination-handler listener)
+        (let ((connect-handler-threads (start-connect-handler-threads 10)))
+          (let loop ()
+            (let-values (((in out) (tcp-accept/handle-timeout listener)))
+              (if (and in out)
+                  (begin (client-connect in out) (loop))
+                  (if (stop-requested?)
+                      (begin
+                        (stop-connect-handler-threads connect-handler-threads)
+                        (tcp-close listener) )
+                      (loop) ) ) ) ) ) ) ) )
+
+
+  (let ((thread (make-thread listen)))
+    ;; serve-ready-mutex is used to make sure that the procedure doesn't
+    ;; return until the server is ready to accept connections.
+    ;; thread-specific value indicates if thread has been told to stop
+    (thread-specific-set! thread #f)
+    (mutex-lock! server-ready-mutex #f #f)
+    (thread-start! thread)
+    (mutex-lock! server-ready-mutex #f #f)
+    thread) ) )
+
+
+(define (stop-server thread)
+  (thread-specific-set! thread #t)
+  (thread-join! thread) )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
