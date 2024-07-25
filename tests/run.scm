@@ -599,5 +599,16 @@
             responses) ) )
 
 
+  (test "server returns an 'unknown path' error menu if a route doesn't exist for the selector"
+        "3path not found\tbye\tlocalhost\t7070\r\n.\r\n"
+        (let* ((port 7070)
+               (router (make-router (cons "hello" (lambda (context request)
+                                                    "hello friend"))))
+               (thread (start-test-server port router)))
+          (let ((response (gopher-test-get port "bye")))
+            (stop-server thread)
+            response) ) )
+
+
 )
 
