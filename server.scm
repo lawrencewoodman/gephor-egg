@@ -177,24 +177,10 @@
           (let ((thread (start-connect-handler-thread)))
             (loop (- n 1) (cons thread threads) ) ) ) ) )
 
-  (define (termination-handler signum)
-    ;; TODO: What else should this do
-    ;; TODO: What message should be reported?
-    ;; TODO: Should the message go to stderr and could it be better?
-    ;; TODO: How would we handle this if this becomes a module rather than a
-    ;; TODO: program?
-    ;; TODO: Probably shouldn't write as this is now running as a thread
-    (write-line "server terminated")
-    (exit))
-
-  ;; TODO: should we also set on-exit to do something?
-  (define (set-termination-handler listener)
-    (set-signal-handler! signal/hup termination-handler)
-    (set-signal-handler! signal/int termination-handler)
-    (set-signal-handler! signal/term termination-handler) )
 
   (define (stop-requested?)
     (thread-specific (current-thread) ) )
+
 
   (define (stop-connect-handler-threads threads)
     ;; First tell the threads to stop
@@ -228,7 +214,6 @@
     (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
-        (set-termination-handler listener)
         (let ((connect-handler-threads (start-connect-handler-threads 10)))
           (let loop ()
             (let-values (((in out) (tcp-accept/handle-timeout listener)))
