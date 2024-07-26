@@ -238,8 +238,10 @@
 
 
 (define (stop-server thread)
+  (log-info "stopping server")
   (thread-specific-set! thread #t)
-  (thread-join! thread) )
+  (thread-join! thread)
+  (log-info "server stopped") )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
