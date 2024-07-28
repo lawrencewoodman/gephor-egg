@@ -16,7 +16,7 @@
 
 
 (load-relative "../server.scm")
-(import gophser)
+(import gephor)
 
 (define dummy)
 

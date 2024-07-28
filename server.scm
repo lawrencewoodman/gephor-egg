@@ -1,4 +1,4 @@
-;;; A Gopher server module based on NEX for Chicken Scheme
+;;; A Gopher server module for Chicken Scheme
 ;;;
 ;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
@@ -7,9 +7,8 @@
 ;;;
 
 
-;; TODO: rename module
 ;; TODO: rename  exported functions to make consistent and more predictable?
-(module gophser
+(module gephor
   (start-server stop-server
    make-context make-request
    make-router router-add router-match
