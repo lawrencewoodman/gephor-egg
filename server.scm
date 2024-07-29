@@ -23,8 +23,6 @@
   (define (client-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (log-info "client address: ~A, connection request" client-address)
-      ;; TODO: Does in need to be in this and could it be closed first?
-      ;; TODO: Find  a neater way of doing this
       (queue-add! connects (list (cons 'in in) (cons 'out out)
                                  (cons 'client-address client-address) ) ) ) )
 
