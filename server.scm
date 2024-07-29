@@ -107,6 +107,9 @@
   ;; TODO: change except for testing?  Perhaps have another parameter that
   ;; TODO: is only exported for testing
   ;; TODO: Tidy this up
+  ;; Continuously listens to connections to the port and arranges
+  ;; for the connections to be handled.  This is designed to run as a
+  ;; thread which is stopped by stop-sever.
   (define (listen)
     (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
       (let ((listener (tcp-listen port)))
