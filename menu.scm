@@ -61,6 +61,7 @@
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
 ;; using libmagic.
+(: menu-item-file (string string string string fixnum --> menu-item))
 (define (menu-item-file local-path username selector hostname port)
   ;; TODO: Check local-path is safe
   ;; TODO: Catch exceptions
@@ -91,6 +92,7 @@
 ;; is using.  This is used to point back to our server when using URL:
 ;; 'h' itemtype selectors.
 ;; Returns a blank info type if protocol is unknown
+(: menu-item-url (string fixnum string string --> menu-item))
 (define (menu-item-url our-hostname our-port username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
     (case (string->symbol protocol)
@@ -114,7 +116,7 @@
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
 ;; return a list of menu items
-(: menu-item-info-wrap (string string string fixnum --> (listof menu-item)))
+(: menu-item-info-wrap (string string string fixnum --> (list-of menu-item)))
 (define (menu-item-info-wrap username selector hostname port)
   ;; TODO: Should we allow some lines to be unwrappable if they don't
   ;; TODO: contain spaces.
@@ -163,6 +165,13 @@
 ;; port will be #f unless present
 ;; path will be "" if not present
 ;; itemtype will be #f unless protocol is gopher or gophers and URL has a path
+(: split-url (string
+              -->
+              (or string false)
+              (or string false)
+              (or string false)
+              (or string false)
+              (or string false)))
 (define (split-url url)
   (let ((url-match (irregex-search url-split-regex url)))
     (if (irregex-match-data? url-match)
@@ -178,5 +187,5 @@
                       (values protocol host port path itemtype))
                     (values protocol host port path #f)))
               (values protocol host port path #f)))
-        #f) ) )
+        (values #f #f #f #f #f) ) ) )
 
