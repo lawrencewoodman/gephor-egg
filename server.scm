@@ -111,7 +111,6 @@
   ;; TODO: external parameter name to server-accept-timeout, should this
   ;; TODO: change except for testing?  Perhaps have another parameter that
   ;; TODO: is only exported for testing
-  ;; TODO: Tidy this up
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
   ;; thread which is stopped by stop-sever.
@@ -122,13 +121,13 @@
         (let ((connect-handler-threads (start-connect-handler-threads 10)))
           (let loop ()
             (let-values (((in out) (tcp-accept/handle-timeout listener)))
-              (if (and in out)
-                  (begin (client-connect in out) (loop))
-                  (if (stop-requested?)
-                      (begin
-                        (stop-connect-handler-threads connect-handler-threads)
-                        (tcp-close listener) )
-                      (loop) ) ) ) ) ) ) ) )
+              (when (and in out)
+                    (client-connect in out))
+              (if (stop-requested?)
+                  (begin
+                    (stop-connect-handler-threads connect-handler-threads)
+                    (tcp-close listener) )
+                  (loop) ) ) ) ) ) ) )
 
 
   (let ((thread (make-thread listen)))
