@@ -63,16 +63,18 @@
                     (log-error "connect handler thread: ~A"
                                (get-condition-property ex 'exn 'message))
                     (signal ex))
-                  (if (not (queue-empty? connects))
-                    (let* ((connect (queue-remove! connects)))
-                      (handle-connect connect))
+                  (if (queue-empty? connects)
                       ;; The thread-sleep! is to prevent the server from
                       ;; continually polling when the connects queue is empty
                       ;; TODO: Find a better way of doing this perhaps using a mutex
                       ;; TODO: and altering it on client-connect
-                      (thread-sleep! 0.1) ) )
-                (if (not (stop-requested?))
-                    (loop) ) ) ) ) )
+                      ;; TODO: What if another thread has emptied the queue
+                      ;; TODO: between testing if empty and removing item?
+                      (thread-sleep! 0.1)
+                      (let* ((connect (queue-remove! connects)))
+                            (handle-connect connect)))
+                  (unless (stop-requested?)
+                          (loop)))))))
       (let ((thread (make-thread connect-handler)))
         ;; thread-specific value indicates if thread has been told to stop
         (thread-specific-set! thread #f)
