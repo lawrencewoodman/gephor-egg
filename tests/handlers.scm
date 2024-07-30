@@ -2,15 +2,6 @@
 
 (test-group "handlers"
 
-  ;; The path of the fixtures directory
-  (define fixtures-dir
-    (let loop ((dirs (list (current-directory) (make-pathname (current-directory) "tests"))))
-      (if (null? dirs) (error "can't find fixtures directory"))
-      (let ((try-path (make-pathname (car dirs) "fixtures")))
-        (if (and (file-exists? try-path) (directory? try-path))
-            try-path
-            (loop (cdr dirs))))))
-
   (test "serve-path supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(

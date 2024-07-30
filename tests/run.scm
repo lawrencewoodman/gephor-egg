@@ -25,6 +25,16 @@
 (log-level 100)
 
 
+;; The path of the fixtures directory
+(define fixtures-dir
+  (let loop ((dirs (list (current-directory) (make-pathname (current-directory) "tests"))))
+    (if (null? dirs) (error "can't find fixtures directory"))
+    (let ((try-path (make-pathname (car dirs) "fixtures")))
+      (if (and (file-exists? try-path) (directory? try-path))
+          try-path
+          (loop (cdr dirs))))))
+
+
 ;; Test each exported component
 (include-relative "router.scm")
 (include-relative "menu.scm")
