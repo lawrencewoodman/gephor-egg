@@ -97,16 +97,16 @@
   (define (stop-connect-handler-threads threads)
     ;; First tell the threads to stop
     (let loop ((threads threads))
-      (if (not (null? threads))
-          (let ((thread (car threads)))
-            (thread-specific-set! thread #t)
-            (loop (cdr threads) ) ) ) )
+      (unless (null? threads)
+              (let ((thread (car threads)))
+                (thread-specific-set! thread #t)
+                (loop (cdr threads) ) ) ) )
     ;; Then wait for them to finish
     (let loop ((threads threads))
-      (if (not (null? threads))
-          (let ((thread (car threads)))
-            (thread-join! thread)
-            (loop (cdr threads) ) ) ) ) )
+      (unless (null? threads)
+              (let ((thread (car threads)))
+                (thread-join! thread)
+                (loop (cdr threads) ) ) ) ) )
 
 
   ;; TODO: Document use of tcp-accept-timeout parameter and possibly change
