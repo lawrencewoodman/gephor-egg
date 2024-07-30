@@ -27,7 +27,6 @@
                                  (cons 'client-address client-address) ) ) ) )
 
 
-  ;; TODO: Need to handle handlers failing
   (define (handle-connect connect)
     (let ((in (alist-ref 'in connect))
           (out (alist-ref 'out connect))
@@ -38,7 +37,13 @@
                    (request (make-request selector client-address))
                    (response
                      (if handler
-                         (handler context request)
+                         (condition-case (handler context request)
+                           (ex ()
+                             (log-warning "client address: ~A, selector: ~A, error from handler, ~A"
+                                          client-address
+                                          selector
+                                          (get-condition-property ex 'exn 'message))
+                             (make-rendered-error-menu context request "server error")))
                          (begin
                            (log-warning "client address: ~A, selector: ~A, no handler for selector"
                                         client-address
@@ -153,7 +158,7 @@
 ;; Read the selector and trim from the beginning and the end whitespace
 ;; and '/' characters
 (define (read-selector client-address in)
-  (condition-case (trim-selector (read-line in 255) )
+  (condition-case (trim-selector (read-line in 255))
     ((exn i/o net timeout)
       ;; TODO: Add some details about client
       (log-warning "read selector, client address: ~A, read timeout" client-address)

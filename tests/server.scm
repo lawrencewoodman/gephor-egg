@@ -16,7 +16,7 @@
       (start-server "localhost" port router) ) )
 
 
-  (test "server responds correct to simple routes without a splat"
+  (test "server responds correctly to simple routes without a splat"
         '("hello friend" "bye friend")
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (context request)
@@ -41,6 +41,16 @@
             (stop-server thread)
             response) ) )
 
+
+  (test "server returns a 'server error' error menu if a handler raises an exception"
+        "3server error\thello\tlocalhost\t7070\r\n.\r\n"
+        (let* ((port 7070)
+               (router (make-router (cons "hello" (lambda (context request)
+                                                    (error "this is an error")))))
+               (thread (start-test-server port router)))
+          (let ((response (gopher-test-get port "hello")))
+            (stop-server thread)
+            response) ) )
 
 )
 
