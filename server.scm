@@ -39,10 +39,12 @@
                      (if handler
                          (condition-case (handler context request)
                            (ex ()
-                             (log-warning "client address: ~A, selector: ~A, error from handler, ~A"
-                                          client-address
-                                          selector
-                                          (get-condition-property ex 'exn 'message))
+                             ;; TODO: Find a nice way to adding info to the error is it comes up the chain
+                             (log-error "client address: ~A, selector: ~A, location: ~A, error from handler, ~A"
+                                        client-address
+                                        selector
+                                        (get-condition-property ex 'exn 'location)
+                                        (get-condition-property ex 'exn 'message))
                              (make-rendered-error-menu context request "server error")))
                          (begin
                            (log-warning "client address: ~A, selector: ~A, no handler for selector"

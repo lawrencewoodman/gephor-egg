@@ -236,16 +236,15 @@
         (menu-render menu) ) )
 
 
-  (test "make-item-url returns a blank info item if protocol is unknown"
-        (string-intersperse '(
-          "i\t\tlocalhost\t7071"
-          ".\r\n")
-          "\r\n")
-        (let ((menu (list (menu-item-url "localhost"
-                                         7071
-                                         "Something interesting"
-                                         "fred://example.com"))))
-          (menu-render menu) ) )
+  (test "make-item-url raises an exception if protocol is unsupported"
+        (list 'menu-item-url "url: fred://example.com, unsupported protocol: fred")
+        (condition-case (menu-item-url "localhost"
+                                       7071
+                                       "Something interesting"
+                                       "fred://example.com")
+          (ex () (list (get-condition-property ex 'exn 'location)
+                       (get-condition-property ex 'exn 'message) ) ) ) )
+
 
 )
 

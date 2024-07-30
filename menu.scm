@@ -89,9 +89,14 @@
 ;; Supporters protocols: gopher ssh http https
 ;; TODO: Expand list of supported protocols
 ;; our-hostname and our-port refer to the hostname and port our server
-;; is using.  This is used to point back to our server when using URL:
-;; 'h' itemtype selectors.
-;; Returns a blank info type if protocol is unknown
+;; is using so that we can support clients that don't support the URL:
+;; prefix selectors and 'h' itemtype.  These clients will go to the selector
+;; beginning with URL: on our server and should be served an HTML page which points
+;; to the desired URL.  This is currently used by ssh, http and https
+;; and conforms to:
+;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
+;;
+;; Raises an exception if protocol is unknown
 (: menu-item-url (string fixnum string string --> menu-item))
 (define (menu-item-url our-hostname our-port username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
@@ -101,17 +106,10 @@
         (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
           (menu-item itemtype username path host (or port 70))))
       ((ssh http https)
-        ;; Conforms to: gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
-        ;; 'host' and 'port' point to the gopher server that provided the
-        ;; directory this is to support clients that don't support the
-        ;; URL: prefix.  These clients should be served a HTML page which points
-        ;; to the desired URL.
         (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
       (else
         ;; TODO: Test this
-        (log-error "proc: menu-item-url, username: ~A, url: ~A, protocol: ~A, unsupported protocol"
-                   username url protocol)
-        (menu-item 'info "" "" our-hostname our-port) ) ) ) )
+        (error 'menu-item-url (sprintf "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) ) )
 
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
