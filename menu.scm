@@ -108,7 +108,6 @@
       ((ssh http https)
         (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
       (else
-        ;; TODO: Test this
         (error* 'menu-item-url "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 
 
