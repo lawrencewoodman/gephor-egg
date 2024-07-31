@@ -58,55 +58,51 @@
                (request (make-request "dir-a\\fred" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
-  (test "serve-path returns a 'server error' error menu if root-dir ends with a '/'"
-        (string-intersperse '(
-          "3server error\tdir-a\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1"))
-               (local-dir (sprintf "~A/" fixtures-dir)))
-          (serve-path context request local-dir) ) )
+  (test "serve-path raises an exception if root-dir ends with a '/'"
+        (list 'serve-path (sprintf "root-dir isn't valid: ~A/" fixtures-dir))
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "dir-a" "127.0.0.1"))
+              (local-dir (sprintf "~A/" fixtures-dir)))
+          (condition-case (serve-path context request local-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
 
-  (test "serve-path returns a 'server error' error menu if root-dir is a relative dir"
-        (string-intersperse '(
-          "3server error\tdir-a\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1"))
-               (local-dir "fixtures"))
-          (serve-path context request local-dir) ) )
 
-  (test "serve-path returns a 'server error' error menu if root-dir contains .."
-        (string-intersperse '(
-          "3server error\tdir-a\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1"))
-               (local-dir "../"))
-          (serve-path context request local-dir) ) )
+  (test "serve-path raises an exception if root-dir is a relative dir"
+        (list 'serve-path "root-dir isn't valid: fixtures")
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "dir-a" "127.0.0.1"))
+              (local-dir "fixtures"))
+          (condition-case (serve-path context request local-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
 
-  (test "serve-path returns a 'server error' error menu if root-dir contains ./"
-        (string-intersperse '(
-          "3server error\tdir-a\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
+  (test "serve-path raises an exception if root-dir is a relative dir of the form ./"
+        (list 'serve-path "root-dir isn't valid: ./")
         (let* ((context (make-context "localhost" 70))
                (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "./"))
-          (serve-path context request local-dir) ) )
+          (condition-case (serve-path context request local-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
 
-  (test "serve-path returns a 'server error' error menu if root-dir contains \\"
-        (string-intersperse '(
-          "3server error\tdir-a\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1"))
-               (local-dir "\\"))
-          (serve-path context request local-dir) ) )
+  (test "serve-path raises an exception if root-dir contains .."
+        (list 'serve-path "root-dir isn't valid: /..")
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "dir-a" "127.0.0.1"))
+              (local-dir "/.."))
+          (condition-case (serve-path context request local-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+
+  (test "serve-path raises an exception if root-dir contains \\"
+        (list 'serve-path "root-dir isn't valid: /\\")
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "dir-a" "127.0.0.1"))
+              (local-dir "/\\"))
+          (condition-case (serve-path context request local-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path returns a 'path not found' error menu if path isn't world readable"
         (string-intersperse '(

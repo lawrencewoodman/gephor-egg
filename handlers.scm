@@ -50,20 +50,24 @@
     (apply log-warning (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
                        (request-client-address request) (request-selector request)
                        (cdr args)))
-  (define (log-error* . args)
-    (apply log-error (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
-                     (request-client-address request) (request-selector request)
-                     (cdr args)))
+
+
+  ;; We want to prevent root traversal attacks and include '\' in the
+  ;; list of invalid characters because of an apparent bug according to
+  ;; spiffy source code which says that this can be turned into a '/'
+  ;; sometimes by Chicken
+  (define (invalid-root-dir? dir)
+    (or (not (absolute-pathname? root-dir))
+        (substring-index "/" root-dir (sub1 (string-length root-dir)))
+        (substring-index "\\" root-dir)
+        (substring-index ".." root-dir) ) )
 
   ;; TODO: Rename local-path ?
   ;; TODO: Check selector and path are safe
   ;; TODO: Find a better way of reducing safety check of root-dir and local-path
-  (let* ((local-path (make-pathname root-dir (request-selector request))))
-    (cond ((or (not (absolute-pathname? root-dir))
-               (substring-index "/" root-dir (sub1 (string-length root-dir))))
-            ;; TODO: Improve this error / exception
-            (log-error* "root-dir isn't valid: ~A" root-dir)
-            (make-rendered-error-menu context request "server error"))
+  (let ((local-path (make-pathname root-dir (request-selector request))))
+    (cond ((invalid-root-dir? root-dir)
+            (error 'serve-path (sprintf "root-dir isn't valid: ~A" root-dir)))
           ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
             (log-warning* "selector isn't safe")
             (make-rendered-error-menu context request "invalid selector"))
@@ -76,21 +80,17 @@
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (handle-exceptions ex
-              (begin
-                (log-error* "error reading file: ~A, ~A"
-                           local-path
-                           (get-condition-property ex 'exn 'message))
-                (make-rendered-error-menu context request "server error"))
+              (error 'serve-path (sprintf "error reading file: ~A, ~A"
+                                          local-path
+                                          (get-condition-property ex 'exn 'message)))
               (log-info* "request file: ~A" local-path)
               (read-file local-path)))
           ((directory? local-path)
             (handle-exceptions ex
-              (begin
-                (log-error* "procedure: ~A, local-path: ~A, error listing directory: ~A"
-                            (get-condition-property ex 'exn 'location "?")
-                            local-path
-                            (get-condition-property ex 'exn 'message))
-                (make-rendered-error-menu context request "server error"))
+              (error 'serve-path (sprintf "location: ~A, local-path: ~A, error listing directory: ~A"
+                                          (get-condition-property ex 'exn 'location "?")
+                                          local-path
+                                          (get-condition-property ex 'exn 'message)))
               (log-info* "list directory: ~A" local-path)
               (if (file-exists? (make-pathname local-path "index"))
                   ;; TODO: Check index is world readable and otherwise suitable
@@ -103,8 +103,7 @@
                                                     nex-index)))
                   (menu-render (list-dir context (request-selector request) local-path)))))
           (else
-            (log-error* "unsupported file type for path: ~A" local-path)
-            (make-rendered-error-menu context request "path not found") ) ) ) )
+            (error 'serve-path "unsupported file type for path: ~A" local-path) ) ) ) )
 
 
 
