@@ -261,30 +261,31 @@ END
     (let ((url-match (irregex-match url-regex path)))
       (irregex-match-data? url-match)))
 
+  (define (parse-line line)
+    (let ((link-match (irregex-search index-link-split-regex line)))
+      (if (irregex-match-data? link-match)
+          (let* ((path (irregex-match-substring link-match 1))
+                 (maybe-username (irregex-match-substring link-match 2))
+                 (username (if (string=? maybe-username "")
+                               path
+                               maybe-username))
+                 (chomped-username (if (string=? maybe-username "")
+                                       (string-chomp path "/")
+                                       maybe-username)))
+            (cond
+             ((is-url? path)
+               (menu-item-url (context-hostname context)
+                              (context-port context)
+                              username
+                              path))
+             ((is-dir? path) (dir-item path chomped-username))
+             (else (file-item path username))))
+          ;; Current selector is used for info itemtype so that if type
+          ;; not supported by client but still displayed then it
+          ;; will just link to the page that it is being displayed on
+          (menu-item 'info line selector
+                     (context-hostname context) (context-port context) ) ) ) )
+
 
   (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
-    (map (lambda (line)
-           (let ((link-match (irregex-search index-link-split-regex line)))
-             (if (irregex-match-data? link-match)
-                 (let* ((path (irregex-match-substring link-match 1))
-                        (maybe-username (irregex-match-substring link-match 2))
-                        (username (if (string=? maybe-username "")
-                                      path
-                                      maybe-username))
-                        (chomped-username (if (string=? maybe-username "")
-                                              (string-chomp path "/")
-                                              maybe-username)))
-                   (cond
-                    ((is-url? path)
-                      (menu-item-url (context-hostname context)
-                                     (context-port context)
-                                     username
-                                     path))
-                    ((is-dir? path) (dir-item path chomped-username))
-                    (else (file-item path username))))
-                 ;; Current selector is used for info itemtype so that if type
-                 ;; not supported by client but still displayed then it
-                 ;; will just link to the page that it is being displayed on
-                 (menu-item 'info line selector
-                            (context-hostname context) (context-port context)))))
-         lines) ) )
+    (map parse-line lines) ) )
