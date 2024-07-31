@@ -92,16 +92,18 @@
                                           local-path
                                           (get-condition-property ex 'exn 'message)))
               (log-info* "list directory: ~A" local-path)
-              (if (file-exists? (make-pathname local-path "index"))
-                  ;; TODO: Check index is world readable and otherwise suitable
-                  ;; TODO: Do we want to use 'index' as filename?
-                  (let ((nex-index (read-file (make-pathname local-path "index"))))
-                    (menu-render (process-nex-index context
-                                                    (request-selector request)
-                                                    root-dir
-                                                    local-path
-                                                    nex-index)))
-                  (menu-render (list-dir context (request-selector request) local-path)))))
+              (let ((response
+                      (if (file-exists? (make-pathname local-path "index"))
+                          ;; TODO: Check index is world readable and otherwise suitable
+                          ;; TODO: Do we want to use 'index' as filename?
+                          (let ((nex-index (read-file (make-pathname local-path "index"))))
+                            (process-nex-index context
+                                               (request-selector request)
+                                               root-dir
+                                               local-path
+                                               nex-index))
+                          (list-dir context (request-selector request) local-path))))
+                (menu-render response))))
           (else
             (error 'serve-path "unsupported file type for path: ~A" local-path) ) ) ) )
 
