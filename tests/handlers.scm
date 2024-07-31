@@ -7,6 +7,7 @@
         (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
+          "1dir-index_invalid_url_protocol\tdir-index_invalid_url_protocol\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
           "0b.txt\tb.txt\tlocalhost\t70"
           "9noext\tnoext\tlocalhost\t70"
@@ -208,5 +209,12 @@
                (request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
           (serve-url context request) ) )
 
+  (test "serve-path raises chain of exceptions if problem with directory listing"
+        (list 'serve-path (sprintf "local-path: ~A, error listing directory -> error processing index -> url: fred://example.com, unsupported protocol: fred" (make-pathname fixtures-dir "dir-index_invalid_url_protocol")))
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "dir-index_invalid_url_protocol" "127.0.0.1")))
+          (condition-case (serve-path context request fixtures-dir)
+            (ex () (list (get-condition-property ex 'exn 'location)
+                         (get-condition-property ex 'exn 'message) ) ) ) ) )
 )
 

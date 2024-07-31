@@ -100,4 +100,18 @@
 (define (trim-selector selector)
   (string-trim-both selector selector-trim-char-set) )
 
+;; Similar to error but uses a formatstring compatible with sprintf
+;; followed by arguments for us by the formatstring.
+(define (error* location formatstring . args)
+  (error location (apply sprintf formatstring args) ) )
+
+;; Raise an exception and point to the previous exception message at the end
+;; of the message after '->' to add context to an exception by making a chain
+;; of exceptions.
+(define (error-wrap ex location formatstring . args)
+  (error* location "~? -> ~A"
+                   formatstring
+                   args
+                   (get-condition-property ex 'exn 'message) ) )
+
 )

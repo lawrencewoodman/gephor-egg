@@ -67,7 +67,7 @@
   ;; TODO: Find a better way of reducing safety check of root-dir and local-path
   (let ((local-path (make-pathname root-dir (request-selector request))))
     (cond ((invalid-root-dir? root-dir)
-            (error 'serve-path (sprintf "root-dir isn't valid: ~A" root-dir)))
+            (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
           ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
             (log-warning* "selector isn't safe")
             (make-rendered-error-menu context request "invalid selector"))
@@ -80,17 +80,12 @@
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (handle-exceptions ex
-              (error 'serve-path (sprintf "error reading file: ~A, ~A"
-                                          local-path
-                                          (get-condition-property ex 'exn 'message)))
+              (error-wrap ex 'serve-path "local-path: ~A, error reading file" local-path)
               (log-info* "request file: ~A" local-path)
               (read-file local-path)))
           ((directory? local-path)
             (handle-exceptions ex
-              (error 'serve-path (sprintf "location: ~A, local-path: ~A, error listing directory: ~A"
-                                          (get-condition-property ex 'exn 'location "?")
-                                          local-path
-                                          (get-condition-property ex 'exn 'message)))
+              (error-wrap ex 'serve-path "local-path: ~A, error listing directory" local-path)
               (log-info* "list directory: ~A" local-path)
               (let ((response
                       (if (file-exists? (make-pathname local-path "index"))
@@ -105,7 +100,7 @@
                           (list-dir context (request-selector request) local-path))))
                 (menu-render response))))
           (else
-            (error 'serve-path "unsupported file type for path: ~A" local-path) ) ) ) )
+            (error* 'serve-path "unsupported file type for path: ~A" local-path) ) ) ) )
 
 
 
@@ -290,4 +285,6 @@ END
 
 
   (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
-    (map parse-line lines) ) )
+    (condition-case (map parse-line lines)
+      (ex () (error-wrap ex 'process-nex-index "error processing index") ) ) ) )
+

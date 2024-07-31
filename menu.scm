@@ -82,7 +82,7 @@
                                    'text)
                             (else 'binary))))
             (menu-item itemtype username selector hostname port)))
-        (error (sprintf "local-path: ~A, file type check failed" local-path) ) ) ) )
+        (error* 'menu-item-file "local-path: ~A, file type check failed" local-path) ) ) )
 
 
 
@@ -109,7 +109,7 @@
         (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
       (else
         ;; TODO: Test this
-        (error 'menu-item-url (sprintf "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) ) )
+        (error* 'menu-item-url "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
