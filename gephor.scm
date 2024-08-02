@@ -15,7 +15,10 @@
    menu-item menu-item-info-wrap menu-item-file menu-item-url
    menu-render
    serve-url
-   serve-path)
+   serve-path
+   Result Ok Error)
+
+;; TODO: Should Ok and Error be exported as Result-Ok, Result-Error?
 
 (import scheme
         (chicken base)
@@ -33,6 +36,7 @@
         (chicken string)
         (chicken tcp)
         (chicken type)
+        datatype
         fmt
         queues
         magic
@@ -43,13 +47,14 @@
         srfi-18)
 
 ;; Import notes -------------------------------------------------------------
-;; srfi-1  - List procedures
-;; srfi-13 - String library
-;; srfi-14 - Character set library
-;; srfi-18 - Multithreading support
-;; queues  - In the source code it says that the procedures used
-;;           here are thread safe
-;; magic   - Magic file type recognition
+;; srfi-1   - List procedures
+;; srfi-13  - String library
+;; srfi-14  - Character set library
+;; srfi-18  - Multithreading support
+;; datatype - Variant records
+;; queues   - In the source code it says that the procedures used
+;;            here are thread safe
+;; magic    - Magic file type recognition
 
 
 ;; Record types -------------------------------------------------------------
@@ -74,6 +79,46 @@
 )
 
 
+
+;; Algebraic Data Types -----------------------------------------------------
+
+;; TODO: Test all this properly
+;; TODO: Confirm test will use Ok and Error as results to test against accurately
+
+;; Exported
+(define-datatype Result Result?
+  (Ok (v any?))
+  (Error (e list-of-string?) ) )
+
+
+;; Used to allow Ok to contain anything
+(define (any? x)
+  #t)
+
+(define list-of-string? (list-of? string?))
+
+; Pass the arguments to sprintf to create the error string making it easy to
+; create a formatted erro string
+(define (Error-fmt . args)
+  (Error (list (apply sprintf args) ) ) )
+
+(define (Error-wrap err . args)
+  (cases Result err
+    (Error (e) (Error (cons (apply sprintf args) e)))
+    (Ok (v) (error "not an Error") ) ) )  ;; TODO: fix message
+
+
+
+;; Put the message from an exception into an Error
+(define (Error-ex ex . args)
+  (apply Error-wrap (Error-fmt (get-condition-property ex 'exn 'message)) args) )
+
+;; TODO: Create a Result-Error exception condition to make it easy to escape
+;; TODO: from procedures such as map?
+
+
+;; Include rest of the code -------------------------------------------------
+
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
 
@@ -87,9 +132,8 @@
 (include-relative "server.scm")
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Miscellaneous Internal Definitions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Miscellaneous definitions ------------------------------------------------
 
 ;; A char set for trimming selectors
 (define selector-trim-char-set
@@ -100,14 +144,16 @@
 (define (trim-selector selector)
   (string-trim-both selector selector-trim-char-set) )
 
-;; Similar to error but uses a formatstring compatible with sprintf
-;; followed by arguments for us by the formatstring.
-(define (error* location formatstring . args)
-  (error location (apply sprintf formatstring args) ) )
+;; Similar to error but passes arguments after location to sprintf to form
+;; error message
+(define (error* location . args)
+  (error location (apply sprintf args) ) )
+
 
 ;; Raise an exception and point to the previous exception message at the end
 ;; of the message after '->' to add context to an exception by making a chain
 ;; of exceptions.
+;; TODO: Do we still need this?
 (define (error-wrap ex location formatstring . args)
   (error* location "~? -> ~A"
                    formatstring

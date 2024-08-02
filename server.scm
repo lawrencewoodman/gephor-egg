@@ -32,25 +32,27 @@
           (out (alist-ref 'out connect))
           (client-address (alist-ref 'client-address connect)))
       (let ((selector (read-selector client-address in)))
+        ;; TODO: Should this return a timeout error if selector #f?
         (if selector
             (let* ((handler (router-match router selector))
                    (request (make-request selector client-address))
                    (response
                      (if handler
                          (condition-case (handler context request)
-                           (ex ()
-                             ;; TODO: Find a nice way to adding info to the error is it comes up the chain
-                             (log-error "client address: ~A, selector: ~A, error from handler -> ~A"
-                                        client-address
-                                        selector
-                                        (get-condition-property ex 'exn 'message))
-                             (make-rendered-error-menu context request "server error")))
+                           (ex () (Error-ex ex "exception from handler")))
                          (begin
                            (log-warning "client address: ~A, selector: ~A, no handler for selector"
                                         client-address
                                         selector)
-                           (make-rendered-error-menu context request "path not found")))))
-              (write-string response #f out)))
+                           (Ok (make-rendered-error-menu context request "path not found"))))))
+              (cases Result response
+                (Ok (v) (write-string v #f out))
+                (Error (e)
+                  (log-error "client address: ~A, selector: ~A, error from handler: ~A"
+                             client-address
+                             selector
+                             e)
+                  (write-string (make-rendered-error-menu context request "server error") #f out)))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

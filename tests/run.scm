@@ -13,6 +13,7 @@
         (chicken port)
         (chicken string)
         (chicken tcp)
+        datatype
         simple-logger)
 
 

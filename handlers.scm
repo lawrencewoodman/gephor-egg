@@ -19,16 +19,13 @@
 ;; TODO: rename
 (define (serve-url context request)
   (if (not (substring=? (request-selector request) "URL:"))
-      (begin
-        (log-error "client address: ~A, selector: ~A, handler: serve-url, invalid selector"
-                   (request-client-address request) (request-selector request))
-        (make-rendered-error-menu context request "server error"))
+      (error* 'serve-url "invalid selector: ~A" (request-selector request))
       (let* ((url (substring (request-selector request) 4)))
         (log-info "client address: ~A, selector: ~A, handler: serve-url, url: ~A"
                   (request-client-address request)
                   (request-selector request)
                   url)
-        (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
+        (Ok (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
 ;; TODO: Move this note about selectors not being file paths as not relevant
@@ -70,38 +67,44 @@
             (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
           ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
             (log-warning* "selector isn't safe")
-            (make-rendered-error-menu context request "invalid selector"))
+            (Ok (make-rendered-error-menu context request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
-            (make-rendered-error-menu context request "path not found"))
+            (Ok (make-rendered-error-menu context request "path not found")))
           ((not (world-readable? local-path))
             (log-warning* "local path isn't world readable: ~A" local-path)
-            (make-rendered-error-menu context request "path not found"))
+            (Ok (make-rendered-error-menu context request "path not found")))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
-            (handle-exceptions ex
-              (error-wrap ex 'serve-path "local-path: ~A, error reading file" local-path)
-              (log-info* "request file: ~A" local-path)
-              (read-file local-path)))
+            (log-info* "request file: ~A" local-path)
+            ;; TODO: Test error from this if fails
+            ;; TODO: Create a function to wrap an error message if error or return ok
+            (let ((response (read-file local-path)))
+              (cases Result response
+                (Ok (v) response)
+                (Error (e) (Error-wrap response "local-path: ~A, error serving file"
+                                       local-path)))) )
           ((directory? local-path)
-            (handle-exceptions ex
-              (error-wrap ex 'serve-path "local-path: ~A, error listing directory" local-path)
-              (log-info* "list directory: ~A" local-path)
-              (let ((response
-                      (if (file-exists? (make-pathname local-path "index"))
-                          ;; TODO: Check index is world readable and otherwise suitable
-                          ;; TODO: Do we want to use 'index' as filename?
-                          (let ((nex-index (read-file (make-pathname local-path "index"))))
-                            (process-nex-index context
-                                               (request-selector request)
-                                               root-dir
-                                               local-path
-                                               nex-index))
-                          (list-dir context (request-selector request) local-path))))
-                (menu-render response))))
+            (log-info* "list directory: ~A" local-path)
+            (let ((response
+                    (if (file-exists? (make-pathname local-path "index"))
+                        ;; TODO: Check index is world readable and otherwise suitable
+                        ;; TODO: Do we want to use 'index' as filename?
+                        (let ((nex-index (read-file (make-pathname local-path "index"))))
+                          (process-nex-index context
+                                             (request-selector request)
+                                             root-dir
+                                             local-path
+                                             nex-index))
+                        (list-dir context (request-selector request) local-path))))
+              (cases Result response
+                (Ok (v) (Ok (menu-render v)))
+                (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
+                                       local-path)))))
           (else
-            (error* 'serve-path "unsupported file type for path: ~A" local-path) ) ) ) )
+            (Error-fmt "unsupported file type for path: ~A" local-path) ) ) ) )
 
+;; TODO: Test list-dir above
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -122,11 +125,13 @@
 ;; TODO: Do we want to choose a different maximum read size?
 ;; TODO: Log an error if bigger than maximum size - perhaps
 ;; TODO: check this first and send an error to client if too big
-(define (read-file path)
-  (let ((contents (call-with-input-file path
-                    (lambda (port) (read-string 50000000 port))
-                    #:binary)))
-  (if (eof-object? contents) "" contents) ) )
+(define (read-file path #!optional (maxsize 50000000))
+  (handle-exceptions ex
+    (Error-ex ex "path: ~A, error reading file" path)
+    (let ((contents (call-with-input-file path
+                      (lambda (port) (read-string maxsize port))
+                      #:binary)))
+      (Ok (if (eof-object? contents) "" contents) ) ) ) )
 
 
 ;; Sort files so that directories come before regular files and then
@@ -161,6 +166,7 @@
 ;; TODO: Should this check if path is world-readable rather than calling proc?
 ;; NOTE: selector-subpath must be checked to be safe before calling list-dir
 ;; TODO: Could we just pass selector into this rather than prefix and subpath ??
+;; TODO: This needs to return a Result type and catch exceptions from menu-item-file
 (define (list-dir context selector local-path)
   ;; Returns #f if not a valid file
   ;; An entry consists of a list (filename is-directory selector)
@@ -179,18 +185,18 @@
   (let ((filenames (directory local-path))
         (hostname (context-hostname context))
         (port (context-port context)))
-    (map (lambda (entry)
-           (let ((filename (car entry))
-                 (is-dir (second entry))
-                 (selector (third entry)))
-             (if is-dir
-                 (menu-item 'menu filename selector hostname port)
-                 (menu-item-file (make-pathname local-path filename)
-                                 filename
-                                 selector
-                                 hostname
-                                 port))))
-         (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) )
+    (Ok (map (lambda (entry)
+               (let ((filename (car entry))
+                     (is-dir (second entry))
+                     (selector (third entry)))
+                 (if is-dir
+                     (menu-item 'menu filename selector hostname port)
+                     (menu-item-file (make-pathname local-path filename)
+                                     filename
+                                     selector
+                                     hostname
+                                     port))))
+             (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) ) )
 
 
 ;; The HTML template used by serve-url
@@ -283,8 +289,12 @@ END
           (menu-item 'info line selector
                      (context-hostname context) (context-port context) ) ) ) )
 
+  (define (process-nex-index* nex-index)
+    (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
+      (condition-case (Ok (map parse-line lines))
+        (ex () (Error-ex ex "error processing index") ) ) ) )
 
-  (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
-    (condition-case (map parse-line lines)
-      (ex () (error-wrap ex 'process-nex-index "error processing index") ) ) ) )
+  (cases Result nex-index
+    (Ok (v) (process-nex-index* v))
+    (Error (e) (nex-index) ) ) )
 
