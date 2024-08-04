@@ -16,9 +16,8 @@
    menu-render
    serve-url
    serve-path
-   Result Ok Error)
+   Result Result? Ok Error Error-ex Error-fmt Error-wrap)
 
-;; TODO: Should Ok and Error be exported as Result-Ok, Result-Error?
 
 (import scheme
         (chicken base)
@@ -80,44 +79,10 @@
 
 
 
-;; Algebraic Data Types -----------------------------------------------------
-
-;; TODO: Test all this properly
-;; TODO: Confirm test will use Ok and Error as results to test against accurately
-
-;; Exported
-(define-datatype Result Result?
-  (Ok (v any?))
-  (Error (e list-of-string?) ) )
-
-
-;; Used to allow Ok to contain anything
-(define (any? x)
-  #t)
-
-(define list-of-string? (list-of? string?))
-
-; Pass the arguments to sprintf to create the error string making it easy to
-; create a formatted erro string
-(define (Error-fmt . args)
-  (Error (list (apply sprintf args) ) ) )
-
-(define (Error-wrap err . args)
-  (cases Result err
-    (Error (e) (Error (cons (apply sprintf args) e)))
-    (Ok (v) (error "not an Error") ) ) )  ;; TODO: fix message
-
-
-
-;; Put the message from an exception into an Error
-(define (Error-ex ex . args)
-  (apply Error-wrap (Error-fmt (get-condition-property ex 'exn 'message)) args) )
-
-;; TODO: Create a Result-Error exception condition to make it easy to escape
-;; TODO: from procedures such as map?
-
-
 ;; Include rest of the code -------------------------------------------------
+
+;; Definitions for Result variant type
+(include-relative "result.scm")
 
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
