@@ -78,7 +78,6 @@
           ((regular-file? local-path)
             (log-info* "request file: ~A" local-path)
             ;; TODO: Test error from this if fails
-            ;; TODO: Create a function to wrap an error message if error or return ok
             (let ((response (read-file local-path)))
               (cases Result response
                 (Ok (v) response)

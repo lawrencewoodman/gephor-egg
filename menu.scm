@@ -33,9 +33,8 @@
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace)))
-    (if (>= (string-length username) 70)
-        ;; TODO: Test
-        (log-info "proc: menu-item, username: ~A, selector: ~A, hostname: ~A, port: ~A, username >= 70 characters"
+    (if (> (string-length username) 69)
+        (log-warning "username: ~A, selector: ~A, hostname: ~A, port: ~A, username > 69 characters"
                   username selector hostname port))
     ;; TODO: Add more items
     (case itemtype
