@@ -16,7 +16,8 @@
    menu-render
    serve-url
    serve-path
-   Result Result? Ok Error Error-ex Error-fmt Error-wrap)
+   Result Result? Ok Error Error-ex Error-fmt Error-wrap
+   max-file-size)
 
 
 (import scheme
@@ -54,6 +55,15 @@
 ;; queues   - In the source code it says that the procedures used
 ;;            here are thread safe
 ;; magic    - Magic file type recognition
+
+
+
+;; Configuration ------------------------------------------------------------
+
+;; The maximum size of a file that can be read and sent
+;; Defaults to 50Mb
+;; TODO: Is this name ok.  Should it be read/write as not just files sent
+(define max-file-size (make-parameter 50000000))
 
 
 ;; Record types -------------------------------------------------------------

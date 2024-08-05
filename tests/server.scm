@@ -52,5 +52,17 @@
             (stop-server thread)
             response) ) )
 
+
+  (test "server truncates data sent to max-file-size bytes"
+        "hello frien"
+        (let ((port 7070)
+              (router (make-router (cons "hello" (lambda (context request)
+                                                         (Ok "hello friend"))))))
+          (parameterize ((max-file-size 11))
+            (let* ((thread (start-test-server port router))
+                   (response (gopher-test-get port "hello")))
+              (stop-server thread)
+              response) ) ) )
+
 )
 

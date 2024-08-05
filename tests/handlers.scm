@@ -180,14 +180,34 @@
 
 
   (test "serve-path raises Error containing a chain of Errors if problem with serving a directory"
-        (list 'ok (sprintf "local-path: ~A, error serving directory"
-                           (make-pathname fixtures-dir "dir-index_invalid_url_protocol"))
+        (list 'error (sprintf "local-path: ~A, error serving directory"
+                              (make-pathname fixtures-dir "dir-index_invalid_url_protocol"))
                   "error processing index"
                   "url: fred://example.com, unsupported protocol: fred")
         (let ((context (make-context "localhost" 70))
               (request (make-request "dir-index_invalid_url_protocol" "127.0.0.1")))
           (cases Result (serve-path context request fixtures-dir)
-            (Error (e) (cons 'ok e) ) ) ) )
+            (Error (e) (cons 'error e) ) ) ) )
+
+
+  (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"
+        (Ok "hello\n")
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "a.txt" "127.0.0.1")))
+          (parameterize ((max-file-size 6))
+            (serve-path context request fixtures-dir) ) ) )
+
+
+  (test "serve-path raises Error if file is greater than the number of bytes set by max-file-size"
+        (list 'error (sprintf "local-path: ~A, error serving file"
+                           (make-pathname fixtures-dir "a.txt"))
+                  (sprintf "file: ~A, is greater than 5 bytes"
+                           (make-pathname fixtures-dir "a.txt")))
+        (let ((context (make-context "localhost" 70))
+              (request (make-request "a.txt" "127.0.0.1")))
+          (parameterize ((max-file-size 5))
+            (cases Result (serve-path context request fixtures-dir)
+              (Error (e) (cons 'error e) ) ) ) ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"

@@ -27,6 +27,9 @@
                                  (cons 'client-address client-address) ) ) ) )
 
 
+  ;; Parameter: max-file-size controls the maximum size file
+  ;; that can be written
+  ;; TODO: Should this log an error/warning if data to write > max-file-size ?
   (define (handle-connect connect)
     (let ((in (alist-ref 'in connect))
           (out (alist-ref 'out connect))
@@ -46,13 +49,15 @@
                                         selector)
                            (Ok (make-rendered-error-menu context request "path not found"))))))
               (cases Result response
-                (Ok (v) (write-string v #f out))
+                (Ok (v) (write-string v (max-file-size) out))
                 (Error (e)
                   (log-error "client address: ~A, selector: ~A, error from handler: ~A"
                              client-address
                              selector
                              e)
-                  (write-string (make-rendered-error-menu context request "server error") #f out)))))
+                  (write-string (make-rendered-error-menu context request "server error")
+                                (max-file-size)
+                                out)))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

@@ -120,17 +120,23 @@
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
 
 
-;; NOTE: Reads a maximum of 50Mb - this could be set in context
-;; TODO: Do we want to choose a different maximum read size?
-;; TODO: Log an error if bigger than maximum size - perhaps
-;; TODO: check this first and send an error to client if too big
-(define (read-file path #!optional (maxsize 50000000))
+;; Parameter: max-file-size controls the maximum size file
+;; that can be read, anything bigger than this returns an Error Result.
+(define (read-file path)
   (handle-exceptions ex
     (Error-ex ex "path: ~A, error reading file" path)
-    (let ((contents (call-with-input-file path
-                      (lambda (port) (read-string maxsize port))
+    (let-values (((contents more?)
+                    (call-with-input-file path
+                      (lambda (port)
+                              (values (read-string (max-file-size) port)
+                                      (not (eof-object? (read-string 1 port)))))
                       #:binary)))
-      (Ok (if (eof-object? contents) "" contents) ) ) ) )
+      (if (eof-object? contents)
+          (Ok "")
+          (if more?
+              (Error-fmt "file: ~A, is greater than ~A bytes" path (max-file-size))
+              (Ok contents) ) ) ) ) )
+
 
 
 ;; Sort files so that directories come before regular files and then
