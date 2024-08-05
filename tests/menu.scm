@@ -82,13 +82,20 @@
           (menu-render menu)))
 
 
-  (test "make-item returns a blank info item if itemtype is unknown"
+  (test "make-item allows a single letter itemtype if unknown"
         (string-intersperse '(
-          "i\t\tlocalhost\t70"
+          "usomething\t/fred/hi\tlocalhost\t70"
           ".\r\n")
           "\r\n")
         (let ((menu (list (menu-item 'u "something" "/fred/hi" "localhost" 70))))
           (menu-render menu)))
+
+
+  (test "make-item raises an exception if unknown itemtype is longer than a single letter"
+        (list 'menu-item "unknown itemtype: uu")
+        (condition-case (menu-item 'uu "something" "/fred/hi" "localhost" 70)
+          (ex () (list (get-condition-property ex 'exn 'location)
+                       (get-condition-property ex 'exn 'message) ) ) ) )
 
 
   (test "make-item logs allows username > 69 despite warning"

@@ -20,15 +20,18 @@
 ;; itemtype is a symbol and therefore numbers must be escaped.  It can use
 ;; the single letter from RFC 1436 or a descriptive symbol, i.e. for text
 ;; we can use 'text or '|0|
-;; itemtypes supported: ((text |0|) (menu |1|) (error |3|)
-;;                       (binhex |4|) (binary |9|) (info i) (html h)
-;;                       (gif g) (image I))
-;; |5| Dos Binary itemtype not supported as it is unclear what this
-;;     is and should be able to be replaced by |9| in every instance.
+;; descriptive itemtypes supported: ((text |0|) (menu |1|) (error |3|)
+;;                                   (binhex |4|) (binary |9|) (info i)
+;;                                   (html h) (gif g) (image I))
 ;;
-;; Returns a blank info type if itemtype is unknown
+;; |5| Dos Binary itemtype not recommended as it is unclear what this
+;;     is and it should be able to be replaced by |9| in every instance.
 ;;
-;; Warns if usernames > 69 characters as per RFC 1436
+;; Raises an exception if an unknown itemtype is used which is longer
+;; than 1 character.
+;;
+;; logs a warning if usernames > 69 characters as per RFC 1436
+;;
 (: menu-item (symbol string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
@@ -48,10 +51,10 @@
       ((gif g)      (list "g" username selector hostname port))
       ((image I)    (list "I" username selector hostname port))
       (else
-        (log-error "proc: menu-item, itemtype: ~A, username: ~A, selector: ~A, hostname: ~A, port: ~A, unknown itemtype"
-                   itemtype username selector hostname port)
-        ;; TODO: should this use our hostname and port rather than the intended target?
-        (list "i" "" "" hostname port) ) ) ) )
+        (let ((maybe-itemtype (symbol->string itemtype)))
+          (if (= (string-length maybe-itemtype) 1)
+              (list maybe-itemtype username selector hostname port)
+              (error* 'menu-item "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
 
 
 ;; TODO: Test file check fail
