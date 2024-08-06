@@ -41,20 +41,20 @@
                   username selector hostname port))
     ;; TODO: Add more items
     (case itemtype
-      ((text |0|)   (list "0" username selector hostname port))
-      ((menu |1|)   (list "1" username selector hostname port))
-      ((error |3|)  (list "3" username selector hostname port))
-      ((binhex |4|) (list "4" username selector hostname port))
-      ((binary |9|) (list "9" username selector hostname port))
-      ((info i)     (list "i" username selector hostname port))
-      ((html h)     (list "h" username selector hostname port))
-      ((gif g)      (list "g" username selector hostname port))
-      ((image I)    (list "I" username selector hostname port))
+      ((text |0|)   (Ok (list "0" username selector hostname port)))
+      ((menu |1|)   (Ok (list "1" username selector hostname port)))
+      ((error |3|)  (Ok (list "3" username selector hostname port)))
+      ((binhex |4|) (Ok (list "4" username selector hostname port)))
+      ((binary |9|) (Ok (list "9" username selector hostname port)))
+      ((info i)     (Ok (list "i" username selector hostname port)))
+      ((html h)     (Ok (list "h" username selector hostname port)))
+      ((gif g)      (Ok (list "g" username selector hostname port)))
+      ((image I)    (Ok (list "I" username selector hostname port)))
       (else
         (let ((maybe-itemtype (symbol->string itemtype)))
           (if (= (string-length maybe-itemtype) 1)
-              (list maybe-itemtype username selector hostname port)
-              (error* 'menu-item "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
+              (Ok (list maybe-itemtype username selector hostname port))
+              (Error-fmt "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
 
 
 ;; TODO: Test file check fail
@@ -63,6 +63,8 @@
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
 ;; using libmagic.
+;;
+;; Returns a Result type
 (: menu-item-file (string string string string fixnum --> menu-item))
 (define (menu-item-file local-path username selector hostname port)
   ;; TODO: Check local-path is safe
@@ -84,7 +86,7 @@
                                    'text)
                             (else 'binary))))
             (menu-item itemtype username selector hostname port)))
-        (error* 'menu-item-file "local-path: ~A, file type check failed" local-path) ) ) )
+        (Error "local-path: ~A, file type check failed" local-path) ) ) )
 
 
 
@@ -98,7 +100,8 @@
 ;; and conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Raises an exception if protocol is unknown
+;; Returns a Result type
+;; Returns an Error if protocol is unknown
 (: menu-item-url (string fixnum string string --> menu-item))
 (define (menu-item-url our-hostname our-port username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
@@ -108,9 +111,9 @@
         (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
           (menu-item itemtype username path host (or port 70))))
       ((ssh http https)
-        (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port) )
+        (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port))
       (else
-        (error* 'menu-item-url "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
+        (Error-fmt "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 
 
 ;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
@@ -134,13 +137,17 @@
   (define (item-render item)
     (apply sprintf "~A~A\t~A\t~A\t~A\r\n" item))
 
+  ;; TODO: Handle error Result properly
+  ;; TODO: Implement a loop to make exist easy
   (let ((menu-str
           (foldl (lambda (out-str item)
-                   (string-append out-str (item-render item)))
+                   (cases Result item
+                     (Ok (v) (string-append out-str (item-render v)))
+                     (Error (e) "")))
                  ""
                  menu-items)))
     ;; Properly constructed menus should end with ".\r\n"
-    (string-append menu-str ".\r\n") ) )
+    (Ok (string-append menu-str ".\r\n") ) ) )
 
 
 ;; Make an error menu that has been rendered and is ready for sending

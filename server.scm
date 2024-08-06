@@ -47,7 +47,7 @@
                            (log-warning "client address: ~A, selector: ~A, no handler for selector"
                                         client-address
                                         selector)
-                           (Ok (make-rendered-error-menu context request "path not found"))))))
+                           (make-rendered-error-menu context request "path not found")))))
               (cases Result response
                 (Ok (v) (write-string v (max-file-size) out))
                 (Error (e)
@@ -55,9 +55,9 @@
                              client-address
                              selector
                              e)
-                  (write-string (make-rendered-error-menu context request "server error")
-                                (max-file-size)
-                                out)))))
+                  (cases Result (make-rendered-error-menu context request "server error")
+                    (Ok (v) (write-string v (max-file-size) out))
+                    (Error (e) (error* 'handle-connect e)))))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

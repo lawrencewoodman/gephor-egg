@@ -67,13 +67,13 @@
             (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
           ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
             (log-warning* "selector isn't safe")
-            (Ok (make-rendered-error-menu context request "invalid selector")))
+            (make-rendered-error-menu context request "invalid selector"))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
-            (Ok (make-rendered-error-menu context request "path not found")))
+            (make-rendered-error-menu context request "path not found"))
           ((not (world-readable? local-path))
             (log-warning* "local path isn't world readable: ~A" local-path)
-            (Ok (make-rendered-error-menu context request "path not found")))
+            (make-rendered-error-menu context request "path not found"))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (log-info* "request file: ~A" local-path)
@@ -90,14 +90,16 @@
                         ;; TODO: Check index is world readable and otherwise suitable
                         ;; TODO: Do we want to use 'index' as filename?
                         (let ((nex-index (read-file (make-pathname local-path "index"))))
-                          (process-nex-index context
-                                             (request-selector request)
-                                             root-dir
-                                             local-path
-                                             nex-index))
+                          (cases Result nex-index
+                            (Ok (v) (process-nex-index context
+                                                       (request-selector request)
+                                                       root-dir
+                                                       local-path
+                                                       v))
+                            (Error (e) nex-index)))
                         (list-dir context (request-selector request) local-path))))
               (cases Result response
-                (Ok (v) (Ok (menu-render v)))
+                (Ok (v) (menu-render v))
                 (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
                                        local-path)))))
           (else
@@ -125,18 +127,18 @@
 (define (read-file path)
   (handle-exceptions ex
     (Error-ex ex "path: ~A, error reading file" path)
-    (let-values (((contents more?)
-                    (call-with-input-file path
-                      (lambda (port)
-                              (values (read-string (max-file-size) port)
-                                      (not (eof-object? (read-string 1 port)))))
-                      #:binary)))
-      (if (eof-object? contents)
-          (Ok "")
-          (if more?
-              (Error-fmt "file: ~A, is greater than ~A bytes" path (max-file-size))
-              (Ok contents) ) ) ) ) )
-
+    (call-with-input-file path
+                          (lambda (port)
+                            (let* ((contents (read-string (max-file-size) port))
+                                   (more? (not (eof-object? (read-string 1 port)))))
+                              (if (eof-object? contents)
+                                  (Ok "")
+                                  (if more?
+                                      (Error-fmt "file: ~A, is greater than ~A bytes"
+                                                  path
+                                                  (max-file-size))
+                                      (Ok contents)))))
+                      #:binary) ) )
 
 
 ;; Sort files so that directories come before regular files and then
@@ -286,20 +288,23 @@ END
                               (context-port context)
                               username
                               path))
-             ((is-dir? path) (dir-item path chomped-username))
-             (else (file-item path username))))
+             ((is-dir? path)
+               (dir-item path chomped-username))
+             (else
+               (file-item path username))))
           ;; Current selector is used for info itemtype so that if type
           ;; not supported by client but still displayed then it
           ;; will just link to the page that it is being displayed on
           (menu-item 'info line selector
                      (context-hostname context) (context-port context) ) ) ) )
 
-  (define (process-nex-index* nex-index)
-    (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
-      (condition-case (Ok (map parse-line lines))
-        (ex () (Error-ex ex "error processing index") ) ) ) )
-
-  (cases Result nex-index
-    (Ok (v) (process-nex-index* v))
-    (Error (e) (nex-index) ) ) )
+  (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
+    (let loop ((lines lines) (res '{}))
+      (if (null? lines)
+          ;; TODO: Is there a quicker way of doing this rather than using reverse?
+          (Ok (reverse res))
+          (let ((item (parse-line (car lines))))
+            (cases Result item
+              (Ok (v) (loop (cdr lines) (cons item res)))
+              (Error (e) (Error-wrap item "error processing index") ) ) ) ) ) ) )
 

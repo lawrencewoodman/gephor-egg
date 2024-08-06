@@ -13,20 +13,20 @@
             (loop (cdr dirs))))))
 
   (test "make-render adds correct .<cr><lf> to end of menu"
-        (string-intersperse '(
+        (Ok (string-intersperse '(
           "1Somewhere interesting\t/interesting\tlocalhost\t70"
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let* ((menu (list (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70))))
           (menu-render menu)))
 
   (test "make-item-info-wrap wraps info text"
-        (string-intersperse '(
+        (Ok (string-intersperse '(
           "iThis is some interesting text that you might like to read about if\tFAKE\tlocalhost\t70"
           "iyou have the time to look at it but the main point is that it is\tFAKE\tlocalhost\t70"
           "ithere to see if the text wrapping works properly\tFAKE\tlocalhost\t70"
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let* ((text (string-intersperse '(
                       "This is some interesting text that you might like to read about if you have the time to look at it but the main"
                       "point is that it is there to see"
@@ -38,7 +38,7 @@
 
   ;; TODO: Will need to add more types as they become supported
   (test "make-item handles a range of types and their human readable names"
-        (string-intersperse '(
+        (Ok (string-intersperse '(
           "0Some text\ttext text\tlocalhost\t70"
           "0Some text\ttext 0\tlocalhost\t70"
           "1A menu\tmenu menu\tlocalhost\t70"
@@ -58,7 +58,7 @@
           "ISome image\timage image\tlocalhost\t70"
           "ISome image\timage I\tlocalhost\t70"
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let* ((menu-src '(
                  (text "Some text" "text text" "localhost" 70)
                  (|0| "Some text" "text 0" "localhost" 70)
@@ -83,29 +83,29 @@
 
 
   (test "make-item allows a single letter itemtype if unknown"
-        (string-intersperse '(
+        (Ok (string-intersperse '(
           "usomething\t/fred/hi\tlocalhost\t70"
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let ((menu (list (menu-item 'u "something" "/fred/hi" "localhost" 70))))
           (menu-render menu)))
 
 
-  (test "make-item raises an exception if unknown itemtype is longer than a single letter"
-        (list 'menu-item "unknown itemtype: uu")
-        (condition-case (menu-item 'uu "something" "/fred/hi" "localhost" 70)
-          (ex () (list (get-condition-property ex 'exn 'location)
-                       (get-condition-property ex 'exn 'message) ) ) ) )
+  (test "make-item returns Error if unknown itemtype is longer than a single letter"
+        '(error ("unknown itemtype: uu"))
+        (cases Result (menu-item 'uu "something" "/fred/hi" "localhost" 70)
+          (Ok (v) (list 'ok v))
+          (Error (e) (list 'error e) ) ) )
 
 
   (test "make-item allows username > 69 despite warning"
-        (string-intersperse (list
+        (Ok (string-intersperse (list
           (sprintf "i~A\t\tlocalhost\t70" (make-string 68 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 69 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 70 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 71 #\a))
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let* ((lengths '(68 69 70 71))
                (menu (map (lambda (l)
                             (menu-item 'info (make-string l #\a) "" "localhost" 70))
@@ -132,10 +132,10 @@
 
 
   (test "make-item-file handles a selector with no file extension"
-        (string-intersperse '(
+        (Ok (string-intersperse '(
           "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
-          "\r\n")
+          "\r\n"))
         (let ((menu (list (menu-item-file fixtures-dir
                                           "A file with no extension"
                                           "noext"
@@ -145,7 +145,7 @@
 
 
 (test "make-item-url handles gopher protocol"
-      (string-intersperse '(
+      (Ok (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "1A good gopher example\t/\texample.com\t70"
         "1My phlog\t~myuser/phlog\texample.com\t70"
@@ -159,7 +159,7 @@
         "1My phlog\t/~myuser/phlog\texample.com\t7070"
         "0Pondering something really clever\t/~myuser/phlog/something-really-clever.txt\texample.com\t7070"
         ".\r\n")
-        "\r\n")
+        "\r\n"))
       (let* ((urls '(
                ;; NOTE: checks handles selectors that start with and without a slash
                ("gopher://example.com" . "A good gopher example")
@@ -181,7 +181,7 @@
 
 
 (test "make-item-url handles http protocol"
-      (string-intersperse '(
+      (Ok (string-intersperse '(
         "hA good http example\tURL:http://example.com\tlocalhost\t70"
         "hA good http example\tURL:http://example.com/\tlocalhost\t70"
         "hMy phlog\tURL:http://example.com/~myuser/phlog\tlocalhost\t70"
@@ -191,7 +191,7 @@
         "hMy phlog\tURL:http://example.com:8080/~myuser/phlog\tlocalhost\t70"
         "hPondering something really clever\tURL:http://example.com:8080/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
-        "\r\n")
+        "\r\n"))
       (let* ((urls '(
                ("http://example.com" . "A good http example")
                ("http://example.com/" . "A good http example")
@@ -208,7 +208,7 @@
 
 
 (test "make-item-url handles https protocol"
-      (string-intersperse '(
+      (Ok (string-intersperse '(
         "hA good https example\tURL:https://example.com\tlocalhost\t70"
         "hA good https example\tURL:https://example.com/\tlocalhost\t70"
         "hMy phlog\tURL:https://example.com/~myuser/phlog\tlocalhost\t70"
@@ -218,7 +218,7 @@
         "hMy phlog\tURL:https://example.com:8443/~myuser/phlog\tlocalhost\t70"
         "hPondering something really clever\tURL:https://example.com:8443/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
-        "\r\n")
+        "\r\n"))
       (let* ((urls '(
                ("https://example.com" . "A good https example")
                ("https://example.com/" . "A good https example")
@@ -235,7 +235,7 @@
 
 
 (test "make-item-url handles ssh protocol"
-      (string-intersperse '(
+      (Ok (string-intersperse '(
         "hsome ssh bbs\tURL:ssh://example.com\tlocalhost\t70"
         "hsome ssh bbs\tURL:ssh://example.com/user/bob\tlocalhost\t70"
         "hsome ssh bbs - my user\tURL:ssh://myuser@example.com\tlocalhost\t70"
@@ -245,7 +245,7 @@
         "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320\tlocalhost\t70"
         "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320/user/bob\tlocalhost\t70"
         ".\r\n")
-        "\r\n")
+        "\r\n"))
       (let* ((urls '(
                ("ssh://example.com" . "some ssh bbs")
                ("ssh://example.com/user/bob" . "some ssh bbs")
@@ -262,11 +262,11 @@
 
 
 (test "make-item-url handles non lower case protocol"
-      (string-intersperse '(
+      (Ok (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
         ".\r\n")
-        "\r\n")
+        "\r\n"))
       (let* ((urls '(
                ("GoPher://example.com" . "A good gopher example")
                ("htTP://example.com" . "A good http example")))
@@ -276,14 +276,14 @@
         (menu-render menu) ) )
 
 
-  (test "make-item-url raises an exception if protocol is unsupported"
-        (list 'menu-item-url "url: fred://example.com, unsupported protocol: fred")
-        (condition-case (menu-item-url "localhost"
-                                       7071
-                                       "Something interesting"
-                                       "fred://example.com")
-          (ex () (list (get-condition-property ex 'exn 'location)
-                       (get-condition-property ex 'exn 'message) ) ) ) )
+  (test "make-item-url returns Error if protocol is unsupported"
+        '(error ("url: fred://example.com, unsupported protocol: fred"))
+        (cases Result (menu-item-url "localhost"
+                                     7071
+                                     "Something interesting"
+                                     "fred://example.com")
+          (Ok (v) (list 'ok v))
+          (Error (e) (list 'error e) ) ) )
 
 
 )

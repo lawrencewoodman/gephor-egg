@@ -179,7 +179,7 @@
           (serve-path context request fixtures-dir)))
 
 
-  (test "serve-path raises Error containing a chain of Errors if problem with serving a directory"
+  (test "serve-path returns Error containing a chain of Errors if problem with serving a directory"
         (list 'error (sprintf "local-path: ~A, error serving directory"
                               (make-pathname fixtures-dir "dir-index_invalid_url_protocol"))
                   "error processing index"
@@ -198,7 +198,7 @@
             (serve-path context request fixtures-dir) ) ) )
 
 
-  (test "serve-path raises Error if file is greater than the number of bytes set by max-file-size"
+  (test "serve-path returns Error if file is greater than the number of bytes set by max-file-size"
         (list 'error (sprintf "local-path: ~A, error serving file"
                            (make-pathname fixtures-dir "a.txt"))
                   (sprintf "file: ~A, is greater than 5 bytes"
