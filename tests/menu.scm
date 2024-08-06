@@ -98,7 +98,7 @@
                        (get-condition-property ex 'exn 'message) ) ) ) )
 
 
-  (test "make-item logs allows username > 69 despite warning"
+  (test "make-item allows username > 69 despite warning"
         (string-intersperse (list
           (sprintf "i~A\t\tlocalhost\t70" (make-string 68 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 69 #\a))
@@ -125,9 +125,9 @@
                          (warning-logger-config
                            (config-logger (warning-logger-config)
                                           port: port)))
-            (map (lambda (l)
-                   (menu-item 'info (make-string l #\a) "" "localhost" 70))
-                 lengths)
+            (for-each (lambda (l)
+                        (menu-item 'info (make-string l #\a) "" "localhost" 70))
+                      lengths)
             (get-output-string port) ) ) )
 
 
