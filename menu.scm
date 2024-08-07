@@ -137,8 +137,6 @@
   (define (item-render item)
     (apply sprintf "~A~A\t~A\t~A\t~A\r\n" item))
 
-  ;; TODO: Handle error Result properly
-  ;; TODO: Implement a loop to make exist easy
   (let ((menu-str
           (foldl (lambda (out-str item)
                    (string-append out-str (item-render item)))
