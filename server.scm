@@ -36,28 +36,28 @@
           (client-address (alist-ref 'client-address connect)))
       (let ((selector (read-selector client-address in)))
         ;; TODO: Should this return a timeout error if selector #f?
-        (if selector
-            (let* ((handler (router-match router selector))
-                   (request (make-request selector client-address))
-                   (response
-                     (if handler
-                         (condition-case (handler context request)
-                           (ex () (Error-ex ex "exception from handler")))
-                         (begin
-                           (log-warning "client address: ~A, selector: ~A, no handler for selector"
-                                        client-address
-                                        selector)
-                           (make-rendered-error-menu context request "path not found")))))
-              (cases Result response
-                (Ok (v) (write-string v (max-file-size) out))
-                (Error (e)
-                  (log-error "client address: ~A, selector: ~A, error from handler: ~A"
-                             client-address
-                             selector
-                             e)
-                  (cases Result (make-rendered-error-menu context request "server error")
-                    (Ok (v) (write-string v (max-file-size) out))
-                    (Error (e) (error* 'handle-connect e)))))))
+        (when selector
+              (let* ((handler (router-match router selector))
+                     (request (make-request selector client-address))
+                     (response
+                       (if handler
+                           (condition-case (handler context request)
+                             (ex () (Error-ex ex "exception from handler")))
+                           (begin
+                             (log-warning "client address: ~A, selector: ~A, no handler for selector"
+                                          client-address
+                                          selector)
+                             (Ok (make-rendered-error-menu context request "path not found"))))))
+                (cases Result response
+                  (Ok (v) (write-string v (max-file-size) out))
+                  (Error (e)
+                    (log-error "client address: ~A, selector: ~A, error from handler: ~A"
+                               client-address
+                               selector
+                               e)
+                    (write-string (make-rendered-error-menu context request "server error")
+                                  (max-file-size)
+                                  out)))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

@@ -141,21 +141,24 @@
   ;; TODO: Implement a loop to make exist easy
   (let ((menu-str
           (foldl (lambda (out-str item)
-                   (cases Result item
-                     (Ok (v) (string-append out-str (item-render v)))
-                     (Error (e) "")))
+                   (string-append out-str (item-render item)))
                  ""
                  menu-items)))
     ;; Properly constructed menus should end with ".\r\n"
-    (Ok (string-append menu-str ".\r\n") ) ) )
+    (string-append menu-str ".\r\n") ) )
 
 
 ;; Make an error menu that has been rendered and is ready for sending
 ;; TODO: Is it a good idea / safe to return the selector?
 (define (make-rendered-error-menu context request msg)
-  (menu-render (list (menu-item 'error msg (request-selector request)
-                                 (context-hostname context)
-                                 (context-port context) ) ) ) )
+  (let ((item (menu-item 'error
+                          msg
+                         (request-selector request)
+                         (context-hostname context)
+                         (context-port context))))
+    (menu-render (list (cases Result item
+                         (Ok (v) v)
+                         (Error (e) (error* 'menu-item e) ) ) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------

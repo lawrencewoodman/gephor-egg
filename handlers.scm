@@ -67,13 +67,15 @@
             (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
           ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
             (log-warning* "selector isn't safe")
-            (make-rendered-error-menu context request "invalid selector"))
+            ;; TODO: Should each of these make-rendered-error-menu calls
+            ;; TODO: return an Error with message to give to client
+            (Ok (make-rendered-error-menu context request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
-            (make-rendered-error-menu context request "path not found"))
+            (Ok (make-rendered-error-menu context request "path not found")))
           ((not (world-readable? local-path))
             (log-warning* "local path isn't world readable: ~A" local-path)
-            (make-rendered-error-menu context request "path not found"))
+            (Ok (make-rendered-error-menu context request "path not found")))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (log-info* "request file: ~A" local-path)
@@ -99,7 +101,7 @@
                             (Error (e) nex-index)))
                         (list-dir context (request-selector request) local-path))))
               (cases Result response
-                (Ok (v) (menu-render v))
+                (Ok (v) (Ok (menu-render v)))
                 (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
                                        local-path)))))
           (else
@@ -169,14 +171,11 @@
 
 
 ;; TODO: Move this, export? and rename?
-;; TODO: Make sure paths are safe
+;; TODO: Make sure paths and selectors are safe
 ;; TODO: Should this check if path is world-readable rather than calling proc?
-;; NOTE: selector-subpath must be checked to be safe before calling list-dir
-;; TODO: Could we just pass selector into this rather than prefix and subpath ??
-;; TODO: This needs to return a Result type and catch exceptions from menu-item-file
 (define (list-dir context selector local-path)
   ;; Returns #f if not a valid file
-  ;; An entry consists of a list (filename is-directory selector)
+  ;; An entry consists of a list (filename is-dir? selector)
   (define (make-dir-entry filename)
     (let ((full-local-filename (make-pathname local-path filename))
           (selector (sprintf "~A~A~A"
@@ -189,21 +188,30 @@
               (list filename #f selector))
             (else #f))))
 
-  (let ((filenames (directory local-path))
-        (hostname (context-hostname context))
-        (port (context-port context)))
-    (Ok (map (lambda (entry)
-               (let ((filename (car entry))
-                     (is-dir (second entry))
-                     (selector (third entry)))
-                 (if is-dir
-                     (menu-item 'menu filename selector hostname port)
-                     (menu-item-file (make-pathname local-path filename)
-                                     filename
-                                     selector
-                                     hostname
-                                     port))))
-             (sort-dir-entries (filter-map make-dir-entry filenames) ) ) ) ) )
+  (let* ((filenames (directory local-path))
+         (hostname (context-hostname context))
+         (port (context-port context))
+         (entries (sort-dir-entries (filter-map make-dir-entry filenames))))
+    (let loop ((entries entries) (res '{}))
+      (if (null? entries)
+          ;; TODO: Is there a quicker way of doing this rather than using reverse?
+          (Ok (reverse res))
+          (let ((entry (car entries)))
+            (let ((item
+                    (let* ((entry (car entries))
+                           (filename (first entry))
+                           (is-dir? (second entry))
+                           (selector (third entry)))
+                      (if is-dir?
+                          (menu-item 'menu filename selector hostname port)
+                          (menu-item-file (make-pathname local-path filename)
+                                          filename
+                                          selector
+                                          hostname
+                                          port)))))
+              (cases Result item
+                (Ok (v) (loop (cdr entries) (cons v res)))
+                (Error (e) item) ) ) ) ) ) ) )
 
 
 ;; The HTML template used by serve-url
@@ -305,6 +313,6 @@ END
           (Ok (reverse res))
           (let ((item (parse-line (car lines))))
             (cases Result item
-              (Ok (v) (loop (cdr lines) (cons item res)))
+              (Ok (v) (loop (cdr lines) (cons v res)))
               (Error (e) (Error-wrap item "error processing index") ) ) ) ) ) ) )
 
