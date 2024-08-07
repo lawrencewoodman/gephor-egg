@@ -91,11 +91,11 @@
 
   ;; Returns a list of threads
   (define (start-connect-handler-threads num-threads)
-    (let loop ((n num-threads) (threads '()))
+    (let loop ((n num-threads))
       (if (= n 0)
-          threads
+          '()
           (let ((thread (start-connect-handler-thread)))
-            (loop (- n 1) (cons thread threads) ) ) ) ) )
+            (cons thread (loop (- n 1) ) ) ) ) ) )
 
 
   (define (stop-requested?)

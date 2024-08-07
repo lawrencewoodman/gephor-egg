@@ -188,30 +188,40 @@
               (list filename #f selector))
             (else #f))))
 
+  (define (entry->menu-item entry)
+    (let ((filename (first entry))
+           (is-dir? (second entry))
+           (selector (third entry)))
+      (if is-dir?
+          (menu-item 'menu
+                     filename
+                     selector
+                     (context-hostname context)
+                     (context-port context))
+          (menu-item-file (make-pathname local-path filename)
+                          filename
+                          selector
+                          (context-hostname context)
+                          (context-port context) ) ) ) )
+
   (let* ((filenames (directory local-path))
-         (hostname (context-hostname context))
-         (port (context-port context))
-         (entries (sort-dir-entries (filter-map make-dir-entry filenames))))
-    (let loop ((entries entries) (res '{}))
-      (if (null? entries)
-          ;; TODO: Is there a quicker way of doing this rather than using reverse?
-          (Ok (reverse res))
-          (let ((entry (car entries)))
-            (let ((item
-                    (let* ((entry (car entries))
-                           (filename (first entry))
-                           (is-dir? (second entry))
-                           (selector (third entry)))
-                      (if is-dir?
-                          (menu-item 'menu filename selector hostname port)
-                          (menu-item-file (make-pathname local-path filename)
-                                          filename
-                                          selector
-                                          hostname
-                                          port)))))
-              (cases Result item
-                (Ok (v) (loop (cdr entries) (cons v res)))
-                (Error (e) item) ) ) ) ) ) ) )
+         (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
+         (menu
+           (call/cc
+             (lambda (exit)
+               (let loop ((entries entries))
+                 (if (null? entries)
+                     '()
+                     (let* ((item (entry->menu-item (car entries))))
+                       (cases Result item
+                         (Ok (v) (cons v (loop (cdr entries))))
+                         (Error (e) (exit (Error-wrap item "error listing directory")))))))))))
+    (if (Result? menu)
+        (cases Result menu
+          (Error (e) menu)
+          (Ok (v) (error* 'list-dir "menu can't be a Result and Ok: ~A" v)))
+        (Ok menu) ) ) )
+
 
 
 ;; The HTML template used by serve-url
@@ -306,13 +316,20 @@ END
           (menu-item 'info line selector
                      (context-hostname context) (context-port context) ) ) ) )
 
-  (let ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t)))
-    (let loop ((lines lines) (res '{}))
-      (if (null? lines)
-          ;; TODO: Is there a quicker way of doing this rather than using reverse?
-          (Ok (reverse res))
-          (let ((item (parse-line (car lines))))
-            (cases Result item
-              (Ok (v) (loop (cdr lines) (cons v res)))
-              (Error (e) (Error-wrap item "error processing index") ) ) ) ) ) ) )
+  (let* ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t))
+         (parsed-lines
+           (call/cc
+             (lambda (exit)
+               (let loop ((lines lines))
+                 (if (null? lines)
+                     '()
+                     (let ((item (parse-line (car lines))))
+                       (cases Result item
+                         (Ok (v) (cons v (loop (cdr lines))))
+                         (Error (e) (exit (Error-wrap item "error processing index")))))))))))
+    (if (Result? parsed-lines)
+        (cases Result parsed-lines
+          (Error (e) parsed-lines)
+          (Ok (v) (error* 'process-nex-index "parsed-lines can't be a Result and Ok: ~A" v)))
+        (Ok parsed-lines) ) ) )
 
