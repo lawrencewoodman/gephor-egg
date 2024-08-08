@@ -32,7 +32,7 @@
 
 
   (test "server returns an 'unknown path' error menu if a route doesn't exist for the selector"
-        "3path not found\tbye\tlocalhost\t7070\r\n.\r\n"
+        "3path not found\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (context request)
                                                     (Ok "hello friend")))))
@@ -43,7 +43,7 @@
 
 
   (test "server returns a 'server error' error menu if a handler raises an exception"
-        "3server error\thello\tlocalhost\t7070\r\n.\r\n"
+        "3server error\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (context request)
                                                     (error "this is an error")))))

@@ -35,7 +35,7 @@
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains '..'"
         (Ok (string-intersperse '(
-          "3invalid selector\t../dir-a\tlocalhost\t70"
+          "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (let* ((context (make-context "localhost" 70))
@@ -44,7 +44,7 @@
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains './'"
         (Ok (string-intersperse '(
-          "3invalid selector\t./dir-a\tlocalhost\t70"
+          "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (let* ((context (make-context "localhost" 70))
@@ -53,7 +53,7 @@
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains a '\\'"
         (Ok (string-intersperse '(
-          "3invalid selector\tdir-a\\fred\tlocalhost\t70"
+          "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (let* ((context (make-context "localhost" 70))
@@ -124,7 +124,7 @@
 
   (test "serve-path returns a 'path not found' error menu if path doesn't exist"
         (Ok (string-intersperse '(
-          "3path not found\tunknown\tlocalhost\t70"
+          "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (let* ((context (make-context "localhost" 70))

@@ -132,11 +132,12 @@
 
 
 ;; Make an error menu that has been rendered and is ready for sending
-;; TODO: Is it a good idea / safe to return the selector?
+;; The selector isn't included in the error menu item in case that
+;; could lead to an attack on the client.
 (define (make-rendered-error-menu context request msg)
   (let ((item (menu-item 'error
                           msg
-                         (request-selector request)
+                         ""
                          (context-hostname context)
                          (context-port context))))
     (cases Result item
