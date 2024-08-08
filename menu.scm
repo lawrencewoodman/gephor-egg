@@ -139,9 +139,9 @@
                          (request-selector request)
                          (context-hostname context)
                          (context-port context))))
-    (menu-render (list (cases Result item
-                         (Ok (v) v)
-                         (Error (e) (error* 'menu-item e) ) ) ) ) ) )
+    (cases Result item
+      (Ok (v) (menu-render (list v)))
+      (Error (e) (error* 'menu-item e) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
