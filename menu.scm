@@ -116,21 +116,6 @@
         (Error-fmt "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 
 
-;; Takes a username and wraps it at the 69th column, as per RFC 1436, to
-;; return a list of menu items
-(: menu-item-info-wrap (string string string fixnum --> (list-of menu-item)))
-(define (menu-item-info-wrap username selector hostname port)
-  ;; TODO: Should we allow some lines to be unwrappable if they don't
-  ;; TODO: contain spaces.
-  ;; TOOD: Should we split the text first and then wrap an then split again
-  ;; TODO: to allow newlines to be used in the source text?
-  ;; TODO: Rewrite a wrap func so don't need to bring in
-  ;; TODO: big fmt and associated packages
-  ;; TODO: escape characters in username such as \t or strip out?
-  (let ((lines (string-split (fmt #f (with-width 69 (wrap-lines username))) "\n")))
-    (map (lambda (line) (menu-item 'info line selector hostname port)) lines) ) )
-
-
 ;; Render the menu as text ready for sending
 (: menu-render ((list-of menu-item) --> string))
 (define (menu-render menu-items)

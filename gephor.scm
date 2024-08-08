@@ -12,7 +12,7 @@
   (start-server stop-server
    make-context make-request
    make-router router-add router-match
-   menu-item menu-item-info-wrap menu-item-file menu-item-url
+   menu-item menu-item-file menu-item-url
    menu-render
    serve-url
    serve-path
@@ -37,7 +37,6 @@
         (chicken tcp)
         (chicken type)
         datatype
-        fmt
         queues
         magic
         simple-logger

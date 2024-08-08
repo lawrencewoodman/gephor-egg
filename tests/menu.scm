@@ -12,6 +12,7 @@
             try-path
             (loop (cdr dirs))))))
 
+  ;; Get the Ok value and if Error thae raise and exception
   (define (Result-get-ok r)
     (cases Result r
            (Ok (v) v)
@@ -23,21 +24,6 @@
           ".\r\n")
           "\r\n")
         (let* ((menu (list (Result-get-ok (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70)))))
-          (menu-render menu)))
-
-  (test "make-item-info-wrap wraps info text"
-        (string-intersperse '(
-          "iThis is some interesting text that you might like to read about if\tFAKE\tlocalhost\t70"
-          "iyou have the time to look at it but the main point is that it is\tFAKE\tlocalhost\t70"
-          "ithere to see if the text wrapping works properly\tFAKE\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let* ((text (string-intersperse '(
-                      "This is some interesting text that you might like to read about if you have the time to look at it but the main"
-                      "point is that it is there to see"
-                      "if the text wrapping works properly")
-                      "\n"))
-               (menu (map Result-get-ok (menu-item-info-wrap text "FAKE" "localhost" 70))))
           (menu-render menu)))
 
 
