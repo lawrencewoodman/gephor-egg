@@ -165,17 +165,14 @@
 (define (read-selector client-address in)
   (condition-case (trim-selector (read-line in 255))
     ((exn i/o net timeout)
-      ;; TODO: Add some details about client
       (log-warning "read selector, client address: ~A, read timeout" client-address)
       #f)
     (ex (exn)
-      ;; TODO: Add some details about client
       (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
                    client-address
                    (get-condition-property ex 'exn 'message))
       #f)
     (ex ()
-      ;; TODO: Add some details about client
       (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
                    client-address
                    (get-condition-property ex 'exn 'message))
