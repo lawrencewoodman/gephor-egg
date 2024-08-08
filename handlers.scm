@@ -28,12 +28,7 @@
         (Ok (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
-;; TODO: Move this note about selectors not being file paths as not relevant
-;; TODO: to serve-path and in fact should specify that it must be a valid
-;; TODO: POSIX? path.
-;; NOTE: When dealing with paths we must remember that a selector has no
-;; NOTE: notion of a file path.  It is purely up to the server to decide
-;; NOTE: how to understand it.
+;; The selector must be a valid file path and not start with a "/"
 ;;
 ;; TODO: Test how this handles an empty selector, the same as "/"?
 ;; TODO: How should this handle selectors with directories ending with and without "/"
@@ -162,7 +157,7 @@
 ;; Detect pathnames that are unsafe because they could lead to moving beyond
 ;; the intended folders or otherwise.  Backslashes are also detected
 ;; because of a warning about them in the Spiffy web server source code.
-;; TODO: Should we text for nul in a string as per Spiffy?
+;; TODO: Should we test for nul in a string as per Spiffy?
 ;; TODO: Look also at pygopherd isrequestsecure function
 (define (unsafe-pathname? pathname)
   (or (substring-index "./" pathname)
