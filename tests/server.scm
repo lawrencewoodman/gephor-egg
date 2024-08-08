@@ -64,5 +64,20 @@
               (stop-server thread)
               response) ) ) )
 
+
+  (test "server removes whitespace and '/' characters at beginning and end of selectors before passing to handlers"
+        '(#t #t #t #t #t #t #t #t)
+        (let* ((port 7070)
+               (router (make-router (cons "*" (lambda (context request)
+                                                (Ok (request-selector request))))))
+               (thread (start-test-server port router))
+               (selectors '("/test" " /test" " / test" "/ test" " test"
+                            "test/" "test//" "test / /")))
+          (let ((responses (map (lambda (selector)
+                                  (string=? "test" (gopher-test-get port selector)))
+                                selectors)))
+            (stop-server thread)
+            responses) ) )
+
 )
 

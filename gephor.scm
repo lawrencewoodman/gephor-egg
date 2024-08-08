@@ -10,7 +10,8 @@
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gephor
   (start-server stop-server
-   make-context make-request
+   make-context
+   make-request request-selector request-client-address
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
    menu-render
