@@ -13,18 +13,48 @@
 ;; Exported Definitions ------------------------------------------------------
 
 (define (start-server hostname port router)
-  ;; server-ready-mutex used to check that server is ready to accept
-  ;; connections before returning from procedure
+  ;; server-ready-mutex is used to check that server is ready to accept
+  ;; connections before returning from procedure.
+  ;; connects-mutex is used to prevent simultaneous queue operations
+  ;; connects-get-cond is used to wait for an item in the connects queue
   (let ((requests (make-queue))
         (connects (make-queue))
         (context (make-context hostname port))
-        (server-ready-mutex (make-mutex)))
+        (server-ready-mutex (make-mutex))
+        (connects-mutex (make-mutex))
+        (connects-get-cond (make-condition-variable)))
+
+  ;; Add a connect to connects queue
+  ;; Thread safety is maintained by connects-mutex and connects-get-cond
+  (define (add-connect! connect)
+    (mutex-lock! connects-mutex)
+    (queue-add! connects connect)
+    (condition-variable-signal! connects-get-cond)
+    (mutex-unlock! connects-mutex) )
+
+  ;; Returns a connect from connects queue or #f if times out waiting
+  ;; for a connect item in queue
+  ;; Thread safety is maintained by connects-mutex and connects-get-cond
+  (define (get-connect!)
+    ;; TODO: What should timeout be, tcp-accept-timeout? or a custom parameter?
+    ;; TODO: A longer value than 0.1 would be more efficient but slower for testing
+    (let ((timeout 0.1))
+      (if (not (mutex-lock! connects-mutex timeout))
+          #f
+          (if (not (queue-empty? connects))
+              (let ((connect (queue-remove! connects)))
+                (mutex-unlock! connects-mutex #f)
+                connect)
+              (begin
+                (if (not (mutex-unlock! connects-mutex connects-get-cond timeout))
+                    #f
+                    (get-connect!) ) ) ) ) ) )
 
   (define (client-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (log-info "client address: ~A, connection request" client-address)
-      (queue-add! connects (list (cons 'in in) (cons 'out out)
-                                 (cons 'client-address client-address) ) ) ) )
+      (add-connect! (list (cons 'in in) (cons 'out out)
+                          (cons 'client-address client-address) ) ) ) )
 
 
   ;; Parameter: max-file-size controls the maximum size file
@@ -71,16 +101,9 @@
                     (log-error "connect handler thread: ~A"
                                (get-condition-property ex 'exn 'message))
                     (signal ex))
-                  (if (queue-empty? connects)
-                      ;; The thread-sleep! is to prevent the server from
-                      ;; continually polling when the connects queue is empty
-                      ;; TODO: Find a better way of doing this perhaps using a mutex
-                      ;; TODO: and altering it on client-connect
-                      ;; TODO: What if another thread has emptied the queue
-                      ;; TODO: between testing if empty and removing item?
-                      (thread-sleep! 0.1)
-                      (let* ((connect (queue-remove! connects)))
-                            (handle-connect connect)))
+                  (let ((connect (get-connect!)))
+                    (when connect
+                          (handle-connect connect)))
                   (unless (stop-requested?)
                           (loop)))))))
       (let ((thread (make-thread connect-handler)))
