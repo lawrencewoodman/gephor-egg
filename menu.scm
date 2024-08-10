@@ -27,11 +27,11 @@
 ;; |5| Dos Binary itemtype not recommended as it is unclear what this
 ;;     is and it should be able to be replaced by |9| in every instance.
 ;;
-;; Raises an exception if an unknown itemtype is used which is longer
-;; than 1 character.
-;;
 ;; logs a warning if usernames > 69 characters as per RFC 1436
 ;;
+;; Returns a Result type
+;; It will return an Error of an unknown itemtype is used which is
+;; longer than 1 character
 (: menu-item (symbol string string string fixnum --> menu-item))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
