@@ -125,14 +125,4 @@
   (error location (apply sprintf args) ) )
 
 
-;; Raise an exception and point to the previous exception message at the end
-;; of the message after '->' to add context to an exception by making a chain
-;; of exceptions.
-;; TODO: Do we still need this?
-(define (error-wrap ex location formatstring . args)
-  (error* location "~? -> ~A"
-                   formatstring
-                   args
-                   (get-condition-property ex 'exn 'message) ) )
-
 )
