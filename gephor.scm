@@ -79,7 +79,6 @@
 )
 
 
-;; TODO: should this be exported just so can be used in tests?
 (define-record-type request
   (make-request selector client-address)
   request?
