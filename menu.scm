@@ -58,7 +58,6 @@
 
 
 ;; TODO: Test file check fail
-;; TODO: Should we pass context rather than supplying hostname and port
 ;; TODO: Check if this works with non POSIX style paths
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
