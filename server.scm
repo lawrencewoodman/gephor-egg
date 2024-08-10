@@ -188,15 +188,11 @@
 (define (read-selector client-address in)
   (condition-case (trim-selector (read-line in 255))
     ((exn i/o net timeout)
-      (log-warning "read selector, client address: ~A, read timeout" client-address)
+      (log-warning "client address: ~A, read selector timeout"
+                   client-address)
       #f)
     (ex (exn)
-      (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
-                   client-address
-                   (get-condition-property ex 'exn 'message))
-      #f)
-    (ex ()
-      (log-warning "read-selector, client address: ~A, problem reading selector, ~A"
+      (log-warning "client address: ~A, problem reading selector, ~A"
                    client-address
                    (get-condition-property ex 'exn 'message))
       #f) ) )
