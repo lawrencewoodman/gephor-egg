@@ -142,7 +142,7 @@
                          (context-port context))))
     (cases Result item
       (Ok (v) (menu-render (list v)))
-      (Error (e) (error* 'menu-item e) ) ) ) )
+      (Error (e) (error* 'menu-item-rendered-error-menu e) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
