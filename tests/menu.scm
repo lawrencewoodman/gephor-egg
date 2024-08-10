@@ -12,11 +12,12 @@
             try-path
             (loop (cdr dirs))))))
 
-  ;; Get the Ok value and if Error thae raise and exception
+  ;; Get the Ok value and if Error thae raise an exception
   (define (Result-get-ok r)
     (cases Result r
            (Ok (v) v)
-           (Error (e) (error* 'Result-get-ok "Result is Error: ~A" e) ) ) )
+           (Error (e) (error (sprintf 'Result-get-ok "Result is Error: ~A" e) ) ) ) )
+
 
   (test "make-render adds correct .<cr><lf> to end of menu"
         (string-intersperse '(
@@ -129,12 +130,22 @@
           "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (Result-get-ok (menu-item-file fixtures-dir
+        (let ((menu (list (Result-get-ok (menu-item-file (make-pathname fixtures-dir "noext")
                                                          "A file with no extension"
                                                          "noext"
                                                          "localhost"
                                                          70)))))
           (menu-render menu)))
+
+
+  (test "make-item-file returns an Error if the file doesn't exist"
+        (Error-fmt "local-path: ~A, file type check failed"
+                   (make-pathname fixtures-dir "nonexistent.txt"))
+        (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
+                        "A file that doesn't exist"
+                        "nonexistent.txt"
+                        "localhost"
+                        70) )
 
 
 (test "make-item-url handles gopher protocol"

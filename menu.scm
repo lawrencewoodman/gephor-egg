@@ -57,7 +57,6 @@
               (Error-fmt "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
 
 
-;; TODO: Test file check fail
 ;; TODO: Check if this works with non POSIX style paths
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
@@ -67,8 +66,6 @@
 (: menu-item-file (string string string string fixnum --> menu-item))
 (define (menu-item-file local-path username selector hostname port)
   ;; TODO: Check local-path is safe
-  ;; TODO: Catch exceptions
-  ;; TODO: test and handle files not present
   (let* ((mime-type (identify local-path 'mime))
          (mime-match (irregex-search mime-split-regex mime-type)))
     (if (irregex-match-data? mime-match)
@@ -85,7 +82,7 @@
                                    'text)
                             (else 'binary))))
             (menu-item itemtype username selector hostname port)))
-        (Error "local-path: ~A, file type check failed" local-path) ) ) )
+        (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) )
 
 
 
