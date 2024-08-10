@@ -28,10 +28,9 @@
         (Ok (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
-;; The selector must be a valid file path and not start with a "/"
-;;
-;; TODO: Test how this handles an empty selector, the same as "/"?
-;; TODO: How should this handle selectors with directories ending with and without "/"
+;; The selector must be a valid file path and not start or end with a "/"
+;; this is checked because although the server should strip these from
+;; the selector, the handler might reintroduce them.
 (define (serve-path context request root-dir)
 
   (define (log-info* . args)
@@ -54,16 +53,13 @@
         (substring-index "\\" root-dir)
         (substring-index ".." root-dir) ) )
 
-  ;; TODO: Rename local-path ?
-  ;; TODO: Check selector and path are safe
-  ;; TODO: Find a better way of reducing safety check of root-dir and local-path
+
+  (when (invalid-root-dir? root-dir)
+        (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
+
   (let ((local-path (make-pathname root-dir (request-selector request))))
-    (cond ((invalid-root-dir? root-dir)
-            (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
-          ((unsafe-pathname? local-path)   ;; TODO: Is this right for NEX style now?
+    (cond ((unsafe-selector-pathname? (request-selector request))
             (log-warning* "selector isn't safe")
-            ;; TODO: Should each of these make-rendered-error-menu calls
-            ;; TODO: return an Error with message to give to client
             (Ok (make-rendered-error-menu context request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
@@ -154,15 +150,21 @@
                   (string<? a-filename b-filename))))))))
 
 
-;; Detect pathnames that are unsafe because they could lead to moving beyond
-;; the intended folders or otherwise.  Backslashes are also detected
-;; because of a warning about them in the Spiffy web server source code.
+;; We want to prevent root traversal attacks and include '\' in the
+;; list of invalid characters because of an apparent bug according to
+;; the Spiffy web server source code which says that this can be turned
+;; into a '/' sometimes by Chicken.
+;; This also ensures that selectors don't start or end with a '/'
+;; which ensures that there are no surprises when forming local paths.
 ;; TODO: Should we test for nul in a string as per Spiffy?
 ;; TODO: Look also at pygopherd isrequestsecure function
-(define (unsafe-pathname? pathname)
-  (or (substring-index "./" pathname)
-      (substring-index ".." pathname)
-      (substring-index "\\" pathname)))
+(define (unsafe-selector-pathname? selector)
+  (let ((len (string-length selector)))
+    (or (and (> len 0) (substring=? "/" selector 0 0))
+        (and (> len 0) (substring-index "/" selector (sub1 len)))
+        (substring-index "./" selector)
+        (substring-index ".." selector)
+        (substring-index "\\" selector) ) ) )
 
 
 ;; TODO: Move this, export? and rename?

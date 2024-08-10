@@ -32,6 +32,23 @@
                (request (make-request "dir-a" "127.0.0.1")))
           (serve-path context request fixtures-dir) ) )
 
+  (test "serve-path returns an 'invalid selector' error menu if selector starts with a '/'"
+        (Ok (string-intersperse '(
+          "3invalid selector\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "/dir-a" "127.0.0.1")))
+          (serve-path context request fixtures-dir) ) )
+
+  (test "serve-path returns an 'invalid selector' error menu if selector ends with a '/'"
+        (Ok (string-intersperse '(
+          "3invalid selector\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (let* ((context (make-context "localhost" 70))
+               (request (make-request "dir-a/" "127.0.0.1")))
+          (serve-path context request fixtures-dir) ) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains '..'"
         (Ok (string-intersperse '(
