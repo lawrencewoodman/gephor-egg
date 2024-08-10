@@ -66,8 +66,8 @@
               (request (make-request "dir-a" "127.0.0.1"))
               (local-dir (sprintf "~A/" fixtures-dir)))
           (condition-case (serve-path context request local-dir)
-            (ex () (list (get-condition-property ex 'exn 'location)
-                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+            (ex (exn) (list (get-condition-property ex 'exn 'location)
+                            (get-condition-property ex 'exn 'message) ) ) ) ) )
 
 
   (test "serve-path raises an exception if root-dir is a relative dir"
@@ -76,8 +76,8 @@
               (request (make-request "dir-a" "127.0.0.1"))
               (local-dir "fixtures"))
           (condition-case (serve-path context request local-dir)
-            (ex () (list (get-condition-property ex 'exn 'location)
-                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+            (ex (exn) (list (get-condition-property ex 'exn 'location)
+                            (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir is a relative dir of the form ./"
         (list 'serve-path "root-dir isn't valid: ./")
@@ -85,8 +85,8 @@
                (request (make-request "dir-a" "127.0.0.1"))
                (local-dir "./"))
           (condition-case (serve-path context request local-dir)
-            (ex () (list (get-condition-property ex 'exn 'location)
-                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+            (ex (exn) (list (get-condition-property ex 'exn 'location)
+                            (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir contains .."
         (list 'serve-path "root-dir isn't valid: /..")
@@ -94,8 +94,8 @@
               (request (make-request "dir-a" "127.0.0.1"))
               (local-dir "/.."))
           (condition-case (serve-path context request local-dir)
-            (ex () (list (get-condition-property ex 'exn 'location)
-                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+            (ex (exn) (list (get-condition-property ex 'exn 'location)
+                            (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir contains \\"
         (list 'serve-path "root-dir isn't valid: /\\")
@@ -103,8 +103,8 @@
               (request (make-request "dir-a" "127.0.0.1"))
               (local-dir "/\\"))
           (condition-case (serve-path context request local-dir)
-            (ex () (list (get-condition-property ex 'exn 'location)
-                         (get-condition-property ex 'exn 'message) ) ) ) ) )
+            (ex (exn) (list (get-condition-property ex 'exn 'location)
+                            (get-condition-property ex 'exn 'message) ) ) ) ) )
 
 
   (test "serve-path returns a 'path not found' error menu if path isn't world readable"
@@ -240,7 +240,7 @@
         (let* ((context (make-context "localhost" 70))
                (request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
           (condition-case (serve-url context request)
-            (ex () (get-condition-property ex 'exn 'message) ) ) ) )
+            (ex (exn) (get-condition-property ex 'exn 'message) ) ) ) )
 
 )
 
