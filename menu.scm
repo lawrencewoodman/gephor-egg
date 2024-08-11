@@ -57,14 +57,13 @@
               (Error-fmt "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
 
 
-;; TODO: Check if this works with non POSIX style paths
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
 ;; using libmagic.
 ;;
 ;; Returns a Result type
-(: menu-item-file (string string string string fixnum --> menu-item))
-(define (menu-item-file local-path username selector hostname port)
+(: menu-item-file ((struct context) string string string --> (struct Result)))
+(define (menu-item-file context local-path username selector)
   ;; TODO: Check local-path is safe
   (let* ((mime-type (identify local-path 'mime))
          (mime-match (irregex-search mime-split-regex mime-type)))
@@ -81,25 +80,28 @@
                                    'html)
                                    'text)
                             (else 'binary))))
-            (menu-item itemtype username selector hostname port)))
+            (menu-item itemtype
+                       username
+                       selector
+                       (context-hostname context)
+                       (context-port context))))
         (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) )
 
 
 
 ;; Supporters protocols: gopher ssh http https
 ;; TODO: Expand list of supported protocols
-;; our-hostname and our-port refer to the hostname and port our server
-;; is using so that we can support clients that don't support the URL:
-;; prefix selectors and 'h' itemtype.  These clients will go to the selector
-;; beginning with URL: on our server and should be served an HTML page which points
-;; to the desired URL.  This is currently used by ssh, http and https
-;; and conforms to:
+;; Passing context allows us to refer to this server so that we can support
+;; clients that don't support the URL: prefix selectors and 'h' itemtype.
+;; These clients will go to the selector beginning with URL: on our server
+;; and should be served an HTML page which points to the desired URL.
+;; This is currently used by ssh, http and https and conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
 ;; Returns a Result type
 ;; Returns an Error if protocol is unknown
-(: menu-item-url (string fixnum string string --> menu-item))
-(define (menu-item-url our-hostname our-port username url)
+(: menu-item-url ((struct context) string string --> (struct Result)))
+(define (menu-item-url context username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
     (case (string->symbol protocol)
       ((gopher)
@@ -107,7 +109,11 @@
         (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
           (menu-item itemtype username path host (or port 70))))
       ((ssh http https)
-        (menu-item 'html username (sprintf "URL:~A" url) our-hostname our-port))
+        (menu-item 'html
+                   username
+                   (sprintf "URL:~A" url)
+                   (context-hostname context)
+                   (context-port context)))
       (else
         (Error-fmt "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 

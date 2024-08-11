@@ -195,11 +195,10 @@
                      selector
                      (context-hostname context)
                      (context-port context))
-          (menu-item-file (make-pathname local-path filename)
+          (menu-item-file context
+                          (make-pathname local-path filename)
                           filename
-                          selector
-                          (context-hostname context)
-                          (context-port context) ) ) ) )
+                          selector) ) ) )
 
   (let* ((filenames (directory local-path))
          (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
@@ -264,20 +263,18 @@ END
   ;; TODO: Handle file not existing
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file (make-pathname root-dir (trim-selector path))
+        (menu-item-file context
+                        (make-pathname root-dir (trim-selector path))
                         username
-                        (trim-selector path)
-                        (context-hostname context)
-                        (context-port context))
+                        (trim-selector path))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       path)))
-          (menu-item-file (make-pathname local-path (trim-selector path))
+          (menu-item-file context
+                          (make-pathname local-path (trim-selector path))
                           username
-                          item-selector
-                          (context-hostname context)
-                          (context-port context)))))
+                          item-selector))))
 
   (define (is-dir? path)
     (substring-index "/" path (sub1 (string-length path))))
@@ -299,10 +296,7 @@ END
                                        maybe-username)))
             (cond
               ((is-url? path)
-                (menu-item-url (context-hostname context)
-                               (context-port context)
-                               username
-                               path))
+                (menu-item-url context username path))
               ((is-dir? path)
                 (dir-item path chomped-username))
               (else

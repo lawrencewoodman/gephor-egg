@@ -130,22 +130,20 @@
           "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (Result-get-ok (menu-item-file (make-pathname fixtures-dir "noext")
+        (let ((menu (list (Result-get-ok (menu-item-file (make-context "localhost" 70)
+                                                         (make-pathname fixtures-dir "noext")
                                                          "A file with no extension"
-                                                         "noext"
-                                                         "localhost"
-                                                         70)))))
+                                                         "noext")))))
           (menu-render menu)))
 
 
   (test "make-item-file returns an Error if the file doesn't exist"
         (Error-fmt "local-path: ~A, file type check failed"
                    (make-pathname fixtures-dir "nonexistent.txt"))
-        (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
+        (menu-item-file (make-context "localhost" 70)
+                        (make-pathname fixtures-dir "nonexistent.txt")
                         "A file that doesn't exist"
-                        "nonexistent.txt"
-                        "localhost"
-                        70) )
+                        "nonexistent.txt") )
 
 
 (test "make-item-url handles gopher protocol"
@@ -164,7 +162,8 @@
         "0Pondering something really clever\t/~myuser/phlog/something-really-clever.txt\texample.com\t7070"
         ".\r\n")
         "\r\n")
-      (let* ((urls '(
+      (let* ((context (make-context "localhost" 7071))
+             (urls '(
                ;; NOTE: checks handles selectors that start with and without a slash
                ("gopher://example.com" . "A good gopher example")
                ("gopher://example.com/" . "A good gopher example")
@@ -179,7 +178,7 @@
                ("gopher://example.com:7070/1/~myuser/phlog" . "My phlog")
                ("gopher://example.com:7070/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
              (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url "localhost" 7071 (cdr x) (car x))))
+                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
                          urls)))
         (menu-render menu) ) )
 
@@ -196,7 +195,8 @@
         "hPondering something really clever\tURL:http://example.com:8080/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((urls '(
+      (let* ((context (make-context "localhost" 70))
+             (urls '(
                ("http://example.com" . "A good http example")
                ("http://example.com/" . "A good http example")
                ("http://example.com/~myuser/phlog" . "My phlog")
@@ -206,7 +206,7 @@
                ("http://example.com:8080/~myuser/phlog" . "My phlog")
                ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
              (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url "localhost" 70 (cdr x) (car x))))
+                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
                          urls)))
         (menu-render menu) ) )
 
@@ -223,7 +223,8 @@
         "hPondering something really clever\tURL:https://example.com:8443/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((urls '(
+      (let* ((context (make-context "localhost" 70))
+             (urls '(
                ("https://example.com" . "A good https example")
                ("https://example.com/" . "A good https example")
                ("https://example.com/~myuser/phlog" . "My phlog")
@@ -233,7 +234,7 @@
                ("https://example.com:8443/~myuser/phlog" . "My phlog")
                ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
              (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url "localhost" 70 (cdr x) (car x))))
+                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
                          urls)))
         (menu-render menu) ) )
 
@@ -250,7 +251,8 @@
         "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320/user/bob\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((urls '(
+      (let* ((context (make-context "localhost" 70))
+             (urls '(
                ("ssh://example.com" . "some ssh bbs")
                ("ssh://example.com/user/bob" . "some ssh bbs")
                ("ssh://myuser@example.com" . "some ssh bbs - my user")
@@ -260,7 +262,7 @@
                ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
                ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
              (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url "localhost" 70 (cdr x) (car x))))
+                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
                          urls)))
         (menu-render menu) ) )
 
@@ -271,23 +273,21 @@
         "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((urls '(
+      (let* ((context (make-context "localhost" 70))
+             (urls '(
                ("GoPher://example.com" . "A good gopher example")
                ("htTP://example.com" . "A good http example")))
              (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url "localhost" 70 (cdr x) (car x))))
+                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
                          urls)))
         (menu-render menu) ) )
 
 
   (test "make-item-url returns Error if protocol is unsupported"
-        '(error ("url: fred://example.com, unsupported protocol: fred"))
-        (cases Result (menu-item-url "localhost"
-                                     7071
-                                     "Something interesting"
-                                     "fred://example.com")
-          (Ok (v) (list 'ok v))
-          (Error (e) (list 'error e) ) ) )
+        (Error (list "url: fred://example.com, unsupported protocol: fred"))
+        (menu-item-url (make-context "localhost" 7071)
+                       "Something interesting"
+                       "fred://example.com") )
 
 
 )
