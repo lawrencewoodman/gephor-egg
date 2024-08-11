@@ -202,7 +202,7 @@
                               (make-pathname fixtures-dir
                                              "dir-index_file_not_present"))
                      "error processing index"
-                     (sprintf "local-path: ~A, file type check failed"
+                     (sprintf "local-path: ~A, file doesn't exist"
                               (make-pathname (list fixtures-dir
                                                    "dir-index_file_not_present")
                                              "nonexistent.txt"))))

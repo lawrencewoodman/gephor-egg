@@ -260,7 +260,6 @@ END
           (menu-item 'menu username item-selector
                      (context-hostname context) (context-port context)))))
 
-  ;; TODO: Handle file not existing
   (define (file-item path username)
     (if (absolute-pathname? path)
         (menu-item-file context

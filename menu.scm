@@ -65,27 +65,29 @@
 (: menu-item-file ((struct context) string string string --> (struct Result)))
 (define (menu-item-file context local-path username selector)
   ;; TODO: Check local-path is safe
-  (let* ((mime-type (identify local-path 'mime))
-         (mime-match (irregex-search mime-split-regex mime-type)))
-    (if (irregex-match-data? mime-match)
-        (let ((media-type (irregex-match-substring mime-match 1))
-              (media-subtype (irregex-match-substring mime-match 2)))
-          (let ((itemtype (cond
-                            ((string=? media-type "image")
-                               (if (string=? media-subtype "gif")
-                                   'gif
-                                   'image))
-                            ((string=? media-type "text")
-                               (if (string=? media-subtype "html")
-                                   'html)
-                                   'text)
-                            (else 'binary))))
-            (menu-item itemtype
-                       username
-                       selector
-                       (context-hostname context)
-                       (context-port context))))
-        (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) )
+  (if (not (file-exists? local-path))
+      (Error-fmt "local-path: ~A, file doesn't exist" local-path)
+      (let* ((mime-type (identify local-path 'mime))
+             (mime-match (irregex-search mime-split-regex mime-type)))
+        (if (irregex-match-data? mime-match)
+            (let ((media-type (irregex-match-substring mime-match 1))
+                  (media-subtype (irregex-match-substring mime-match 2)))
+              (let ((itemtype (cond
+                                ((string=? media-type "image")
+                                   (if (string=? media-subtype "gif")
+                                       'gif
+                                       'image))
+                                ((string=? media-type "text")
+                                   (if (string=? media-subtype "html")
+                                       'html)
+                                       'text)
+                                (else 'binary))))
+                (menu-item itemtype
+                           username
+                           selector
+                           (context-hostname context)
+                           (context-port context))))
+            (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) ) )
 
 
 

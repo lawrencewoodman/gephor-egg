@@ -138,7 +138,7 @@
 
 
   (test "make-item-file returns an Error if the file doesn't exist"
-        (Error-fmt "local-path: ~A, file type check failed"
+        (Error-fmt "local-path: ~A, file doesn't exist"
                    (make-pathname fixtures-dir "nonexistent.txt"))
         (menu-item-file (make-context "localhost" 70)
                         (make-pathname fixtures-dir "nonexistent.txt")
