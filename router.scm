@@ -11,21 +11,20 @@
 
 
 ;; TODO: Create a types file
-(define-type router (list-of (pair string procedure)))
+(define-type handler ((struct context) (struct request) -> string))
+(define-type router (list-of (pair string handler)))
 
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; TODO: Add args to type def
-;; TODO: typedef procedure?
-(: make-router ((list-of (pair string procedure)) --> router))
+(: make-router ((list-of (pair string handler)) --> router))
 (define (make-router . args)
   (router-sort-routes args))
 
 
 ;; TODO: check the pattern doesn't already exist
 ;; TODO: error if multiple * or * not at end
-(: router-add (router string procedure --> router))
+(: router-add (router string handler --> router))
 (define (router-add router pattern proc)
   (let ((route (cons pattern proc)))
     ; Add the route to the list of routes and resort
@@ -34,7 +33,7 @@
 
 ;; TODO: should this return the pattern as well, perhaps using values?
 ;; TODO: define the procedure argument types?
-(: router-match (router string --> (or procedure boolean)))
+(: router-match (router string --> (or handler boolean)))
 (define (router-match router selector)
   (let loop ((routes router))
     (and (not (null? routes))
