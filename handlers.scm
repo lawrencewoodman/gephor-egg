@@ -245,7 +245,6 @@ END
 
 ;; Process a NEX style index file.  This describes a menu and returns a list
 ;; of menu items.
-;; TODO: Handle an empty index
 ;; TODO: Rename index to something else
 (define (process-nex-index context selector root-dir local-path nex-index)
 

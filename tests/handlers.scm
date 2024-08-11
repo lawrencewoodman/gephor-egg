@@ -7,6 +7,7 @@
         (Ok (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
+          "1dir-index_empty_file\tdir-index_empty_file\tlocalhost\t70"
           "1dir-index_file_not_present\tdir-index_file_not_present\tlocalhost\t70"
           "1dir-index_invalid_url_protocol\tdir-index_invalid_url_protocol\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
@@ -166,7 +167,6 @@
 
   (test "serve-path process 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
-        ;; TODO: Can we just compare against Ok
         (Ok (string-intersperse '(
           "i---[[[ Some Title ]]]---\tdir-b\tlocalhost\t70"
           "i\tdir-b\tlocalhost\t70"
@@ -197,7 +197,18 @@
           (serve-path context request fixtures-dir)))
 
 
-  (test "serve-path returns Error if file in index doesn't exist"
+  (test "serve-path process empty 'index' files properly if present"
+        ;; Whitespace is stripped at the beginning and end of file
+        (Ok (string-intersperse '(
+          "i\tdir-index_empty_file\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (let* ((context (make-context "localhost" 70))
+              (request (make-request "dir-index_empty_file" "127.0.0.1")))
+          (serve-path context request fixtures-dir)))
+
+
+  (test "serve-path returns Error if file in 'index' doesn't exist"
         (Error (list (sprintf "local-path: ~A, error serving directory"
                               (make-pathname fixtures-dir
                                              "dir-index_file_not_present"))
