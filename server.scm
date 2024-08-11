@@ -43,7 +43,7 @@
           #f
           (if (not (queue-empty? connects))
               (let ((connect (queue-remove! connects)))
-                (mutex-unlock! connects-mutex #f)
+                (mutex-unlock! connects-mutex)
                 connect)
               (begin
                 (if (not (mutex-unlock! connects-mutex connects-get-cond timeout))
