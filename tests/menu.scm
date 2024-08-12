@@ -130,20 +130,20 @@
           "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (Result-get-ok (menu-item-file (make-context "localhost" 70)
-                                                         (make-pathname fixtures-dir "noext")
-                                                         "A file with no extension"
-                                                         "noext")))))
-          (menu-render menu)))
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (let ((menu (list (Result-get-ok (menu-item-file (make-pathname fixtures-dir "noext")
+                                                           "A file with no extension"
+                                                           "noext")))))
+            (menu-render menu) ) ) )
 
 
   (test "make-item-file returns an Error if the file doesn't exist"
         (Error-fmt "local-path: ~A, file doesn't exist"
                    (make-pathname fixtures-dir "nonexistent.txt"))
-        (menu-item-file (make-context "localhost" 70)
-                        (make-pathname fixtures-dir "nonexistent.txt")
-                        "A file that doesn't exist"
-                        "nonexistent.txt") )
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
+                          "A file that doesn't exist"
+                          "nonexistent.txt") ) )
 
 
 (test "make-item-url handles gopher protocol"
@@ -162,25 +162,25 @@
         "0Pondering something really clever\t/~myuser/phlog/something-really-clever.txt\texample.com\t7070"
         ".\r\n")
         "\r\n")
-      (let* ((context (make-context "localhost" 7071))
-             (urls '(
-               ;; NOTE: checks handles selectors that start with and without a slash
-               ("gopher://example.com" . "A good gopher example")
-               ("gopher://example.com/" . "A good gopher example")
-               ("gopher://example.com/1~myuser/phlog" . "My phlog")
-               ("gopher://example.com/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-               ("gopher://example.com/1/~myuser/phlog" . "My phlog")
-               ("gopher://example.com/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-               ("gopher://example.com:7070" . "A good gopher example")
-               ("gopher://example.com:7070/" . "A good gopher example")
-               ("gopher://example.com:7070/1~myuser/phlog" . "My phlog")
-               ("gopher://example.com:7070/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-               ("gopher://example.com:7070/1/~myuser/phlog" . "My phlog")
-               ("gopher://example.com:7070/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-             (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
-                         urls)))
-        (menu-render menu) ) )
+      (parameterize ((server-hostname "localhost") (server-port 7071))
+        (let* ((urls '(
+                 ;; NOTE: checks handles selectors that start with and without a slash
+                 ("gopher://example.com" . "A good gopher example")
+                 ("gopher://example.com/" . "A good gopher example")
+                 ("gopher://example.com/1~myuser/phlog" . "My phlog")
+                 ("gopher://example.com/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+                 ("gopher://example.com/1/~myuser/phlog" . "My phlog")
+                 ("gopher://example.com/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+                 ("gopher://example.com:7070" . "A good gopher example")
+                 ("gopher://example.com:7070/" . "A good gopher example")
+                 ("gopher://example.com:7070/1~myuser/phlog" . "My phlog")
+                 ("gopher://example.com:7070/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+                 ("gopher://example.com:7070/1/~myuser/phlog" . "My phlog")
+                 ("gopher://example.com:7070/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+               (menu (map (lambda (x)
+                            (Result-get-ok (menu-item-url (cdr x) (car x))))
+                           urls)))
+          (menu-render menu) ) ) )
 
 
 (test "make-item-url handles http protocol"
@@ -195,20 +195,21 @@
         "hPondering something really clever\tURL:http://example.com:8080/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((context (make-context "localhost" 70))
-             (urls '(
-               ("http://example.com" . "A good http example")
-               ("http://example.com/" . "A good http example")
-               ("http://example.com/~myuser/phlog" . "My phlog")
-               ("http://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-               ("http://example.com:8080" . "A good http example")
-               ("http://example.com:8080/" . "A good http example")
-               ("http://example.com:8080/~myuser/phlog" . "My phlog")
-               ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-             (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
-                         urls)))
-        (menu-render menu) ) )
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* (
+               (urls '(
+                 ("http://example.com" . "A good http example")
+                 ("http://example.com/" . "A good http example")
+                 ("http://example.com/~myuser/phlog" . "My phlog")
+                 ("http://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+                 ("http://example.com:8080" . "A good http example")
+                 ("http://example.com:8080/" . "A good http example")
+                 ("http://example.com:8080/~myuser/phlog" . "My phlog")
+                 ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+               (menu (map (lambda (x)
+                            (Result-get-ok (menu-item-url (cdr x) (car x))))
+                           urls)))
+          (menu-render menu) ) ) )
 
 
 (test "make-item-url handles https protocol"
@@ -223,20 +224,20 @@
         "hPondering something really clever\tURL:https://example.com:8443/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((context (make-context "localhost" 70))
-             (urls '(
-               ("https://example.com" . "A good https example")
-               ("https://example.com/" . "A good https example")
-               ("https://example.com/~myuser/phlog" . "My phlog")
-               ("https://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-               ("https://example.com:8443" . "A good https example")
-               ("https://example.com:8443/" . "A good https example")
-               ("https://example.com:8443/~myuser/phlog" . "My phlog")
-               ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-             (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
-                         urls)))
-        (menu-render menu) ) )
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
+                 ("https://example.com" . "A good https example")
+                 ("https://example.com/" . "A good https example")
+                 ("https://example.com/~myuser/phlog" . "My phlog")
+                 ("https://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
+                 ("https://example.com:8443" . "A good https example")
+                 ("https://example.com:8443/" . "A good https example")
+                 ("https://example.com:8443/~myuser/phlog" . "My phlog")
+                 ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+               (menu (map (lambda (x)
+                            (Result-get-ok (menu-item-url (cdr x) (car x))))
+                           urls)))
+          (menu-render menu) ) ) )
 
 
 (test "make-item-url handles ssh protocol"
@@ -251,20 +252,20 @@
         "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320/user/bob\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((context (make-context "localhost" 70))
-             (urls '(
-               ("ssh://example.com" . "some ssh bbs")
-               ("ssh://example.com/user/bob" . "some ssh bbs")
-               ("ssh://myuser@example.com" . "some ssh bbs - my user")
-               ("ssh://myuser@example.com/user/bob" . "some ssh bbs - my user")
-               ("ssh://example.com:2320" . "some ssh bbs")
-               ("ssh://example.com:2320/user/bob" . "some ssh bbs")
-               ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
-               ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
-             (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
-                         urls)))
-        (menu-render menu) ) )
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
+                 ("ssh://example.com" . "some ssh bbs")
+                 ("ssh://example.com/user/bob" . "some ssh bbs")
+                 ("ssh://myuser@example.com" . "some ssh bbs - my user")
+                 ("ssh://myuser@example.com/user/bob" . "some ssh bbs - my user")
+                 ("ssh://example.com:2320" . "some ssh bbs")
+                 ("ssh://example.com:2320/user/bob" . "some ssh bbs")
+                 ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
+                 ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
+               (menu (map (lambda (x)
+                            (Result-get-ok (menu-item-url (cdr x) (car x))))
+                           urls)))
+          (menu-render menu) ) ) )
 
 
 (test "make-item-url handles non lower case protocol"
@@ -273,21 +274,20 @@
         "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
         ".\r\n")
         "\r\n")
-      (let* ((context (make-context "localhost" 70))
-             (urls '(
-               ("GoPher://example.com" . "A good gopher example")
-               ("htTP://example.com" . "A good http example")))
-             (menu (map (lambda (x)
-                          (Result-get-ok (menu-item-url context (cdr x) (car x))))
-                         urls)))
-        (menu-render menu) ) )
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
+                 ("GoPher://example.com" . "A good gopher example")
+                 ("htTP://example.com" . "A good http example")))
+               (menu (map (lambda (x)
+                            (Result-get-ok (menu-item-url (cdr x) (car x))))
+                           urls)))
+          (menu-render menu) ) ) )
 
 
   (test "make-item-url returns Error if protocol is unsupported"
         (Error (list "url: fred://example.com, unsupported protocol: fred"))
-        (menu-item-url (make-context "localhost" 7071)
-                       "Something interesting"
-                       "fred://example.com") )
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (menu-item-url "Something interesting" "fred://example.com") ) )
 
 
 )

@@ -2,6 +2,9 @@
 
 (test-group "handlers"
 
+  (parameterize ((server-hostname "localhost")
+                 (server-port 70))
+
   (test "serve-path supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
         (Ok (string-intersperse '(
@@ -15,9 +18,7 @@
           "9noext\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path supportes subpath ('dir-a') selector"
@@ -30,98 +31,81 @@
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "dir-a" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector starts with a '/'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "/dir-a" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+          (serve-path (make-request "/dir-a" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector ends with a '/'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a/" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "dir-a/" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains '..'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "../dir-a" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "../dir-a" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains './'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "./dir-a" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "./dir-a" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'invalid selector' error menu if selector contains a '\\'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a\\fred" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "dir-a\\fred" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path raises an exception if root-dir ends with a '/'"
         (list 'serve-path (sprintf "root-dir isn't valid: ~A/" fixtures-dir))
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-a" "127.0.0.1"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
               (local-dir (sprintf "~A/" fixtures-dir)))
-          (condition-case (serve-path context request local-dir)
+          (condition-case (serve-path request local-dir)
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
 
   (test "serve-path raises an exception if root-dir is a relative dir"
         (list 'serve-path "root-dir isn't valid: fixtures")
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-a" "127.0.0.1"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
               (local-dir "fixtures"))
-          (condition-case (serve-path context request local-dir)
+          (condition-case (serve-path request local-dir)
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir is a relative dir of the form ./"
         (list 'serve-path "root-dir isn't valid: ./")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a" "127.0.0.1"))
+        (let* ((request (make-request "dir-a" "127.0.0.1"))
                (local-dir "./"))
-          (condition-case (serve-path context request local-dir)
+          (condition-case (serve-path request local-dir)
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir contains .."
         (list 'serve-path "root-dir isn't valid: /..")
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-a" "127.0.0.1"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
               (local-dir "/.."))
-          (condition-case (serve-path context request local-dir)
+          (condition-case (serve-path request local-dir)
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
   (test "serve-path raises an exception if root-dir contains \\"
         (list 'serve-path "root-dir isn't valid: /\\")
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-a" "127.0.0.1"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
               (local-dir "/\\"))
-          (condition-case (serve-path context request local-dir)
+          (condition-case (serve-path request local-dir)
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
@@ -131,14 +115,13 @@
           "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (tmpdir (create-temporary-directory))
+        (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           ;; Make tmpdir non world readable
           (set-file-permissions! tmpdir
                                  (bitwise-and (file-permissions tmpdir)
                                               (bitwise-not perm/iroth)))
-          (serve-path context request tmpdir) ) )
+          (serve-path request tmpdir) ) )
 
 
   (test "serve-path returns a 'path not found' error menu if path doesn't exist"
@@ -146,23 +129,17 @@
           "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "unknown" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "unknown" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path returns the contents of a binary file"
         (Ok "This is text followed by a null (00)\x00 now some more text.")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a/ac.bin" "127.0.0.1")))
-          (serve-path context request fixtures-dir)))
+        (serve-path (make-request "dir-a/ac.bin" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path returns the contents of an empty file"
         (Ok "")
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-a/empty.txt" "127.0.0.1")))
-          (serve-path context request fixtures-dir)))
+        (serve-path (make-request "dir-a/empty.txt" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path process 'index' files properly if present"
@@ -192,9 +169,7 @@
           "iThis file ends with two blank lines which should be stripped.\tdir-b\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "dir-b" "127.0.0.1")))
-          (serve-path context request fixtures-dir)))
+        (serve-path (make-request "dir-b" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path process empty 'index' files properly if present"
@@ -203,9 +178,8 @@
           "i\tdir-index_empty_file\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
-        (let* ((context (make-context "localhost" 70))
-              (request (make-request "dir-index_empty_file" "127.0.0.1")))
-          (serve-path context request fixtures-dir)))
+        (serve-path (make-request "dir-index_empty_file" "127.0.0.1")
+                    fixtures-dir) )
 
 
   (test "serve-path returns Error if file in 'index' doesn't exist"
@@ -217,9 +191,8 @@
                               (make-pathname (list fixtures-dir
                                                    "dir-index_file_not_present")
                                              "nonexistent.txt"))))
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-index_file_not_present" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "dir-index_file_not_present" "127.0.0.1")
+                    fixtures-dir) )
 
 
   (test "serve-path returns Error containing a chain of Errors if problem with serving a directory"
@@ -227,18 +200,15 @@
                               (make-pathname fixtures-dir "dir-index_invalid_url_protocol"))
                      "error processing index"
                      "url: fred://example.com, unsupported protocol: fred"))
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "dir-index_invalid_url_protocol" "127.0.0.1")))
-          (serve-path context request fixtures-dir) ) )
+        (serve-path (make-request "dir-index_invalid_url_protocol" "127.0.0.1")
+                    fixtures-dir) )
 
 
 
   (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"
         (Ok "hello\n")
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "a.txt" "127.0.0.1")))
-          (parameterize ((max-file-size 6))
-            (serve-path context request fixtures-dir) ) ) )
+        (parameterize ((max-file-size 6))
+          (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
 
 
   (test "serve-path returns Error if file is greater than the number of bytes set by max-file-size"
@@ -246,10 +216,8 @@
                               (make-pathname fixtures-dir "a.txt"))
                      (sprintf "file: ~A, is greater than 5 bytes"
                               (make-pathname fixtures-dir "a.txt"))))
-        (let ((context (make-context "localhost" 70))
-              (request (make-request "a.txt" "127.0.0.1")))
-          (parameterize ((max-file-size 5))
-            (serve-path context request fixtures-dir) ) ) )
+        (parameterize ((max-file-size 5))
+          (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"
@@ -272,17 +240,14 @@
           "  </BODY>"
           "</HTML>")
           "\n"))
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "URL:https://example.com/blog" "127.0.0.1")))
-          (serve-url context request) ) )
+        (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
 
 
   (test "serve-url returns a 'server error' error menu if selector isn't valid"
         "invalid selector: FURL:https://example.com/blog"
-        (let* ((context (make-context "localhost" 70))
-               (request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
-          (condition-case (serve-url context request)
+        (let* ((request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
+          (condition-case (serve-url request)
             (ex (exn) (get-condition-property ex 'exn 'message) ) ) ) )
 
-)
+) )
 

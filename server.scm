@@ -12,14 +12,15 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
-(define (start-server hostname port router)
+(define (start-server #!key (hostname (server-hostname))
+                            (port (server-port))
+                            router)
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
   ;; connects-mutex is used to prevent simultaneous queue operations
   ;; connects-get-cond is used to wait for an item in the connects queue
   (let ((requests (make-queue))
         (connects (make-queue))
-        (context (make-context hostname port))
         (server-ready-mutex (make-mutex))
         (connects-mutex (make-mutex))
         (connects-get-cond (make-condition-variable)))
@@ -71,13 +72,13 @@
                      (request (make-request selector client-address))
                      (response
                        (if handler
-                           (condition-case (handler context request)
+                           (condition-case (handler request)
                              (ex () (Error-ex ex "exception from handler")))
                            (begin
                              (log-warning "client address: ~A, selector: ~A, no handler for selector"
                                           client-address
                                           selector)
-                             (Ok (make-rendered-error-menu context request "path not found"))))))
+                             (Ok (make-rendered-error-menu request "path not found"))))))
                 (cases Result response
                   (Ok (v) (write-string v (max-file-size) out))
                   (Error (e)
@@ -85,7 +86,7 @@
                                client-address
                                selector
                                e)
-                    (write-string (make-rendered-error-menu context request "server error")
+                    (write-string (make-rendered-error-menu request "server error")
                                   (max-file-size)
                                   out)))))
         (close-input-port in)
@@ -159,15 +160,17 @@
                   (loop) ) ) ) ) ) ) )
 
 
-  (let ((thread (make-thread listen)))
-    ;; serve-ready-mutex is used to make sure that the procedure doesn't
-    ;; return until the server is ready to accept connections.
-    ;; thread-specific value indicates if thread has been told to stop
-    (thread-specific-set! thread #f)
-    (mutex-lock! server-ready-mutex #f #f)
-    (thread-start! thread)
-    (mutex-lock! server-ready-mutex #f #f)
-    thread) ) )
+  (parameterize ((server-hostname hostname)
+                 (server-port port))
+    (let ((thread (make-thread listen)))
+      ;; serve-ready-mutex is used to make sure that the procedure doesn't
+      ;; return until the server is ready to accept connections.
+      ;; thread-specific value indicates if thread has been told to stop
+      (thread-specific-set! thread #f)
+      (mutex-lock! server-ready-mutex #f #f)
+      (thread-start! thread)
+      (mutex-lock! server-ready-mutex #f #f)
+      thread) ) ) )
 
 
 (define (stop-server thread)

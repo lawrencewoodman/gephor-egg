@@ -62,8 +62,8 @@
 ;; using libmagic.
 ;;
 ;; Returns a Result type
-(: menu-item-file ((struct context) string string string --> (struct Result)))
-(define (menu-item-file context local-path username selector)
+(: menu-item-file (string string string --> (struct Result)))
+(define (menu-item-file local-path username selector)
   ;; TODO: Check local-path is safe
   (if (not (file-exists? local-path))
       (Error-fmt "local-path: ~A, file doesn't exist" local-path)
@@ -85,25 +85,25 @@
                 (menu-item itemtype
                            username
                            selector
-                           (context-hostname context)
-                           (context-port context))))
+                           (server-hostname)
+                           (server-port))))
             (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) ) )
 
 
 
 ;; Supporters protocols: gopher ssh http https
 ;; TODO: Expand list of supported protocols
-;; Passing context allows us to refer to this server so that we can support
-;; clients that don't support the URL: prefix selectors and 'h' itemtype.
-;; These clients will go to the selector beginning with URL: on our server
-;; and should be served an HTML page which points to the desired URL.
+;; Clients that don't support the URL: prefix selectors and 'h'
+;; itemtype should still work as they will go to the selector beginning
+;; with URL: on our server and be served an HTML page which points
+;; to the desired URL.
 ;; This is currently used by ssh, http and https and conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
 ;; Returns a Result type
 ;; Returns an Error if protocol is unknown
-(: menu-item-url ((struct context) string string --> (struct Result)))
-(define (menu-item-url context username url)
+(: menu-item-url (string string --> (struct Result)))
+(define (menu-item-url username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
     (case (string->symbol protocol)
       ((gopher)
@@ -114,8 +114,8 @@
         (menu-item 'html
                    username
                    (sprintf "URL:~A" url)
-                   (context-hostname context)
-                   (context-port context)))
+                   (server-hostname)
+                   (server-port)))
       (else
         (Error-fmt "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
 
@@ -138,12 +138,8 @@
 ;; Make an error menu that has been rendered and is ready for sending
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
-(define (make-rendered-error-menu context request msg)
-  (let ((item (menu-item 'error
-                          msg
-                         ""
-                         (context-hostname context)
-                         (context-port context))))
+(define (make-rendered-error-menu request msg)
+  (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
     (cases Result item
       (Ok (v) (menu-render (list v)))
       (Error (e) (error* 'menu-item-rendered-error-menu e) ) ) ) )

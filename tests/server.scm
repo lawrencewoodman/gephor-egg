@@ -13,15 +13,15 @@
   (define (start-test-server port router)
     ;; tcp-accept-timeout is set to make checking if due to stop quicker
     (parameterize ((tcp-accept-timeout 1))
-      (start-server "localhost" port router) ) )
+      (start-server hostname: "localhost" port: port router: router) ) )
 
 
   (test "server responds correctly to simple routes without a splat"
         '("hello friend" "bye friend")
         (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (context request)
+               (router (make-router (cons "hello" (lambda (request)
                                                     (Ok "hello friend")))
-                                    (cons "bye" (lambda (context request)
+                                    (cons "bye" (lambda (request)
                                                   (Ok "bye friend")))))
                (thread (start-test-server port router)))
           (let ((responses (map (lambda (selector)
@@ -34,7 +34,7 @@
   (test "server returns an 'unknown path' error menu if a route doesn't exist for the selector"
         "3path not found\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (context request)
+               (router (make-router (cons "hello" (lambda (request)
                                                     (Ok "hello friend")))))
                (thread (start-test-server port router)))
           (let ((response (gopher-test-get port "bye")))
@@ -45,7 +45,7 @@
   (test "server returns a 'server error' error menu if a handler raises an exception"
         "3server error\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (context request)
+               (router (make-router (cons "hello" (lambda (request)
                                                     (error "this is an error")))))
                (thread (start-test-server port router)))
           (let ((response (gopher-test-get port "hello")))
@@ -56,7 +56,7 @@
   (test "server truncates data sent to max-file-size bytes"
         "hello frien"
         (let ((port 7070)
-              (router (make-router (cons "hello" (lambda (context request)
+              (router (make-router (cons "hello" (lambda (request)
                                                          (Ok "hello friend"))))))
           (parameterize ((max-file-size 11))
             (let* ((thread (start-test-server port router))
@@ -68,7 +68,7 @@
   (test "server removes whitespace and '/' characters at beginning and end of selectors before passing to handlers"
         '(#t #t #t #t #t #t #t #t)
         (let* ((port 7070)
-               (router (make-router (cons "*" (lambda (context request)
+               (router (make-router (cons "*" (lambda (request)
                                                 (Ok (request-selector request))))))
                (thread (start-test-server port router))
                (selectors '("/test" " /test" " / test" "/ test" " test"

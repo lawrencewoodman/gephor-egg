@@ -10,7 +10,6 @@
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gephor
   (start-server stop-server
-   make-context
    make-request request-selector request-client-address
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
@@ -18,7 +17,9 @@
    serve-url
    serve-path
    Result Result? Ok Error Error-ex Error-fmt Error-wrap
-   max-file-size)
+   max-file-size
+   server-hostname
+   server-port)
 
 
 (import scheme
@@ -60,6 +61,10 @@
 
 ;; Configuration ------------------------------------------------------------
 
+(define server-hostname (make-parameter "localhost"))
+(define server-port     (make-parameter 70))
+
+
 ;; The maximum size of a file that can be read and sent
 ;; Defaults to 50Mb
 ;; TODO: Is this name ok.  Should it be read/write as not just files sent
@@ -67,16 +72,6 @@
 
 
 ;; Record types -------------------------------------------------------------
-
-;; TODO: should this be exported just so can be used in tests?
-;; TODO: would it be better to put in another file that can be included by
-;; TODO: the module and the tests?
-(define-record-type context
-  (make-context hostname port)
-  context?
-  (hostname context-hostname)
-  (port context-port)
-)
 
 
 (define-record-type request

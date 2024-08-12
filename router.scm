@@ -11,7 +11,7 @@
 
 
 ;; TODO: Create a types file
-(define-type handler ((struct context) (struct request) -> string))
+(define-type handler ((struct request) -> string))
 (define-type router (list-of (pair string handler)))
 
 

@@ -17,7 +17,7 @@
 ;; This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;; TODO: rename
-(define (serve-url context request)
+(define (serve-url request)
   (if (not (substring=? (request-selector request) "URL:"))
       (error* 'serve-url "invalid selector: ~A" (request-selector request))
       (let* ((url (substring (request-selector request) 4)))
@@ -31,7 +31,7 @@
 ;; The selector must be a valid file path and not start or end with a "/"
 ;; this is checked because although the server should strip these from
 ;; the selector, the handler might reintroduce them.
-(define (serve-path context request root-dir)
+(define (serve-path request root-dir)
 
   (define (log-info* . args)
     (apply log-info (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
@@ -60,13 +60,13 @@
   (let ((local-path (make-pathname root-dir (request-selector request))))
     (cond ((unsafe-selector-pathname? (request-selector request))
             (log-warning* "selector isn't safe")
-            (Ok (make-rendered-error-menu context request "invalid selector")))
+            (Ok (make-rendered-error-menu request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
-            (Ok (make-rendered-error-menu context request "path not found")))
+            (Ok (make-rendered-error-menu request "path not found")))
           ((not (world-readable? local-path))
             (log-warning* "local path isn't world readable: ~A" local-path)
-            (Ok (make-rendered-error-menu context request "path not found")))
+            (Ok (make-rendered-error-menu request "path not found")))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (log-info* "request file: ~A" local-path)
@@ -84,13 +84,12 @@
                         ;; TODO: Do we want to use 'index' as filename?
                         (let ((nex-index (read-file (make-pathname local-path "index"))))
                           (cases Result nex-index
-                            (Ok (v) (process-nex-index context
-                                                       (request-selector request)
+                            (Ok (v) (process-nex-index (request-selector request)
                                                        root-dir
                                                        local-path
                                                        v))
                             (Error (e) nex-index)))
-                        (list-dir context (request-selector request) local-path))))
+                        (list-dir (request-selector request) local-path))))
               (cases Result response
                 (Ok (v) (Ok (menu-render v)))
                 (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
@@ -170,7 +169,7 @@
 ;; TODO: Move this, export? and rename?
 ;; TODO: Make sure paths and selectors are safe
 ;; TODO: Should this check if path is world-readable rather than calling proc?
-(define (list-dir context selector local-path)
+(define (list-dir selector local-path)
   ;; Returns #f if not a valid file
   ;; An entry consists of a list (filename is-dir? selector)
   (define (make-dir-entry filename)
@@ -193,10 +192,9 @@
           (menu-item 'menu
                      filename
                      selector
-                     (context-hostname context)
-                     (context-port context))
-          (menu-item-file context
-                          (make-pathname local-path filename)
+                     (server-hostname)
+                     (server-port))
+          (menu-item-file (make-pathname local-path filename)
                           filename
                           selector) ) ) )
 
@@ -246,31 +244,29 @@ END
 ;; Process a NEX style index file.  This describes a menu and returns a list
 ;; of menu items.
 ;; TODO: Rename index to something else
-(define (process-nex-index context selector root-dir local-path nex-index)
+(define (process-nex-index selector root-dir local-path nex-index)
 
   (define (dir-item path username)
     (if (absolute-pathname? path)
         (menu-item 'menu username (trim-selector path)
-                   (context-hostname context) (context-port context))
+                   (server-hostname) (server-port))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       (string-chomp path "/"))))
           (menu-item 'menu username item-selector
-                     (context-hostname context) (context-port context)))))
+                     (server-hostname) (server-port)))))
 
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file context
-                        (make-pathname root-dir (trim-selector path))
+        (menu-item-file (make-pathname root-dir (trim-selector path))
                         username
                         (trim-selector path))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       path)))
-          (menu-item-file context
-                          (make-pathname local-path (trim-selector path))
+          (menu-item-file (make-pathname local-path (trim-selector path))
                           username
                           item-selector))))
 
@@ -294,7 +290,7 @@ END
                                        maybe-username)))
             (cond
               ((is-url? path)
-                (menu-item-url context username path))
+                (menu-item-url username path))
               ((is-dir? path)
                 (dir-item path chomped-username))
               (else
@@ -302,8 +298,7 @@ END
           ;; Current selector is used for info itemtype so that if type
           ;; not supported by client but still displayed then it
           ;; will just link to the page that it is being displayed on
-          (menu-item 'info line selector
-                     (context-hostname context) (context-port context) ) ) ) )
+          (menu-item 'info line selector (server-hostname) (server-port) ) ) ) )
 
   (let* ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t))
          (parsed-lines
