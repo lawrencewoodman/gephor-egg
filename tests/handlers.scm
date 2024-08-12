@@ -26,7 +26,6 @@
         (Ok (string-intersperse '(
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
           "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-          ;; TODO: Incorrect item type of ac.bin
           "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")

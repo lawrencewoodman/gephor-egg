@@ -8,8 +8,6 @@
 ;;; From this file the following are exported:
 ;;;   Result Result? Ok Error Error-ex Error-fmt Error-wrap
 ;;;
-;;; TODO: Should Ok and Error be exported as Result-Ok, Result-Error?
-;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
@@ -38,9 +36,6 @@
 ;; Put the message from an exception into an Error
 (define (Error-ex ex . args)
   (apply Error-wrap (Error (list (get-condition-property ex 'exn 'message))) args) )
-
-;; TODO: Create a Result-Error exception condition to make it easy to escape
-;; TODO: from procedures such as map?
 
 
 
