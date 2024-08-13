@@ -6,7 +6,7 @@
 ;;; easier.
 ;;;
 ;;; From this file the following are exported:
-;;;   Result Result? Ok Error Error-ex Error-fmt Error-wrap
+;;;   Result Result? Ok Error Error? Error-ex Error-fmt Error-wrap
 ;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -19,6 +19,11 @@
 (define-datatype Result Result?
   (Ok (v any?))
   (Error (e list-of-string?) ) )
+
+
+(define (Error? r)
+  (and (Result? r)
+       (cases Result r (Ok () #f) (Error () #t) ) ) )
 
 
 ; Pass the arguments to sprintf to create the error string making it easy to

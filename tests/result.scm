@@ -56,6 +56,18 @@
                         (Error (e) e)))
                values) ) )
 
+  (test "Error? returns #f if value isn't a Result"
+        #f
+        (Error? "a string") )
+
+  (test "Error? returns #f if value is an Ok Result"
+        #f
+        (Error? (Ok "a string") ) )
+
+  (test "Error? returns #t if value is an Error Result"
+        #t
+        (Error? (Error '("a string") ) ) )
+
   (test "Error-fmt accepts a single string"
         (Error '("a string"))
         (Error-fmt "a string") )
