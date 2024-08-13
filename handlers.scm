@@ -200,21 +200,15 @@
 
   (let* ((filenames (directory local-path))
          (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-         (menu
-           (call/cc
-             (lambda (exit)
-               (let loop ((entries entries))
-                 (if (null? entries)
-                     '()
-                     (let* ((item (entry->menu-item (car entries))))
-                       (cases Result item
-                         (Ok (v) (cons v (loop (cdr entries))))
-                         (Error (e) (exit (Error-wrap item "error listing directory")))))))))))
-    (if (Result? menu)
-        (cases Result menu
-          (Error (e) menu)
-          (Ok (v) (error* 'list-dir "menu can't be a Result and Ok: ~A" v)))
-        (Ok menu) ) ) )
+         (menu (do ((entries entries (cdr entries))
+                    (result '() (let* ((item (entry->menu-item (car entries))))
+                                  (cases Result item
+                                    (Ok (v) (cons v result))
+                                    (Error (e) (Error-wrap item "error listing directory"))))))
+                   ((or (null? entries) (Error? result)) result))))
+    (if (Error? menu)
+        menu
+        (Ok (reverse menu) ) ) ) )
 
 
 
@@ -302,18 +296,13 @@ END
 
   (let* ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t))
          (parsed-lines
-           (call/cc
-             (lambda (exit)
-               (let loop ((lines lines))
-                 (if (null? lines)
-                     '()
-                     (let ((item (parse-line (car lines))))
-                       (cases Result item
-                         (Ok (v) (cons v (loop (cdr lines))))
-                         (Error (e) (exit (Error-wrap item "error processing index")))))))))))
-    (if (Result? parsed-lines)
-        (cases Result parsed-lines
-          (Error (e) parsed-lines)
-          (Ok (v) (error* 'process-nex-index "parsed-lines can't be a Result and Ok: ~A" v)))
-        (Ok parsed-lines) ) ) )
+           (do ((lines lines (cdr lines))
+                (result '() (let ((item (parse-line (car lines))))
+                              (cases Result item
+                                (Ok (v) (cons v result))
+                                (Error (e) (Error-wrap item "error processing index"))))))
+                ((or (null? lines) (Error? result)) result))))
+    (if (Error? parsed-lines)
+        parsed-lines
+        (Ok (reverse parsed-lines) ) ) ) )
 

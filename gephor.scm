@@ -16,7 +16,7 @@
    menu-render
    serve-url
    serve-path
-   Result Result? Ok Error Error-ex Error-fmt Error-wrap
+   Result Result? Ok Error Error? Error-ex Error-fmt Error-wrap
    max-file-size
    server-hostname
    server-port)
