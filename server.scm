@@ -94,23 +94,21 @@
 
 
   (define (start-connect-handler-thread)
-    (let ((connect-handler
-            (lambda ()
-              (let loop ()
-                (handle-exceptions ex
-                  (begin
-                    (log-error "connect handler thread: ~A"
-                               (get-condition-property ex 'exn 'message))
-                    (signal ex))
-                  (let ((connect (get-connect!)))
-                    (when connect
-                          (handle-connect connect)))
-                  (unless (stop-requested?)
-                          (loop)))))))
-      (let ((thread (make-thread connect-handler)))
-        ;; thread-specific value indicates if thread has been told to stop
-        (thread-specific-set! thread #f)
-        (thread-start! thread) ) ) )
+    (define (connect-handler)
+      (do ()
+          ((stop-requested?))
+          (handle-exceptions ex
+            (begin
+              (log-error "connect handler thread: ~A"
+                         (get-condition-property ex 'exn 'message))
+              (signal ex))
+            (let ((connect (get-connect!)))
+              (when connect
+                    (handle-connect connect) ) ) ) ) )
+    (let ((thread (make-thread connect-handler)))
+      ;; thread-specific value indicates if thread has been told to stop
+      (thread-specific-set! thread #f)
+      (thread-start! thread) ) )
 
 
   ;; Returns a list of threads
@@ -149,15 +147,13 @@
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
         (let ((connect-handler-threads (start-connect-handler-threads 10)))
-          (let loop ()
-            (let-values (((in out) (tcp-accept/handle-timeout listener)))
-              (when (and in out)
-                    (client-connect in out))
-              (if (stop-requested?)
-                  (begin
-                    (stop-connect-handler-threads connect-handler-threads)
-                    (tcp-close listener) )
-                  (loop) ) ) ) ) ) ) )
+          (do ()
+              ((stop-requested?))
+              (let-values (((in out) (tcp-accept/handle-timeout listener)))
+                (when (and in out)
+                      (client-connect in out))))
+          (stop-connect-handler-threads connect-handler-threads)
+          (tcp-close listener) ) ) ) )
 
 
   (parameterize ((server-hostname hostname)
