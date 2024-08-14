@@ -86,7 +86,7 @@
                                client-address
                                selector
                                e)
-                    (write-string (make-rendered-error-menu request "server error")
+                    (write-string (make-rendered-error-menu request "resource can not be accessed")
                                   (max-file-size)
                                   out)))))
         (close-input-port in)

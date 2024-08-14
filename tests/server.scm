@@ -42,8 +42,8 @@
             response) ) )
 
 
-  (test "server returns a 'server error' error menu if a handler raises an exception"
-        "3server error\t\tlocalhost\t7070\r\n.\r\n"
+  (test "server returns a 'resource can not be accessed' error menu if a handler raises an exception"
+        "3resource can not be accessed\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (request)
                                                     (error "this is an error")))))
