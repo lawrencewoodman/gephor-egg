@@ -19,20 +19,23 @@
 
 (: make-router ((list-of (pair string handler)) --> router))
 (define (make-router . args)
+  (for-each (lambda (r) (when (< 1 (count (lambda (x) (string=? (car x) (car r))) args))
+                              (error* 'make-router "duplicate pattern: ~A" (car r))))
+            args)
   (router-sort-routes args))
 
 
-;; TODO: check the pattern doesn't already exist
 ;; TODO: error if multiple * or * not at end
 (: router-add (router string handler --> router))
 (define (router-add router pattern proc)
-  (let ((route (cons pattern proc)))
-    ; Add the route to the list of routes and resort
-    (router-sort-routes (cons route router) ) ) )
+  (if (assoc pattern router)
+      (error* 'router-add "pattern already exists in router: ~A" pattern)
+      (let ((route (cons pattern proc)))
+        ; Add the route to the list of routes and resort
+        (router-sort-routes (cons route router) ) ) ) )
 
 
 ;; TODO: should this return the pattern as well, perhaps using values?
-;; TODO: define the procedure argument types?
 (: router-match (router string --> (or handler boolean)))
 (define (router-match router selector)
   (let loop ((routes router))

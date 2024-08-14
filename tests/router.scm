@@ -18,6 +18,17 @@
                                    (cons "hrl" dummy))))
           (map car router) ) )
 
+
+  (test "make-router raises an exception if there is a duplicate pattern"
+        '(make-router "duplicate pattern: *")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (make-router (cons "" dummy)
+                       (cons "*" dummy)
+                       (cons "*" dummy) ) ) )
+
+
   (test "router-add adds a route and sorts properly"
         '("" "hi" "hrl" "hrl*" "hi*" "hn*" "hr*" "*")
         (let* ((router (make-router))
@@ -30,6 +41,19 @@
                (router (router-add router "hrl*" dummy))
                (router (router-add router "hrl" dummy)))
           (map car router) ) )
+
+
+  (test "router-add raises an error if a pattern is added that already exists in router"
+        '(router-add "pattern already exists in router: *")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (let* ((router (make-router))
+                 (router (router-add router "" dummy))
+                 (router (router-add router "*" dummy))
+                 (router (router-add router "*" dummy) ) )
+            (map car router) ) ) )
+
 
   (test "router-match finds the correct handler for a selector"
         '("pat:*" "pat:" "pat:hi" "pat:hi*" "pat:hr*" "pat:hr*" "pat:hrl" "pat:hrl*")
