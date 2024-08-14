@@ -64,13 +64,9 @@
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
             (Ok (make-rendered-error-menu request "path not found")))
-          ((not (world-readable? local-path))
-            (log-warning* "local path isn't world readable: ~A" local-path)
-            (Ok (make-rendered-error-menu request "path not found")))
           ;; TODO: allow or don't allow gophermap to be downloaded?
           ((regular-file? local-path)
             (log-info* "request file: ~A" local-path)
-            ;; TODO: Test error from this if fails
             (let ((response (read-file local-path)))
               (cases Result response
                 (Ok (v) response)
@@ -78,18 +74,18 @@
                                        local-path)))) )
           ((directory? local-path)
             (log-info* "list directory: ~A" local-path)
-            (let ((response
-                    (if (file-exists? (make-pathname local-path "index"))
-                        ;; TODO: Check index is world readable and otherwise suitable
-                        ;; TODO: Do we want to use 'index' as filename?
-                        (let ((nex-index (read-file (make-pathname local-path "index"))))
-                          (cases Result nex-index
-                            (Ok (v) (process-nex-index (request-selector request)
-                                                       root-dir
-                                                       local-path
-                                                       v))
-                            (Error (e) nex-index)))
-                        (list-dir (request-selector request) local-path))))
+            (let* ((index-path (make-pathname local-path "index"))
+                   (response
+                     ;; TODO: Do we want to use 'index' as filename?
+                     (if (file-exists? index-path)
+                         (let ((nex-index (read-file index-path)))
+                           (cases Result nex-index
+                             (Ok (v) (process-nex-index (request-selector request)
+                                                        root-dir
+                                                        local-path
+                                                        v))
+                             (Error (e) nex-index)))
+                         (list-dir (request-selector request) local-path))))
               (cases Result response
                 (Ok (v) (Ok (menu-render v)))
                 (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
@@ -97,7 +93,6 @@
           (else
             (Error-fmt "unsupported file type for path: ~A" local-path) ) ) ) )
 
-;; TODO: Test list-dir above
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -119,18 +114,20 @@
 (define (read-file path)
   (handle-exceptions ex
     (Error-ex ex "path: ~A, error reading file" path)
-    (call-with-input-file path
-                          (lambda (port)
-                            (let* ((contents (read-string (max-file-size) port))
-                                   (more? (not (eof-object? (read-string 1 port)))))
-                              (if (eof-object? contents)
-                                  (Ok "")
-                                  (if more?
-                                      (Error-fmt "file: ~A, is greater than ~A bytes"
-                                                  path
-                                                  (max-file-size))
-                                      (Ok contents)))))
-                      #:binary) ) )
+    (if (world-readable? path)
+        (call-with-input-file path
+                              (lambda (port)
+                                (let* ((contents (read-string (max-file-size) port))
+                                       (more? (not (eof-object? (read-string 1 port)))))
+                                  (if (eof-object? contents)
+                                      (Ok "")
+                                      (if more?
+                                          (Error-fmt "file: ~A, is greater than ~A bytes"
+                                                      path
+                                                      (max-file-size))
+                                          (Ok contents)))))
+                          #:binary)
+          (Error-fmt "file: ~A, isn't world readable" path) ) ) )
 
 
 ;; Sort files so that directories come before regular files and then
@@ -168,7 +165,6 @@
 
 ;; TODO: Move this, export? and rename?
 ;; TODO: Make sure paths and selectors are safe
-;; TODO: Should this check if path is world-readable rather than calling proc?
 (define (list-dir selector local-path)
   ;; Returns #f if not a valid file
   ;; An entry consists of a list (filename is-dir? selector)
@@ -198,17 +194,19 @@
                           filename
                           selector) ) ) )
 
-  (let* ((filenames (directory local-path))
-         (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-         (menu (do ((entries entries (cdr entries))
-                    (result '() (let* ((item (entry->menu-item (car entries))))
-                                  (cases Result item
-                                    (Ok (v) (cons v result))
-                                    (Error (e) (Error-wrap item "error listing directory"))))))
-                   ((or (null? entries) (Error? result)) result))))
-    (if (Error? menu)
-        menu
-        (Ok (reverse menu) ) ) ) )
+  (if (world-readable? local-path)
+      (let* ((filenames (directory local-path))
+             (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
+             (menu (do ((entries entries (cdr entries))
+                        (result '() (let* ((item (entry->menu-item (car entries))))
+                                      (cases Result item
+                                        (Ok (v) (cons v result))
+                                        (Error (e) (Error-wrap item "error listing directory"))))))
+                       ((or (null? entries) (Error? result)) result))))
+        (if (Error? menu)
+            menu
+            (Ok (reverse menu))))
+      (Error-fmt "local-path: ~A, isn't world readable" local-path) ) )
 
 
 

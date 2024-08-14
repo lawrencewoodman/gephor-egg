@@ -1,0 +1,2 @@
+This is used to test that an index file that isn't world readable
+leads to an Error.

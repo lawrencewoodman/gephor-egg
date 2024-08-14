@@ -13,6 +13,8 @@
           "1dir-index_empty_file\tdir-index_empty_file\tlocalhost\t70"
           "1dir-index_file_not_present\tdir-index_file_not_present\tlocalhost\t70"
           "1dir-index_invalid_url_protocol\tdir-index_invalid_url_protocol\tlocalhost\t70"
+          "1dir-index_world_readable\tdir-index_world_readable\tlocalhost\t70"
+          "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
           "0b.txt\tb.txt\tlocalhost\t70"
           "9noext\tnoext\tlocalhost\t70"
@@ -108,19 +110,64 @@
             (ex (exn) (list (get-condition-property ex 'exn 'location)
                             (get-condition-property ex 'exn 'message) ) ) ) ) )
 
+  (test "serve-path returns Error if trying to serve a file that isn't world readable"
+        (list (list 'ok "Hello, this is used to test serving a non world readable file.\n")
+              (list 'error (list "local-path: x/hello.txt, error serving file"
+                                 "file: x/hello.txt, isn't world readable")))
+        (let* ((tmpdir (create-temporary-directory))
+               (request (make-request "hello.txt" "127.0.0.1")))
+          (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
+                     (make-pathname tmpdir "hello.txt"))
+          (let ((response1 (serve-path request tmpdir))
+                (response2
+                  (begin
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! (make-pathname tmpdir "hello.txt")
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-path request tmpdir))))
+            (list (cases Result response1
+                         (Ok (v) (list 'ok v)))
+                  (cases Result response2
+                        (Error (e) (list 'error
+                                         (list (irregex-replace "local-path: .*\/hello.txt"
+                                                                (first e)
+                                                                "local-path: x/hello.txt")
+                                               (irregex-replace "file: .*\/hello.txt"
+                                                                (second e)
+                                                                "file: x/hello.txt") ) ) ) ) ) ) ) )
 
-  (test "serve-path returns a 'path not found' error menu if path isn't world readable"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+
+  (test "serve-path returns Error if listing a directory that isn't world readable"
+        (list (list 'ok (string-intersperse '(
+                          "1dir-a\tdir-a\tlocalhost\t70"
+                          "1dir-b\tdir-b\tlocalhost\t70"
+                          ".\r\n")
+                          "\r\n"))
+              (list 'error (list "local-path: x/, error serving directory"
+                                 "local-path: x/, isn't world readable")))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
-          ;; Make tmpdir non world readable
-          (set-file-permissions! tmpdir
-                                 (bitwise-and (file-permissions tmpdir)
-                                              (bitwise-not perm/iroth)))
-          (serve-path request tmpdir) ) )
+          (create-directory (make-pathname tmpdir "dir-a"))
+          (create-directory (make-pathname tmpdir "dir-b"))
+          (let ((response1 (serve-path request tmpdir))
+                (response2
+                  (begin
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! tmpdir
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-path request tmpdir))))
+            (list (cases Result response1
+                         (Ok (v) (list 'ok v)))
+                  (cases Result response2
+                        (Error (e) (list 'error
+                                         (list (irregex-replace "local-path: .*\/"
+                                                                (first e)
+                                                                "local-path: x/")
+                                               (irregex-replace "local-path: .*\/"
+                                                                (second e)
+                                                                "local-path: x/") ) ) ) ) ) ) ) )
 
 
   (test "serve-path returns a 'path not found' error menu if path doesn't exist"
@@ -179,6 +226,40 @@
           "\r\n"))
         (serve-path (make-request "dir-index_empty_file" "127.0.0.1")
                     fixtures-dir) )
+
+
+  (test "serve-path returns Error if an 'index' file isn't world readable"
+        (list (list 'ok (string-intersperse '(
+                          "iThis is used to test that an index file that isn't world readable\t\tlocalhost\t70"
+                          "ileads to an Error.\t\tlocalhost\t70"
+                          ".\r\n")
+                          "\r\n"))
+              (list 'error (list "local-path: x/, error serving directory"
+                                 "file: x/index, isn't world readable")))
+        (let* ((tmpdir (create-temporary-directory))
+               (request (make-request "" "127.0.0.1")))
+          (create-directory (make-pathname tmpdir "dir-a"))
+          (create-directory (make-pathname tmpdir "dir-b"))
+          (copy-file (make-pathname (list fixtures-dir "dir-index_world_readable") "index")
+                     (make-pathname tmpdir "index"))
+          (let ((response1 (serve-path request tmpdir))
+                (response2
+                  (begin
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! (make-pathname tmpdir "index")
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-path request tmpdir))))
+            (list (cases Result response1
+                         (Ok (v) (list 'ok v)))
+                  (cases Result response2
+                        (Error (e) (list 'error
+                                         (list (irregex-replace "local-path: .*\/"
+                                                                (first e)
+                                                                "local-path: x/")
+                                               (irregex-replace "file: .*\/index"
+                                                                (second e)
+                                                                "file: x/index")))))))))
 
 
   (test "serve-path returns Error if file in 'index' doesn't exist"

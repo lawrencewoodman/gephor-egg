@@ -6,15 +6,17 @@
         (chicken format)
         (chicken file)
         (chicken file posix)
-        (chicken load)
         (chicken io)
+        (chicken irregex)
+        (chicken load)
         (chicken pathname)
         (chicken process-context)
         (chicken port)
         (chicken string)
         (chicken tcp)
         datatype
-        simple-logger)
+        simple-logger
+        srfi-1)
 
 
 (load-relative "../gephor.scm")
