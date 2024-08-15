@@ -20,20 +20,32 @@
 (: make-router ((list-of (pair string handler)) --> router))
 (define (make-router . args)
   (for-each (lambda (r)
-              (when (< 1 (count (lambda (x) (string=? (car x) (car r))) args))
-                         (error* 'make-router "duplicate pattern: ~A" (car r))))
+              (let ((r-pattern (car r)))
+                (cond
+                  ((< 1 (count (lambda (x) (string=? (car x) r-pattern)) args))
+                    (error* 'make-router "duplicate pattern: ~A" r-pattern))
+                  ((not (valid-pattern? r-pattern))
+                    (error* 'make-router "invalid pattern: ~A" r-pattern)))))
             args)
-  (router-sort-routes args))
+  (router-sort-routes args) )
 
 
-;; TODO: error if multiple * or * not at end
 (: router-add (router string handler --> router))
 (define (router-add router pattern proc)
-  (if (assoc pattern router)
-      (error* 'router-add "pattern already exists in router: ~A" pattern)
+  (cond
+    ((assoc pattern router)
+      (error* 'router-add "pattern already exists in router: ~A" pattern))
+    ((not (valid-pattern? pattern))
+      (error* 'router-add "invalid pattern: ~A" pattern))
+    (else
       (let ((route (cons pattern proc)))
         ; Add the route to the list of routes and resort
-        (router-sort-routes (cons route router) ) ) ) )
+        (router-sort-routes (cons route router) ) ) ) ) )
+
+
+(define (valid-pattern? pattern)
+  (let ((splat-index (substring-index "*" pattern)))
+    (or (not splat-index) (= splat-index (sub1 (string-length pattern) ) ) ) ) )
 
 
 ;; TODO: should this return the pattern as well, perhaps using values?

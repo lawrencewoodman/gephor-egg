@@ -29,6 +29,24 @@
                        (cons "*" dummy) ) ) )
 
 
+  (test "make-router raises an exception if there are multiple '*' in pattern"
+        '(make-router "invalid pattern: h*h*")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (make-router (cons "" dummy)
+                       (cons "h*h*" dummy) ) ) )
+
+
+  (test "make-router raises an exception if there is a '*' in pattern but not at the end"
+        '(make-router "invalid pattern: h*h")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (make-router (cons "" dummy)
+                       (cons "h*h" dummy) ) ) )
+
+
   (test "router-add adds a route and sorts properly"
         '("" "hi" "hrl" "hrl*" "hi*" "hn*" "hr*" "*")
         (let* ((router (make-router))
@@ -43,7 +61,7 @@
           (map car router) ) )
 
 
-  (test "router-add raises an error if a pattern is added that already exists in router"
+  (test "router-add raises an exception if a pattern is added that already exists in router"
         '(router-add "pattern already exists in router: *")
         (handle-exceptions ex
           (list (get-condition-property ex 'exn 'location)
@@ -53,6 +71,23 @@
                  (router (router-add router "*" dummy))
                  (router (router-add router "*" dummy) ) )
             (map car router) ) ) )
+
+
+  (test "router-add raises an exception if there are multiple '*' in pattern"
+        '(router-add "invalid pattern: h*h*")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+        (let ((router (make-router)))
+          (router-add router "h*h*" dummy) ) ) )
+
+  (test "router-add raises an exception if there is a  '*' in pattern but not at the end"
+        '(router-add "invalid pattern: h*h")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+        (let ((router (make-router)))
+          (router-add router "h*h" dummy) ) ) )
 
 
   (test "router-match finds the correct handler for a selector"
