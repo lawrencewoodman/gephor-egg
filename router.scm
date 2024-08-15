@@ -19,8 +19,9 @@
 
 (: make-router ((list-of (pair string handler)) --> router))
 (define (make-router . args)
-  (for-each (lambda (r) (when (< 1 (count (lambda (x) (string=? (car x) (car r))) args))
-                              (error* 'make-router "duplicate pattern: ~A" (car r))))
+  (for-each (lambda (r)
+              (when (< 1 (count (lambda (x) (string=? (car x) (car r))) args))
+                         (error* 'make-router "duplicate pattern: ~A" (car r))))
             args)
   (router-sort-routes args))
 
