@@ -43,11 +43,6 @@
         (router-sort-routes (cons route router) ) ) ) ) )
 
 
-(define (valid-pattern? pattern)
-  (let ((splat-index (substring-index "*" pattern)))
-    (or (not splat-index) (= splat-index (sub1 (string-length pattern) ) ) ) ) )
-
-
 ;; TODO: should this return the pattern as well, perhaps using values?
 (: router-match (router string --> (or handler boolean)))
 (define (router-match router selector)
@@ -68,6 +63,13 @@
 
 
 ;; Internal Definitions ------------------------------------------------------
+
+
+(: valid-pattern? (string --> boolean))
+(define (valid-pattern? pattern)
+  (let ((splat-index (substring-index "*" pattern)))
+    (or (not splat-index) (= splat-index (sub1 (string-length pattern) ) ) ) ) )
+
 
 ;; Sort routes in descending order of length of string before '*'
 ;; so that most general matches are at the end of the list.  If two
