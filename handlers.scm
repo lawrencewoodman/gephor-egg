@@ -42,24 +42,26 @@
                        (request-client-address request) (request-selector request)
                        (cdr args)))
 
+  ;; TODO: remove the need for this by trimming selector in this function
+  ;; TODO: rather than before passed to it
+  ;; Check that the selectors don't start or end with a '/'
+  ;; which ensures that there are no surprises when forming local paths.
+  ;; This doesn't check that the selectors are safe.
+  (define (invalid-selector? selector)
+    (let ((len (string-length selector)))
+      (or (and (> len 0) (substring=? "/" selector 0 0))
+          (and (> len 0) (substring-index "/" selector (sub1 len) ) ) ) ) )
 
-  ;; We want to prevent root traversal attacks and include '\' in the
-  ;; list of invalid characters because of an apparent bug according to
-  ;; spiffy source code which says that this can be turned into a '/'
-  ;; sometimes by Chicken
-  (define (invalid-root-dir? dir)
-    (or (not (absolute-pathname? root-dir))
-        (substring-index "/" root-dir (sub1 (string-length root-dir)))
-        (substring-index "\\" root-dir)
-        (substring-index ".." root-dir) ) )
 
-
-  (when (invalid-root-dir? root-dir)
-        (error* 'serve-path "root-dir isn't valid: ~A" root-dir))
-
-  (let ((local-path (make-pathname root-dir (request-selector request))))
-    (cond ((unsafe-selector-pathname? (request-selector request))
-            (log-warning* "selector isn't safe")
+  (let* ((root-dir (if (> (string-length root-dir) 1)
+                       (string-chomp root-dir "/")
+                       root-dir))
+         (local-path (make-pathname root-dir (request-selector request))))
+    (cond ((unsafe-path? root-dir local-path)
+            (log-warning* "local-path isn't safe: ~A" local-path)
+            (Ok (make-rendered-error-menu request "path not found")))
+          ((invalid-selector? (request-selector request))
+            (log-warning* "selector is invalid")
             (Ok (make-rendered-error-menu request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
@@ -146,21 +148,26 @@
                   (string<? a-filename b-filename))))))))
 
 
-;; We want to prevent root traversal attacks and include '\' in the
+;; We want to prevent directory traversal attacks to ensure that path
+;; can't reach the parent directory of root-dir  We include '\' in the
 ;; list of invalid characters because of an apparent bug according to
 ;; the Spiffy web server source code which says that this can be turned
-;; into a '/' sometimes by Chicken.
-;; This also ensures that selectors don't start or end with a '/'
-;; which ensures that there are no surprises when forming local paths.
+;; into a '/' sometimes by Chicken. root-dir must be an absolute path.
+;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
+;; NOTE: need to worry about percent decoding which should be done before
+;; NOTE: any other checks.
 ;; TODO: Should we test for nul in a string as per Spiffy?
-;; TODO: Look also at pygopherd isrequestsecure function
-(define (unsafe-selector-pathname? selector)
-  (let ((len (string-length selector)))
-    (or (and (> len 0) (substring=? "/" selector 0 0))
-        (and (> len 0) (substring-index "/" selector (sub1 len)))
-        (substring-index "./" selector)
-        (substring-index ".." selector)
-        (substring-index "\\" selector) ) ) )
+;; TODO: check world readable?
+;; TODO: Export and test thoroughly
+(define (unsafe-path? root-dir path)
+  (let ((n-root-dir (normalize-pathname root-dir))
+        (n-path (normalize-pathname path)))
+    (or (not (absolute-pathname? root-dir))
+        (substring-index "./" path)
+        (substring-index ".." path)
+        (substring-index "\\" path)
+        (< (string-length n-path) (string-length n-root-dir))
+        (not (substring=? n-root-dir n-path) ) ) ) )
 
 
 ;; TODO: Move this, export? and rename?

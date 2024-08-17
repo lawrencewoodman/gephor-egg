@@ -34,6 +34,47 @@
           "\r\n"))
         (serve-path (make-request "dir-a" "127.0.0.1") fixtures-dir) )
 
+
+  (test "serve-path allows root-dir to end with a '/'"
+        ;; Directories come before regular files and each in alphabetical order
+        (Ok (string-intersperse '(
+          "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
+          "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
+          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
+              (root-dir (sprintf "~A/" fixtures-dir)))
+          (serve-path request root-dir) ) )
+
+  (test "serve-path allows root-dir to not end with a '/'"
+        ;; Directories come before regular files and each in alphabetical order
+        (Ok (string-intersperse '(
+          "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
+          "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
+          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (let ((request (make-request "dir-a" "127.0.0.1"))
+              (root-dir (string-chomp fixtures-dir "/")))
+          (serve-path request root-dir) ) )
+
+
+  ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
+  (test "serve-path allows root-dir to be '/'"
+        '(0 0 0 0 0 0)
+        (cases Result (serve-path (make-request "" "127.0.0.1") "/")
+          (Ok (v) (filter-map (lambda (x) (or (substring-index "1bin\t" x)
+                                              (substring-index "1dev\t" x)
+                                              (substring-index "1home\t" x)
+                                              (substring-index "1sbin\t" x)
+                                              (substring-index "1usr\t" x)
+                                              (substring-index "1var\t" x)))
+                              (string-split v "\r\n")))
+          (Error (e) e) ) )
+
   (test "serve-path returns an 'invalid selector' error menu if selector starts with a '/'"
         (Ok (string-intersperse '(
           "3invalid selector\t\tlocalhost\t70"
@@ -48,67 +89,68 @@
           "\r\n"))
         (serve-path (make-request "dir-a/" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns an 'invalid selector' error menu if selector contains '..'"
+  (test "serve-path returns an 'path not found' error menu if selector contains '..'"
         (Ok (string-intersperse '(
-          "3invalid selector\t\tlocalhost\t70"
+          "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (serve-path (make-request "../dir-a" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns an 'invalid selector' error menu if selector contains './'"
+  (test "serve-path returns an 'path not found' error menu if selector contains './'"
         (Ok (string-intersperse '(
-          "3invalid selector\t\tlocalhost\t70"
+          "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (serve-path (make-request "./dir-a" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns an 'invalid selector' error menu if selector contains a '\\'"
+  (test "serve-path returns an 'path not found' error menu if selector contains a '\\'"
         (Ok (string-intersperse '(
-          "3invalid selector\t\tlocalhost\t70"
+          "3path not found\t\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (serve-path (make-request "dir-a\\fred" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path raises an exception if root-dir ends with a '/'"
-        (list 'serve-path (sprintf "root-dir isn't valid: ~A/" fixtures-dir))
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (local-dir (sprintf "~A/" fixtures-dir)))
-          (condition-case (serve-path request local-dir)
-            (ex (exn) (list (get-condition-property ex 'exn 'location)
-                            (get-condition-property ex 'exn 'message) ) ) ) ) )
+  (test "serve-path returns a 'path not found' error menu and doesn't support percent decoding"
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "%2E%2E" "127.0.0.1") fixtures-dir) )
 
+  (test "serve-path returns a 'path not found' error menu if root-dir is a relative dir"
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "dir-a" "127.0.0.1") "tests/fixtures") )
 
-  (test "serve-path raises an exception if root-dir is a relative dir"
-        (list 'serve-path "root-dir isn't valid: fixtures")
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (local-dir "fixtures"))
-          (condition-case (serve-path request local-dir)
-            (ex (exn) (list (get-condition-property ex 'exn 'location)
-                            (get-condition-property ex 'exn 'message) ) ) ) ) )
+  (test "serve-path returns a 'path not found' error menu if root-dir is a relative dir of the form ./"
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "dir-a" "127.0.0.1") "./") )
 
-  (test "serve-path raises an exception if root-dir is a relative dir of the form ./"
-        (list 'serve-path "root-dir isn't valid: ./")
-        (let* ((request (make-request "dir-a" "127.0.0.1"))
-               (local-dir "./"))
-          (condition-case (serve-path request local-dir)
-            (ex (exn) (list (get-condition-property ex 'exn 'location)
-                            (get-condition-property ex 'exn 'message) ) ) ) ) )
+  (test "serve-path returns a 'path not found' error menu if root-dir contains ./"
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "dir-a" "127.0.0.1") "/tmp/./this") )
 
-  (test "serve-path raises an exception if root-dir contains .."
-        (list 'serve-path "root-dir isn't valid: /..")
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (local-dir "/.."))
-          (condition-case (serve-path request local-dir)
-            (ex (exn) (list (get-condition-property ex 'exn 'location)
-                            (get-condition-property ex 'exn 'message) ) ) ) ) )
+  (test "serve-path returns a 'path not found' error menu if root-dir contains .."
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "dir-a" "127.0.0.1") "/..") )
 
-  (test "serve-path raises an exception if root-dir contains \\"
-        (list 'serve-path "root-dir isn't valid: /\\")
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (local-dir "/\\"))
-          (condition-case (serve-path request local-dir)
-            (ex (exn) (list (get-condition-property ex 'exn 'location)
-                            (get-condition-property ex 'exn 'message) ) ) ) ) )
+  (test "serve-path returns a 'path not found' error menu if root-dir contains \\"
+        (Ok (string-intersperse '(
+          "3path not found\t\tlocalhost\t70"
+          ".\r\n")
+          "\r\n"))
+        (serve-path (make-request "dir-a" "127.0.0.1") "/\\") )
 
   (test "serve-path returns Error if trying to serve a file that isn't world readable"
         (list (list 'ok "Hello, this is used to test serving a non world readable file.\n")
@@ -321,6 +363,31 @@
           "</HTML>")
           "\n"))
         (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
+
+
+  ;; TODO: Move the selector trimming into handlers because otherwise this wouldn't
+  ;; TODO: actually work if called from server as the terminating / would be removed
+  (test "serve-url returns a HTML document populated with the supplied URL including trailing '/'"
+        (Ok (string-intersperse '(
+          "<HTML>"
+          "  <HEAD>"
+          "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog/\">"
+          "  </HEAD>"
+          "  <BODY>"
+          "    You are following a link from gopher to a web site.  You will be"
+          "    automatically taken to the web site shortly.  If you do not get sent"
+          "    there, please click"
+          "    <A HREF=\"https://example.com/blog/\">here</A> to go to the web site."
+          "    <P>"
+          "    The URL linked is:"
+          "    <P>"
+          "    <A HREF=\"https://example.com/blog/\">https://example.com/blog/</A>"
+          "    <P>"
+          "    Thanks for using gopher!"
+          "  </BODY>"
+          "</HTML>")
+          "\n"))
+        (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1") ) )
 
 
   (test "serve-url returns a 'server error' error menu if selector isn't valid"
