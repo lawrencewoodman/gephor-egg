@@ -28,9 +28,11 @@
         (Ok (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
-;; The selector must be a valid file path and not start or end with a "/"
-;; this is checked because although the server should strip these from
-;; the selector, the handler might reintroduce them.
+;; The selector must be a valid file path.  Whitespace and '/' characters
+;; will be trimmed from both ends of the selector to ensure safe and
+;; predicatable local path creation.  Whitespace is trimmed even though
+;; it should be by the server because the remove of a leading or terminating
+;; '/' character might leave whitespace.
 (define (serve-path request root-dir)
 
   (define (log-info* . args)
@@ -42,27 +44,14 @@
                        (request-client-address request) (request-selector request)
                        (cdr args)))
 
-  ;; TODO: remove the need for this by trimming selector in this function
-  ;; TODO: rather than before passed to it
-  ;; Check that the selectors don't start or end with a '/'
-  ;; which ensures that there are no surprises when forming local paths.
-  ;; This doesn't check that the selectors are safe.
-  (define (invalid-selector? selector)
-    (let ((len (string-length selector)))
-      (or (and (> len 0) (substring=? "/" selector 0 0))
-          (and (> len 0) (substring-index "/" selector (sub1 len) ) ) ) ) )
-
-
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
                        root-dir))
-         (local-path (make-pathname root-dir (request-selector request))))
+         (selector (trim-path-selector (request-selector request)))
+         (local-path (make-pathname root-dir selector)))
     (cond ((unsafe-path? root-dir local-path)
             (log-warning* "local-path isn't safe: ~A" local-path)
             (Ok (make-rendered-error-menu request "path not found")))
-          ((invalid-selector? (request-selector request))
-            (log-warning* "selector is invalid")
-            (Ok (make-rendered-error-menu request "invalid selector")))
           ((not (file-exists? local-path))
             (log-warning* "local path doesn't exist: ~A" local-path)
             (Ok (make-rendered-error-menu request "path not found")))
@@ -82,12 +71,12 @@
                      (if (file-exists? index-path)
                          (let ((nex-index (read-file index-path)))
                            (cases Result nex-index
-                             (Ok (v) (process-nex-index (request-selector request)
+                             (Ok (v) (process-nex-index selector
                                                         root-dir
                                                         local-path
                                                         v))
                              (Error (e) nex-index)))
-                         (list-dir (request-selector request) local-path))))
+                         (list-dir selector local-path))))
               (cases Result response
                 (Ok (v) (Ok (menu-render v)))
                 (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
@@ -243,11 +232,12 @@ END
 ;; Process a NEX style index file.  This describes a menu and returns a list
 ;; of menu items.
 ;; TODO: Rename index to something else
+;; TODO: Test trimming of selectors and paths in this
 (define (process-nex-index selector root-dir local-path nex-index)
 
   (define (dir-item path username)
     (if (absolute-pathname? path)
-        (menu-item 'menu username (trim-selector path)
+        (menu-item 'menu username (trim-path-selector path)
                    (server-hostname) (server-port))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
@@ -258,14 +248,14 @@ END
 
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file (make-pathname root-dir (trim-selector path))
+        (menu-item-file (make-pathname root-dir (trim-path-selector path))
                         username
-                        (trim-selector path))
+                        (trim-path-selector path))
         (let ((item-selector (sprintf "~A~A~A"
                                       selector
                                       (if (string=? selector "") "" "/")
                                       path)))
-          (menu-item-file (make-pathname local-path (trim-selector path))
+          (menu-item-file (make-pathname local-path (trim-path-selector path))
                           username
                           item-selector))))
 

@@ -105,13 +105,13 @@
 ;; Miscellaneous definitions ------------------------------------------------
 
 ;; A char set for trimming selectors
-(define selector-trim-char-set
+(define path-selector-trim-char-set
   (char-set-adjoin char-set:whitespace #\/) )
 
 ;; Trim beginning and end of selector to remove whitespace and
 ;; '/' characters
-(define (trim-selector selector)
-  (string-trim-both selector selector-trim-char-set) )
+(define (trim-path-selector selector)
+  (string-trim-both selector path-selector-trim-char-set) )
 
 ;; Similar to error but passes arguments after location to sprintf to form
 ;; error message

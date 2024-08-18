@@ -75,19 +75,23 @@
                               (string-split v "\r\n")))
           (Error (e) e) ) )
 
-  (test "serve-path returns an 'invalid selector' error menu if selector starts with a '/'"
-        (Ok (string-intersperse '(
-          "3invalid selector\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
-          (serve-path (make-request "/dir-a" "127.0.0.1") fixtures-dir) )
+  (test "serve-path trims whitespace and '/' characters from both ends of a selector"
+        '(#t #t #t #t #t #t #t #t #t)
+        (let ((expect (Ok (string-intersperse '(
+                            ;; Directories come before regular files and each in alphabetical order
+                            "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
+                            "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
+                            "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+                            "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
+                            ".\r\n")
+                            "\r\n")))
+             (selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
+                          "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
+        (map (lambda (selector)
+               (equal? expect
+                       (serve-path (make-request selector "127.0.0.1") fixtures-dir)))
+             selectors) ) )
 
-  (test "serve-path returns an 'invalid selector' error menu if selector ends with a '/'"
-        (Ok (string-intersperse '(
-          "3invalid selector\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
-        (serve-path (make-request "dir-a/" "127.0.0.1") fixtures-dir) )
 
   (test "serve-path returns an 'path not found' error menu if selector contains '..'"
         (Ok (string-intersperse '(
@@ -365,8 +369,6 @@
         (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
 
 
-  ;; TODO: Move the selector trimming into handlers because otherwise this wouldn't
-  ;; TODO: actually work if called from server as the terminating / would be removed
   (test "serve-url returns a HTML document populated with the supplied URL including trailing '/'"
         (Ok (string-intersperse '(
           "<HTML>"

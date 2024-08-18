@@ -182,10 +182,9 @@
 ;; TODO: Test this including timeout and breaking connection
 ;; Exceptions, including timeouts, are caught and logged.  If an exception
 ;; is caught #f is returned
-;; Read the selector and trim from the beginning and the end whitespace
-;; and '/' characters
+;; Read the selector and trim whitespace from the beginning and the end
 (define (read-selector client-address in)
-  (condition-case (trim-selector (read-line in 255))
+  (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
       (log-warning "client address: ~A, read selector timeout"
                    client-address)
