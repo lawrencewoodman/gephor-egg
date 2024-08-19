@@ -65,6 +65,7 @@
 (: menu-item-file (string string string --> (struct Result)))
 (define (menu-item-file local-path username selector)
   ;; TODO: Check local-path is safe
+  ;; TODO: check if a directory?
   (if (not (file-exists? local-path))
       (Error-fmt "local-path: ~A, file doesn't exist" local-path)
       (let* ((mime-type (identify local-path 'mime))

@@ -71,10 +71,7 @@
                      (if (file-exists? index-path)
                          (let ((nex-index (read-file index-path)))
                            (cases Result nex-index
-                             (Ok (v) (process-nex-index selector
-                                                        root-dir
-                                                        local-path
-                                                        v))
+                             (Ok (v) (process-nex-index root-dir selector v))
                              (Error (e) nex-index)))
                          (list-dir selector local-path))))
               (cases Result response
@@ -89,6 +86,7 @@
 ;; Internal Definitions ------------------------------------------------------
 
 ;; Regular expression to split a => style link
+;; TODO: Should => start at beginning of line?
 (define index-link-split-regex (string->irregex "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$"))
 
 ;; Regular expression to identify a URL in a => style link
@@ -166,10 +164,7 @@
   ;; An entry consists of a list (filename is-dir? selector)
   (define (make-dir-entry filename)
     (let ((full-local-filename (make-pathname local-path filename))
-          (selector (sprintf "~A~A~A"
-                             selector
-                             (if (string=? selector "") "" "/")
-                             filename)))
+          (selector (make-pathname selector filename)))
       (cond ((directory? full-local-filename)
               (list filename #t selector))
             ((regular-file? full-local-filename)
@@ -233,31 +228,40 @@ END
 ;; of menu items.
 ;; TODO: Rename index to something else
 ;; TODO: Test trimming of selectors and paths in this
-(define (process-nex-index selector root-dir local-path nex-index)
+;; TODO: rename and export - test via export
+(define (process-nex-index root-dir selector nex-index)
 
   (define (dir-item path username)
     (if (absolute-pathname? path)
         (menu-item 'menu username (trim-path-selector path)
                    (server-hostname) (server-port))
-        (let ((item-selector (sprintf "~A~A~A"
-                                      selector
-                                      (if (string=? selector "") "" "/")
-                                      (string-chomp path "/"))))
+        (let ((item-selector (make-pathname selector (string-chomp path "/"))))
           (menu-item 'menu username item-selector
                      (server-hostname) (server-port)))))
 
+  ;; TODO: Stop this from pointing to directories
   (define (file-item path username)
     (if (absolute-pathname? path)
-        (menu-item-file (make-pathname root-dir (trim-path-selector path))
-                        username
-                        (trim-path-selector path))
-        (let ((item-selector (sprintf "~A~A~A"
-                                      selector
-                                      (if (string=? selector "") "" "/")
-                                      path)))
-          (menu-item-file (make-pathname local-path (trim-path-selector path))
-                          username
-                          item-selector))))
+        (let ((full-path (make-pathname root-dir (trim-path-selector path))))
+          (cond
+            ((unsafe-path? root-dir full-path)
+               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
+            ((directory? full-path)
+               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
+                          path full-path))
+            (else
+               (menu-item-file full-path username (trim-path-selector path)))))
+        (let ((item-selector (make-pathname selector path))
+              (full-path (make-pathname (list root-dir selector)
+                                        (trim-path-selector path))))
+          (cond
+            ((unsafe-path? root-dir full-path)
+               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
+            ((directory? full-path)
+               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
+                          path full-path))
+            (else
+              (menu-item-file full-path username item-selector) ) ) ) ) )
 
   (define (is-dir? path)
     (substring-index "/" path (sub1 (string-length path))))
