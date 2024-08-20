@@ -14,6 +14,7 @@
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
    menu-render
+   process-index
    serve-url
    serve-path
    Result Result? Ok Error Error? Error-ex Error-fmt Error-wrap
@@ -91,11 +92,14 @@
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
 
-;; Route handling procedures
-(include-relative "handlers.scm")
+;; Procedures for processing index files
+(include-relative "index.scm")
 
 ;; Procedures for creating Gopher menus
 (include-relative "menu.scm")
+
+;; Route handling procedures
+(include-relative "handlers.scm")
 
 ;; Procedures for starting and stopping a Gopher server
 (include-relative "server.scm")
@@ -117,6 +121,27 @@
 ;; error message
 (define (error* location . args)
   (error location (apply sprintf args) ) )
+
+;; We want to prevent directory traversal attacks to ensure that path
+;; can't reach the parent directory of root-dir  We include '\' in the
+;; list of invalid characters because of an apparent bug according to
+;; the Spiffy web server source code which says that this can be turned
+;; into a '/' sometimes by Chicken. root-dir must be an absolute path.
+;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
+;; NOTE: need to worry about percent decoding which should be done before
+;; NOTE: any other checks.
+;; TODO: Should we test for nul in a string as per Spiffy?
+;; TODO: check world readable?
+;; TODO: Export and test thoroughly
+(define (unsafe-path? root-dir path)
+  (let ((n-root-dir (normalize-pathname root-dir))
+        (n-path (normalize-pathname path)))
+    (or (not (absolute-pathname? root-dir))
+        (substring-index "./" path)
+        (substring-index ".." path)
+        (substring-index "\\" path)
+        (< (string-length n-path) (string-length n-root-dir))
+        (not (substring=? n-root-dir n-path) ) ) ) )
 
 
 )

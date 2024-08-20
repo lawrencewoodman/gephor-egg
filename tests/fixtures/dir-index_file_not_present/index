@@ -1,7 +1,0 @@
-This index file is used as a test 
-
-In this case we will get an Error returned because the file
-doesn't exist and therefore it can't be checked for its type.
-
-=> nonexistent.txt
-

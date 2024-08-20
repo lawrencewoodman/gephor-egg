@@ -71,7 +71,7 @@
                      (if (file-exists? index-path)
                          (let ((nex-index (read-file index-path)))
                            (cases Result nex-index
-                             (Ok (v) (process-nex-index root-dir selector v))
+                             (Ok (v) (process-index root-dir selector v))
                              (Error (e) nex-index)))
                          (list-dir selector local-path))))
               (cases Result response
@@ -133,28 +133,6 @@
                 (let ((a-filename (car a))
                       (b-filename (car b)))
                   (string<? a-filename b-filename))))))))
-
-
-;; We want to prevent directory traversal attacks to ensure that path
-;; can't reach the parent directory of root-dir  We include '\' in the
-;; list of invalid characters because of an apparent bug according to
-;; the Spiffy web server source code which says that this can be turned
-;; into a '/' sometimes by Chicken. root-dir must be an absolute path.
-;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
-;; NOTE: need to worry about percent decoding which should be done before
-;; NOTE: any other checks.
-;; TODO: Should we test for nul in a string as per Spiffy?
-;; TODO: check world readable?
-;; TODO: Export and test thoroughly
-(define (unsafe-path? root-dir path)
-  (let ((n-root-dir (normalize-pathname root-dir))
-        (n-path (normalize-pathname path)))
-    (or (not (absolute-pathname? root-dir))
-        (substring-index "./" path)
-        (substring-index ".." path)
-        (substring-index "\\" path)
-        (< (string-length n-path) (string-length n-root-dir))
-        (not (substring=? n-root-dir n-path) ) ) ) )
 
 
 ;; TODO: Move this, export? and rename?
@@ -222,86 +200,4 @@
 </HTML>
 END
 )
-
-
-;; Process a NEX style index file.  This describes a menu and returns a list
-;; of menu items.
-;; TODO: Rename index to something else
-;; TODO: Test trimming of selectors and paths in this
-;; TODO: rename and export - test via export
-(define (process-nex-index root-dir selector nex-index)
-
-  (define (dir-item path username)
-    (if (absolute-pathname? path)
-        (menu-item 'menu username (trim-path-selector path)
-                   (server-hostname) (server-port))
-        (let ((item-selector (make-pathname selector (string-chomp path "/"))))
-          (menu-item 'menu username item-selector
-                     (server-hostname) (server-port)))))
-
-  ;; TODO: Stop this from pointing to directories
-  (define (file-item path username)
-    (if (absolute-pathname? path)
-        (let ((full-path (make-pathname root-dir (trim-path-selector path))))
-          (cond
-            ((unsafe-path? root-dir full-path)
-               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
-            ((directory? full-path)
-               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
-                          path full-path))
-            (else
-               (menu-item-file full-path username (trim-path-selector path)))))
-        (let ((item-selector (make-pathname selector path))
-              (full-path (make-pathname (list root-dir selector)
-                                        (trim-path-selector path))))
-          (cond
-            ((unsafe-path? root-dir full-path)
-               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
-            ((directory? full-path)
-               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
-                          path full-path))
-            (else
-              (menu-item-file full-path username item-selector) ) ) ) ) )
-
-  (define (is-dir? path)
-    (substring-index "/" path (sub1 (string-length path))))
-
-  (define (is-url? path)
-    (let ((url-match (irregex-match url-regex path)))
-      (irregex-match-data? url-match)))
-
-  (define (parse-line line)
-    (let ((link-match (irregex-search index-link-split-regex line)))
-      (if (irregex-match-data? link-match)
-          (let* ((path (irregex-match-substring link-match 1))
-                 (maybe-username (irregex-match-substring link-match 2))
-                 (username (if (string=? maybe-username "")
-                               path
-                               maybe-username))
-                 (chomped-username (if (string=? maybe-username "")
-                                       (string-chomp path "/")
-                                       maybe-username)))
-            (cond
-              ((is-url? path)
-                (menu-item-url username path))
-              ((is-dir? path)
-                (dir-item path chomped-username))
-              (else
-                (file-item path username))))
-          ;; Current selector is used for info itemtype so that if type
-          ;; not supported by client but still displayed then it
-          ;; will just link to the page that it is being displayed on
-          (menu-item 'info line selector (server-hostname) (server-port) ) ) ) )
-
-  (let* ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t))
-         (parsed-lines
-           (do ((lines lines (cdr lines))
-                (result '() (let ((item (parse-line (car lines))))
-                              (cases Result item
-                                (Ok (v) (cons v result))
-                                (Error (e) (Error-wrap item "error processing index"))))))
-                ((or (null? lines) (Error? result)) result))))
-    (if (Error? parsed-lines)
-        parsed-lines
-        (Ok (reverse parsed-lines) ) ) ) )
 

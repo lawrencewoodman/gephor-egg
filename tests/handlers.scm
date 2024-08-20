@@ -11,10 +11,6 @@
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
           "1dir-index_empty_file\tdir-index_empty_file\tlocalhost\t70"
-          "1dir-index_file_not_present\tdir-index_file_not_present\tlocalhost\t70"
-          "1dir-index_invalid_url_protocol\tdir-index_invalid_url_protocol\tlocalhost\t70"
-          "1dir-index_unsafe_absolute_file_link\tdir-index_unsafe_absolute_file_link\tlocalhost\t70"
-          "1dir-index_unsafe_relative_file_link\tdir-index_unsafe_relative_file_link\tlocalhost\t70"
           "1dir-index_world_readable\tdir-index_world_readable\tlocalhost\t70"
           "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
@@ -239,28 +235,7 @@
   (test "serve-path process 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
         (Ok (string-intersperse '(
-          "i---[[[ Some Title ]]]---\tdir-b\tlocalhost\t70"
-          "i\tdir-b\tlocalhost\t70"
-          "i\tdir-b\tlocalhost\t70"
-          "iLets try out some links.  First some absolute links\tdir-b\tlocalhost\t70"
-          "1Back to the beginning\t\tlocalhost\t70"
-          "1/dir-a\tdir-a\tlocalhost\t70"
-          "0/a.txt\ta.txt\tlocalhost\t70"
-          "i\tdir-b\tlocalhost\t70"
-          "iNow some relative links\tdir-b\tlocalhost\t70"
-          "1dir-ba\tdir-b/dir-ba\tlocalhost\t70"
-          "1The ba directory\tdir-b/dir-ba\tlocalhost\t70"
-          "1The bb directory\tdir-b/dir-bb\tlocalhost\t70"
-          "0dir-ba/baa.txt\tdir-b/dir-ba/baa.txt\tlocalhost\t70"
-          "9dir-ba/bac.bin\tdir-b/dir-ba/bac.bin\tlocalhost\t70"
-          "i\tdir-b\tlocalhost\t70"
-          "iSome URLs used as links\tdir-b\tlocalhost\t70"
-          "hhttp://example.com\tURL:http://example.com\tlocalhost\t70"
-          "hhttp://example.com/fred\tURL:http://example.com/fred\tlocalhost\t70"
-          "hhttp://example.com/fred/\tURL:http://example.com/fred/\tlocalhost\t70"
-          "hFred's things\tURL:http://example.com/fred\tlocalhost\t70"
-          "i\tdir-b\tlocalhost\t70"
-          "iThis file ends with two blank lines which should be stripped.\tdir-b\tlocalhost\t70"
+          "iA simple index file to check it is interpreted by serve-path\tdir-b\tlocalhost\t70"
           ".\r\n")
           "\r\n"))
         (serve-path (make-request "dir-b" "127.0.0.1") fixtures-dir) )
@@ -308,51 +283,6 @@
                                                (irregex-replace "file: .*\/index"
                                                                 (second e)
                                                                 "file: x/index")))))))))
-
-
-  (test "serve-path returns Error if file in 'index' doesn't exist"
-        (Error (list (sprintf "local-path: ~A, error serving directory"
-                              (make-pathname fixtures-dir
-                                             "dir-index_file_not_present"))
-                     "error processing index"
-                     (sprintf "local-path: ~A, file doesn't exist"
-                              (make-pathname (list fixtures-dir
-                                                   "dir-index_file_not_present")
-                                             "nonexistent.txt"))))
-        (serve-path (make-request "dir-index_file_not_present" "127.0.0.1")
-                    fixtures-dir) )
-
-
-  (test "serve-path returns Error if an absolute file in 'index' is unsafe"
-        (Error (list (sprintf "local-path: ~A, error serving directory"
-                              (make-pathname fixtures-dir
-                                             "dir-index_unsafe_absolute_file_link"))
-                     "error processing index"
-                     (sprintf "path: /../run.scm, full-path: ~A/../run.scm, isn't safe"
-                              fixtures-dir)))
-        (serve-path (make-request "dir-index_unsafe_absolute_file_link" "127.0.0.1")
-                    fixtures-dir) )
-
-
-  (test "serve-path returns Error if a relative file in 'index' is unsafe"
-        (Error (list (sprintf "local-path: ~A, error serving directory"
-                              (make-pathname fixtures-dir
-                                             "dir-index_unsafe_relative_file_link"))
-                     "error processing index"
-                     (sprintf "path: ../run.scm, full-path: ~A/dir-index_unsafe_relative_file_link/../run.scm, isn't safe"
-                              fixtures-dir)))
-        (serve-path (make-request "dir-index_unsafe_relative_file_link" "127.0.0.1")
-                    fixtures-dir) )
-
-
-  (test "serve-path returns Error containing a chain of Errors if problem with serving a directory"
-        (Error (list (sprintf "local-path: ~A, error serving directory"
-                              (make-pathname fixtures-dir "dir-index_invalid_url_protocol"))
-                     "error processing index"
-                     "url: fred://example.com, unsupported protocol: fred"))
-        (serve-path (make-request "dir-index_invalid_url_protocol" "127.0.0.1")
-                    fixtures-dir) )
-
 
 
   (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"

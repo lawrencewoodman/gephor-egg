@@ -1,8 +1,0 @@
-This index file is used to test that we get a useful chain of
-exception messages when an exception is raised.
-
-In this case we will get an Error returned because the protocol
-in the following link isn't known.
-
-=> fred://example.com
-
