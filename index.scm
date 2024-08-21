@@ -89,8 +89,7 @@
 ;; Internal Definitions ------------------------------------------------------
 
 ;; Regular expression to split a => style link
-;; TODO: Should => start at beginning of line?
-(define index-link-split-regex (string->irregex "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$"))
+(define index-link-split-regex (string->irregex "^=>[ ]+([^ ]+)[ ]*(.*)$"))
 
 ;; Regular expression to identify a URL in a => style link
 (define url-regex (string->irregex "^.*:\/\/[^:/]+(:[0-9]*)?.*$"))

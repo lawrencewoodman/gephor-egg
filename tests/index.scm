@@ -54,12 +54,28 @@
                        ""
                        "There are blank lines above and below this line that should be stripped"
                        ""
-                       ""))))
+                       "")
+                       "\n")))
           (cases Result
                  (process-index fixtures-dir "dir-a" index)
                  (Ok (v) (menu-render v))
                  (Error (e) e) ) ) )
 
+
+  (test "process-index only recognizes links where => is at the beginning of the line"
+        (string-intersperse '(
+          "1A link with => starting at the beginning of the line\t\tlocalhost\t70"
+          "i => / This isn't a link because => doesn't start at the beginning of the line\tdir-a\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let ((index (string-intersperse '(
+                       "=> / A link with => starting at the beginning of the line"
+                       " => / This isn't a link because => doesn't start at the beginning of the line")
+                       "\n")))
+          (cases Result
+                 (process-index fixtures-dir "dir-a" index)
+                 (Ok (v) (menu-render v))
+                 (Error (e) e) ) ) )
 
 
   (test "process-index supports absolute links"

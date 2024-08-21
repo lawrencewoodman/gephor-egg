@@ -85,14 +85,6 @@
 
 ;; Internal Definitions ------------------------------------------------------
 
-;; Regular expression to split a => style link
-;; TODO: Should => start at beginning of line?
-(define index-link-split-regex (string->irregex "^[ ]*=>[ ]+([^ ]+)[ ]*(.*)$"))
-
-;; Regular expression to identify a URL in a => style link
-(define url-regex (string->irregex "^.*:\/\/[^:/]+(:[0-9]*)?.*$"))
-
-
 ;; Does the file have word readable permissions?
 (define (world-readable? filename)
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
