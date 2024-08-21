@@ -20,36 +20,29 @@
 (define (process-index root-dir selector nex-index)
 
   (define (dir-item path username)
-    (if (absolute-pathname? path)
-        (menu-item 'menu username (trim-path-selector path)
-                   (server-hostname) (server-port))
-        (let ((item-selector (make-pathname selector (string-chomp path "/"))))
-          (menu-item 'menu username item-selector
-                     (server-hostname) (server-port)))))
+    (let ((item-selector (if (absolute-pathname? path)
+                             (trim-path-selector path)
+                             (make-pathname selector (string-chomp path "/")))))
+      (menu-item 'menu username item-selector (server-hostname) (server-port) ) ) )
 
-  ;; TODO: Stop this from pointing to directories
   (define (file-item path username)
+    (define (make-item full-path item-selector)
+      (cond
+        ((unsafe-path? root-dir full-path)
+           (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
+        ((directory? full-path)
+           (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
+                      path full-path))
+        (else
+           (menu-item-file full-path username item-selector) ) ) )
+
     (if (absolute-pathname? path)
         (let ((full-path (make-pathname root-dir (trim-path-selector path))))
-          (cond
-            ((unsafe-path? root-dir full-path)
-               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
-            ((directory? full-path)
-               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
-                          path full-path))
-            (else
-               (menu-item-file full-path username (trim-path-selector path)))))
-        (let ((item-selector (make-pathname selector path))
-              (full-path (make-pathname (list root-dir selector)
-                                        (trim-path-selector path))))
-          (cond
-            ((unsafe-path? root-dir full-path)
-               (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
-            ((directory? full-path)
-               (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
-                          path full-path))
-            (else
-              (menu-item-file full-path username item-selector) ) ) ) ) )
+          (make-item full-path (trim-path-selector path)))
+        (let ((full-path (make-pathname (list root-dir selector)
+                                        (trim-path-selector path)))
+              (item-selector (make-pathname selector path)))
+          (make-item full-path item-selector) ) ) )
 
   (define (is-dir? path)
     (substring-index "/" path (sub1 (string-length path))))
