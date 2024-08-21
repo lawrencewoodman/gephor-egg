@@ -53,12 +53,20 @@
             response) ) )
 
 
-  (test "server truncates data sent to max-file-size bytes"
-        "hello frien"
+  (test "server returns a 'resource too big to send' error menu if data to send is > max-file-size bytes"
+        "3resource is too big to send\t\tlocalhost\t7070\r\n.\r\n"
         (let ((port 7070)
               (router (make-router (cons "hello" (lambda (request)
-                                                         (Ok "hello friend"))))))
-          (parameterize ((max-file-size 11))
+                                                         (Ok (string-intersperse
+                                                               '("1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"
+                                                                 "1234567890"))))))))
+          (parameterize ((max-file-size 60))
             (let* ((thread (start-test-server port router))
                    (response (gopher-test-get port "hello")))
               (stop-server thread)
