@@ -21,6 +21,14 @@
           (process-index fixtures-dir "dir-a" index) ) )
 
 
+  (test "process-index returns Error if a link to a directory doesn't have a trailing '/'"
+        (Error (list "error processing index"
+                     (sprintf "path: dir-ba, full-path: ~A/dir-b/dir-ba, is a directory but link missing trailing '/'"
+                              fixtures-dir)))
+        (let ((index "=> dir-ba This is actually a directory"))
+          (process-index fixtures-dir "dir-b" index) ) )
+
+
   (test "process-index returns Error if a relative link in 'index' is unsafe"
         (Error (list "error processing index"
                      (sprintf "path: ../run.scm, full-path: ~A/dir-a/../run.scm, isn't safe"
@@ -59,6 +67,7 @@
           "1Back to the beginning\t\tlocalhost\t70"
           "1/dir-a\tdir-a\tlocalhost\t70"
           "0/a.txt\ta.txt\tlocalhost\t70"
+          "1Lots of white space (will be removed)\tdir-a\tlocalhost\t70"
           "0Lots of white space (will be removed)\tb.txt\tlocalhost\t70"
           ".\r\n")
           "\r\n")
@@ -66,6 +75,7 @@
                        "=> / Back to the beginning"
                        "=> /dir-a/"
                        "=> /a.txt"
+                       "=>     /dir-a/    Lots of white space (will be removed)    "
                        "=>     /b.txt     Lots of white space (will be removed)    ")
                        "\n")))
           (cases Result
@@ -81,6 +91,7 @@
           "1The bb directory\tdir-b/dir-bb\tlocalhost\t70"
           "0dir-ba/baa.txt\tdir-b/dir-ba/baa.txt\tlocalhost\t70"
           "9dir-ba/bac.bin\tdir-b/dir-ba/bac.bin\tlocalhost\t70"
+          "1Lots of white space (will be removed)\tdir-b/dir-ba\tlocalhost\t70"
           "0Lots of white space (will be removed)\tdir-b/dir-ba/baa.txt\tlocalhost\t70"
          ".\r\n")
           "\r\n")
@@ -90,7 +101,8 @@
                        "=> dir-bb/ The bb directory"
                        "=> dir-ba/baa.txt"
                        "=> dir-ba/bac.bin"
-                       "=> dir-ba/baa.txt     Lots of white space (will be removed)    ")
+                       "=>     dir-ba/            Lots of white space (will be removed)    "
+                       "=>     dir-ba/baa.txt     Lots of white space (will be removed)    ")
                        "\n")))
 
           (cases Result

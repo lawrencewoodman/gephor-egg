@@ -15,7 +15,6 @@
 ;; Process a NEX style index file.  This describes a menu and returns a list
 ;; of menu items.
 ;; TODO: Rename index to something else
-;; TODO: Test trimming of selectors and paths in this
 ;; TODO: rename?
 (define (process-index root-dir selector nex-index)
 
