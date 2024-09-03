@@ -257,7 +257,7 @@
                           "ileads to an Error.\t\tlocalhost\t70"
                           ".\r\n")
                           "\r\n"))
-              (list 'error (list "local-path: x/, error serving directory"
+              (list 'error (list "local-path: x/, error serving index"
                                  "file: x/index, isn't world readable")))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))

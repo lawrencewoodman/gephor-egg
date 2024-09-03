@@ -34,52 +34,23 @@
 ;; it should be by the server because the remove of a leading or terminating
 ;; '/' character might leave whitespace.
 (define (serve-path request root-dir)
-
-  (define (log-info* . args)
-    (apply log-info (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
-                    (request-client-address request) (request-selector request)
-                    (cdr args)))
-  (define (log-warning* . args)
-    (apply log-warning (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
-                       (request-client-address request) (request-selector request)
-                       (cdr args)))
-
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
                        root-dir))
          (selector (trim-path-selector (request-selector request)))
          (local-path (make-pathname root-dir selector)))
     (cond ((unsafe-path? root-dir local-path)
-            (log-warning* "local-path isn't safe: ~A" local-path)
+            (log-handler-warning request "local-path isn't safe: ~A" local-path)
             (Ok (make-rendered-error-menu request "path not found")))
           ((not (file-exists? local-path))
-            (log-warning* "local path doesn't exist: ~A" local-path)
+            (log-handler-warning request "local path doesn't exist: ~A" local-path)
             (Ok (make-rendered-error-menu request "path not found")))
-          ;; TODO: allow or don't allow gophermap to be downloaded?
-          ((regular-file? local-path)
-            (log-info* "request file: ~A" local-path)
-            (let ((response (read-file local-path)))
-              (cases Result response
-                (Ok (v) response)
-                (Error (e) (Error-wrap response "local-path: ~A, error serving file"
-                                       local-path)))) )
-          ((directory? local-path)
-            (log-info* "list directory: ~A" local-path)
-            (let* ((index-path (make-pathname local-path "index"))
-                   (response
-                     ;; TODO: Do we want to use 'index' as filename?
-                     (if (file-exists? index-path)
-                         (let ((nex-index (read-file index-path)))
-                           (cases Result nex-index
-                             (Ok (v) (process-index root-dir selector v))
-                             (Error (e) nex-index)))
-                         (list-dir selector local-path))))
-              (cases Result response
-                (Ok (v) (Ok (menu-render v)))
-                (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
-                                       local-path)))))
           (else
-            (Error-fmt "unsupported file type for path: ~A" local-path) ) ) ) )
+            (let ((response (any (lambda (h) (h root-dir local-path request))
+                                 serve-path-handlers)))
+              (if response
+                  response
+                  (Error-fmt "unsupported file type for path: ~A" local-path) ) ) ) ) ) )
 
 
 
@@ -88,6 +59,19 @@
 ;; Does the file have word readable permissions?
 (define (world-readable? filename)
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
+
+
+(define (log-handler-info request . args)
+  (apply log-info (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
+                  (request-client-address request) (request-selector request)
+                  (cdr args) ) )
+
+
+(define (log-handler-warning request . args)
+  (apply log-warning (conc "client address: ~A, selector: ~A, handler: serve-path, " (car args))
+                     (request-client-address request) (request-selector request)
+                     (cdr args)))
+
 
 
 ;; Parameter: max-file-size controls the maximum size file
@@ -125,6 +109,52 @@
                 (let ((a-filename (car a))
                       (b-filename (car b)))
                   (string<? a-filename b-filename))))))))
+
+
+(define (serve-index root-dir local-path request)
+  ;; TODO: Do we want to use 'index' as filename?
+  (if (directory? local-path)
+      (let ((index-path (make-pathname local-path "index")))
+        (if (file-exists? index-path)
+            (let ((nex-index (read-file index-path)))
+              (let ((response (cases Result nex-index
+                                (Ok (v) (process-index root-dir (request-selector request) v))
+                                (Error (e) nex-index))))
+                (cases Result response
+                  (Ok (v) (Ok (menu-render v)))
+                  (Error (e) (Error-wrap response "local-path: ~A, error serving index"
+                                         local-path)))))
+            #f))
+      #f) )
+
+
+(define (serve-file root-dir local-path request)
+  ;; TODO: allow or don't allow gophermap to be downloaded?
+  (if (regular-file? local-path)
+      (begin
+        (log-handler-info request "request file: ~A" local-path)
+        (let ((response (read-file local-path)))
+          (cases Result response
+            (Ok (v) response)
+            (Error (e) (Error-wrap response "local-path: ~A, error serving file"
+                                   local-path)))))
+      #f) )
+
+
+(define (serve-dir root-dir local-path request)
+  (if (directory? local-path)
+      (begin
+        (log-handler-info request "list directory: ~A" local-path)
+        (let* ((response (list-dir (request-selector request) local-path)))
+          (cases Result response
+            (Ok (v) (Ok (menu-render v)))
+            (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
+                                   local-path)))))
+      #f) )
+
+
+;; List of handlers that serve-path will try
+(define serve-path-handlers (list serve-index serve-file serve-dir))
 
 
 ;; TODO: Move this, export? and rename?
