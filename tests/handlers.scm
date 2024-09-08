@@ -5,6 +5,8 @@
   (parameterize ((server-hostname "localhost")
                  (server-port 70))
 
+  ;; TODO: Add test for root-dir not existing in case specific incorrectly
+
   (test "serve-path supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
         (Ok (string-intersperse '(
@@ -91,73 +93,46 @@
              selectors) ) )
 
 
-  (test "serve-path returns an 'path not found' error menu if selector contains '..'"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if selector contains '..'"
+        #f
         (serve-path (make-request "../dir-a" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns an 'path not found' error menu if selector contains './'"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if selector contains './'"
+        #f
         (serve-path (make-request "./dir-a" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns an 'path not found' error menu if selector contains a '\\'"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if selector contains a '\\'"
+        #f
         (serve-path (make-request "dir-a\\fred" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns a 'path not found' error menu and doesn't support percent decoding"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
-        (serve-path (make-request "%2E%2E" "127.0.0.1") fixtures-dir) )
+  (test "serve-path doesn't allow percent decoding to allow .."
+        #f
+        (serve-path (make-request "dir-a/%2E%2E" "127.0.0.1") fixtures-dir) )
 
-  (test "serve-path returns a 'path not found' error menu if root-dir is a relative dir"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if root-dir is a relative dir"
+        #f
         (serve-path (make-request "dir-a" "127.0.0.1") "tests/fixtures") )
 
-  (test "serve-path returns a 'path not found' error menu if root-dir is a relative dir of the form ./"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if root-dir is a relative dir of the form ./"
+        #f
         (serve-path (make-request "dir-a" "127.0.0.1") "./") )
 
-  (test "serve-path returns a 'path not found' error menu if root-dir contains ./"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if root-dir contains ./"
+        #f
         (serve-path (make-request "dir-a" "127.0.0.1") "/tmp/./this") )
 
-  (test "serve-path returns a 'path not found' error menu if root-dir contains .."
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path false if root-dir contains .."
+        #f
         (serve-path (make-request "dir-a" "127.0.0.1") "/..") )
 
-  (test "serve-path returns a 'path not found' error menu if root-dir contains \\"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if root-dir contains \\"
+        #f
         (serve-path (make-request "dir-a" "127.0.0.1") "/\\") )
 
-  (test "serve-path returns Error if trying to serve a file that isn't world readable"
+
+  (test "serve-path returns false if trying to serve a file that isn't world readable"
         (list (list 'ok "Hello, this is used to test serving a non world readable file.\n")
-              (list 'error (list "local-path: x/hello.txt, error serving file"
-                                 "file: x/hello.txt, isn't world readable")))
+              #f)
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
@@ -172,16 +147,10 @@
                     (serve-path request tmpdir))))
             (list (cases Result response1
                          (Ok (v) (list 'ok v)))
-                  (cases Result response2
-                        (Error (e) (list 'error
-                                         (list (irregex-replace "local-path: .*\/hello.txt"
-                                                                (first e)
-                                                                "local-path: x/hello.txt")
-                                               (irregex-replace "file: .*\/hello.txt"
-                                                                (second e)
-                                                                "file: x/hello.txt") ) ) ) ) ) ) ) )
+                  response2) ) ) )
 
 
+  ;; TODO: Should this return false?
   (test "serve-path returns Error if listing a directory that isn't world readable"
         (list (list 'ok (string-intersperse '(
                           "1dir-a\tdir-a\tlocalhost\t70"
@@ -214,11 +183,8 @@
                                                                 "local-path: x/") ) ) ) ) ) ) ) )
 
 
-  (test "serve-path returns a 'path not found' error menu if path doesn't exist"
-        (Ok (string-intersperse '(
-          "3path not found\t\tlocalhost\t70"
-          ".\r\n")
-          "\r\n"))
+  (test "serve-path returns false if path doesn't exist"
+        #f
         (serve-path (make-request "unknown" "127.0.0.1") fixtures-dir) )
 
 
@@ -251,14 +217,17 @@
                     fixtures-dir) )
 
 
-  (test "serve-path returns Error if an 'index' file isn't world readable"
+  (test "serve-path lists the directory if an 'index' file isn't world readable"
         (list (list 'ok (string-intersperse '(
-                          "iThis is used to test that an index file that isn't world readable\t\tlocalhost\t70"
-                          "ileads to an Error.\t\tlocalhost\t70"
+                          "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
                           ".\r\n")
                           "\r\n"))
-              (list 'error (list "local-path: x/, error serving index"
-                                 "file: x/index, isn't world readable")))
+              (list 'ok (string-intersperse '(
+                          "1dir-a\tdir-a\tlocalhost\t70"
+                          "1dir-b\tdir-b\tlocalhost\t70"
+                          "0index\tindex\tlocalhost\t70"
+                          ".\r\n")
+                          "\r\n")))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
@@ -276,13 +245,7 @@
             (list (cases Result response1
                          (Ok (v) (list 'ok v)))
                   (cases Result response2
-                        (Error (e) (list 'error
-                                         (list (irregex-replace "local-path: .*\/"
-                                                                (first e)
-                                                                "local-path: x/")
-                                               (irregex-replace "file: .*\/index"
-                                                                (second e)
-                                                                "file: x/index")))))))))
+                         (Ok (v) (list 'ok v) ) ) ) ) ) )
 
 
   (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"
@@ -291,13 +254,12 @@
           (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
 
 
-  (test "serve-path returns Error if file is greater than the number of bytes set by max-file-size"
-        (Error (list (sprintf "local-path: ~A, error serving file"
-                              (make-pathname fixtures-dir "a.txt"))
-                     (sprintf "file: ~A, is greater than 5 bytes"
-                              (make-pathname fixtures-dir "a.txt"))))
+  (test "serve-path raises an exception if file is greater than the number of bytes set by max-file-size"
+        (sprintf "file: ~A, is greater than 5 bytes"
+                 (make-pathname fixtures-dir "a.txt"))
         (parameterize ((max-file-size 5))
-          (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
+          (condition-case (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir)
+            (ex () (get-condition-property ex 'exn 'message) ) ) ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"
@@ -346,11 +308,10 @@
         (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1") ) )
 
 
-  (test "serve-url returns a 'server error' error menu if selector isn't valid"
-        "invalid selector: FURL:https://example.com/blog"
-        (let* ((request (make-request "FURL:https://example.com/blog" "127.0.0.1")))
-          (condition-case (serve-url request)
-            (ex (exn) (get-condition-property ex 'exn 'message) ) ) ) )
+  (test "serve-url returns false if selector isn't valid"
+        #f
+        (serve-url (make-request "FURL:https://example.com/blog" "127.0.0.1") ) )
+
 
 ) )
 

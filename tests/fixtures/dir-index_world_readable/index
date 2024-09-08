@@ -1,2 +1,1 @@
-This is used to test that an index file that isn't world readable
-leads to an Error.
+This is used to test an index file that isn't world readable

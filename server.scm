@@ -78,25 +78,31 @@
                                           client-address
                                           selector)
                              (Ok (make-rendered-error-menu request "path not found"))))))
-                (cases Result response
-                  (Ok (v)
-                    (if (> (string-length v) (max-file-size))
-                        (begin
-                          (log-warning "client address: ~A, selector: ~A, data is too big to send"
-                                       client-address
-                                       selector)
-                          (write-string (make-rendered-error-menu request "resource is too big to send")
-                                        (max-file-size)
-                                        out))
-                        (write-string v (max-file-size) out)))
-                  (Error (e)
-                    (log-error "client address: ~A, selector: ~A, error from handler: ~A"
-                               client-address
-                               selector
-                               e)
-                    (write-string (make-rendered-error-menu request "resource can not be accessed")
-                                  (max-file-size)
-                                  out)))))
+                (if response
+                    (cases Result response
+                      (Ok (v)
+                        (if (> (string-length v) (max-file-size))
+                            (begin
+                              (log-warning "client address: ~A, selector: ~A, data is too big to send"
+                                           client-address
+                                           selector)
+                              (write-string (make-rendered-error-menu request "resource is too big to send")
+                                            (max-file-size)
+                                            out))
+                            (write-string v (max-file-size) out)))
+                      (Error (e)
+                        (log-error "client address: ~A, selector: ~A, error from handler: ~A"
+                                   client-address
+                                   selector
+                                   e)
+                        (write-string (make-rendered-error-menu request "resource can not be accessed")
+                                      (max-file-size)
+                                      out)))
+                    (begin
+                      (log-warning "client address: ~A, selector: ~A, no handler for selector"
+                                   client-address
+                                   selector)
+                      (Ok (make-rendered-error-menu request "path not found"))))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

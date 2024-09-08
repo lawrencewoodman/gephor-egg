@@ -143,5 +143,8 @@
         (< (string-length n-path) (string-length n-root-dir))
         (not (substring=? n-root-dir n-path) ) ) ) )
 
+;; TODO: Merge this and unsafe-path?
+(define safe-path? (complement unsafe-path?) )
+
 
 )
