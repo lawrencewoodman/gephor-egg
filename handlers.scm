@@ -45,15 +45,26 @@
 
 
 (define (log-handler-info handler-name request . args)
-  (apply log-info (conc "client address: ~A, selector: ~A, handler: ~A, " handler-name (car args))
-                  (request-client-address request) (request-selector request)
+  (apply log-info (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
+                  (request-client-address request)
+                  (request-selector request)
+                  handler-name
                   (cdr args) ) )
 
 
 (define (log-handler-warning handler-name request . args)
-  (apply log-warning (conc "client address: ~A, selector: ~A, handler: ~A, " handler-name (car args))
-                     (request-client-address request) (request-selector request)
-                     (cdr args)))
+  (apply log-warning (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
+                     (request-client-address request)
+                     (request-selector request)
+                     handler-name
+                     (cdr args) ) )
+
+(define (log-handler-error handler-name request . args)
+  (apply log-error (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
+                   (request-client-address request)
+                   (request-selector request)
+                   handler-name
+                   (cdr args) ) )
 
 
 
