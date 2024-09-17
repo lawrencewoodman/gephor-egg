@@ -9,7 +9,7 @@
 
   (test "serve-path supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
           "1dir-index_empty_file\tdir-index_empty_file\tlocalhost\t70"
@@ -19,44 +19,44 @@
           "0b.txt\tb.txt\tlocalhost\t70"
           "9noext\tnoext\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (serve-path (make-request "" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path supportes subpath ('dir-a') selector"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
           "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
           "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (serve-path (make-request "dir-a" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path allows root-dir to end with a '/'"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
           "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
           "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (let ((request (make-request "dir-a" "127.0.0.1"))
               (root-dir (sprintf "~A/" fixtures-dir)))
           (serve-path request root-dir) ) )
 
   (test "serve-path allows root-dir to not end with a '/'"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
           "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
           "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (let ((request (make-request "dir-a" "127.0.0.1"))
               (root-dir (string-chomp fixtures-dir "/")))
           (serve-path request root-dir) ) )
@@ -65,26 +65,25 @@
   ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
   (test "serve-path allows root-dir to be '/'"
         '(0 0 0 0 0 0)
-        (cases Result (serve-path (make-request "" "127.0.0.1") "/")
-          (Ok (v) (filter-map (lambda (x) (or (substring-index "1bin\t" x)
-                                              (substring-index "1dev\t" x)
-                                              (substring-index "1home\t" x)
-                                              (substring-index "1sbin\t" x)
-                                              (substring-index "1usr\t" x)
-                                              (substring-index "1var\t" x)))
-                              (string-split v "\r\n")))
-          (Error (e) e) ) )
+        (filter-map (lambda (x) (or (substring-index "1bin\t" x)
+                                    (substring-index "1dev\t" x)
+                                    (substring-index "1home\t" x)
+                                    (substring-index "1sbin\t" x)
+                                    (substring-index "1usr\t" x)
+                                    (substring-index "1var\t" x)))
+                    (string-split (serve-path (make-request "" "127.0.0.1") "/")
+                                  "\r\n") ) )
 
   (test "serve-path trims whitespace and '/' characters from both ends of a selector"
         '(#t #t #t #t #t #t #t #t #t)
-        (let ((expect (Ok (string-intersperse '(
-                            ;; Directories come before regular files and each in alphabetical order
-                            "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
-                            "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-                            "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
-                            "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
-                            ".\r\n")
-                            "\r\n")))
+        (let ((expect (string-intersperse '(
+                        ;; Directories come before regular files and each in alphabetical order
+                        "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
+                        "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
+                        "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+                        "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
+                        ".\r\n")
+                        "\r\n"))
              (selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
                           "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
         (map (lambda (selector)
@@ -131,7 +130,7 @@
 
 
   (test "serve-path returns false if trying to serve a file that isn't world readable"
-        (list (list 'ok "Hello, this is used to test serving a non world readable file.\n")
+        (list "Hello, this is used to test serving a non world readable file.\n"
               #f)
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "hello.txt" "127.0.0.1")))
@@ -145,20 +144,17 @@
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
                     (serve-path request tmpdir))))
-            (list (cases Result response1
-                         (Ok (v) (list 'ok v)))
-                  response2) ) ) )
+            (list response1 response2) ) ) )
 
 
-  ;; TODO: Should this return false?
-  (test "serve-path returns Error if listing a directory that isn't world readable"
-        (list (list 'ok (string-intersperse '(
-                          "1dir-a\tdir-a\tlocalhost\t70"
-                          "1dir-b\tdir-b\tlocalhost\t70"
-                          ".\r\n")
-                          "\r\n"))
-              (list 'error (list "local-path: x/, error serving directory"
-                                 "local-path: x/, isn't world readable")))
+  ;; TODO: Need to test log messages for this as well
+  (test "serve-path returns false if listing a directory that isn't world readable"
+        (list (string-intersperse '(
+                "1dir-a\tdir-a\tlocalhost\t70"
+                "1dir-b\tdir-b\tlocalhost\t70"
+                ".\r\n")
+                "\r\n")
+              #f)
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
@@ -171,16 +167,7 @@
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
                     (serve-path request tmpdir))))
-            (list (cases Result response1
-                         (Ok (v) (list 'ok v)))
-                  (cases Result response2
-                        (Error (e) (list 'error
-                                         (list (irregex-replace "local-path: .*\/"
-                                                                (first e)
-                                                                "local-path: x/")
-                                               (irregex-replace "local-path: .*\/"
-                                                                (second e)
-                                                                "local-path: x/") ) ) ) ) ) ) ) )
+            (list response1 response2) ) ) )
 
 
   (test "serve-path returns false if path doesn't exist"
@@ -189,45 +176,45 @@
 
 
   (test "serve-path returns the contents of a binary file"
-        (Ok "This is text followed by a null (00)\x00 now some more text.")
+        "This is text followed by a null (00)\x00 now some more text."
         (serve-path (make-request "dir-a/ac.bin" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path returns the contents of an empty file"
-        (Ok "")
+        ""
         (serve-path (make-request "dir-a/empty.txt" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path process 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "iA simple index file to check it is interpreted by serve-path\tdir-b\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (serve-path (make-request "dir-b" "127.0.0.1") fixtures-dir) )
 
 
   (test "serve-path process empty 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "i\tdir-index_empty_file\tlocalhost\t70"
           ".\r\n")
-          "\r\n"))
+          "\r\n")
         (serve-path (make-request "dir-index_empty_file" "127.0.0.1")
                     fixtures-dir) )
 
 
   (test "serve-path lists the directory if an 'index' file isn't world readable"
-        (list (list 'ok (string-intersperse '(
-                          "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
-                          ".\r\n")
-                          "\r\n"))
-              (list 'ok (string-intersperse '(
-                          "1dir-a\tdir-a\tlocalhost\t70"
-                          "1dir-b\tdir-b\tlocalhost\t70"
-                          "0index\tindex\tlocalhost\t70"
-                          ".\r\n")
-                          "\r\n")))
+        (list (string-intersperse '(
+                "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
+                ".\r\n")
+                "\r\n")
+              (string-intersperse '(
+                "1dir-a\tdir-a\tlocalhost\t70"
+                "1dir-b\tdir-b\tlocalhost\t70"
+                "0index\tindex\tlocalhost\t70"
+                ".\r\n")
+                "\r\n"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
@@ -242,14 +229,11 @@
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
                     (serve-path request tmpdir))))
-            (list (cases Result response1
-                         (Ok (v) (list 'ok v)))
-                  (cases Result response2
-                         (Ok (v) (list 'ok v) ) ) ) ) ) )
+            (list response1 response2) ) ) )
 
 
   (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"
-        (Ok "hello\n")
+        "hello\n"
         (parameterize ((max-file-size 6))
           (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
 
@@ -263,7 +247,7 @@
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "<HTML>"
           "  <HEAD>"
           "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog\">"
@@ -281,12 +265,12 @@
           "    Thanks for using gopher!"
           "  </BODY>"
           "</HTML>")
-          "\n"))
+          "\n")
         (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL including trailing '/'"
-        (Ok (string-intersperse '(
+        (string-intersperse '(
           "<HTML>"
           "  <HEAD>"
           "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog/\">"
@@ -304,7 +288,7 @@
           "    Thanks for using gopher!"
           "  </BODY>"
           "</HTML>")
-          "\n"))
+          "\n")
         (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1") ) )
 
 

@@ -22,7 +22,7 @@
   (and (substring=? (request-selector request) "URL:")
        (let* ((url (substring (request-selector request) 4)))
          (log-handler-info "serve-url" request "serving url: ~A" url)
-         (Ok (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
+         (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
 
 
 ;; The selector must be a valid file path.  Whitespace and '/' characters
@@ -109,11 +109,17 @@
          (let ((index-path (make-pathname local-path "index")))
            (and (file-exists? index-path)
                 (and-let* ((nex-index (read-file index-path)))
+                  ;; TODO: log an info message
                   (let ((response (process-index root-dir (request-selector request) nex-index)))
                     (cases Result response
-                      (Ok (v) (Ok (menu-render v)))
-                      (Error (e) (Error-wrap response "local-path: ~A, error serving index"
-                                             local-path) ) ) ) ) ) ) ) ) )
+                      (Ok (v) (menu-render v))
+                      (Error (e) (log-handler-error "serve-index"
+                                                    request
+                                                    "local-path: ~A, error serving index: ~A"
+                                                    local-path
+                                                    e)
+                                 ;; TODO: make e work better in a string
+                                 #f) ) ) ) ) ) ) ) )
 
 
 (define (serve-file root-dir request)
@@ -123,7 +129,7 @@
          (begin
            (and-let* ((response (read-file local-path)))
              (log-handler-info "serve-file" request "request file: ~A" local-path)
-             (Ok response) ) ) ) ) )
+             response) ) ) ) )
 
 
 (define (serve-dir root-dir request)
@@ -133,9 +139,14 @@
            (log-handler-info "serve-dir" request "list directory: ~A" local-path)
            (let* ((response (list-dir (request-selector request) local-path)))
              (cases Result response
-               (Ok (v) (Ok (menu-render v)))
-               (Error (e) (Error-wrap response "local-path: ~A, error serving directory"
-                                      local-path) ) ) ) ) ) ) )
+               (Ok (v) (menu-render v))
+               (Error (e) (log-handler-error "serve-dir"
+                                               request
+                                               "local-path: ~A, error serving directory: ~A"
+                                               local-path
+                                               e)
+                          ;; TODO: make e work better in a string
+                          #f) ) ) ) ) ) )
 
 
 ;; List of handlers that serve-path will try

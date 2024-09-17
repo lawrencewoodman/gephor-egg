@@ -72,37 +72,31 @@
                      (response
                        (if handler
                            (condition-case (handler request)
-                             (ex () (Error-ex ex "exception from handler")))
-                           (begin
-                             (log-warning "client address: ~A, selector: ~A, no handler for selector"
-                                          client-address
-                                          selector)
-                             (Ok (make-rendered-error-menu request "path not found"))))))
+                             (ex ()
+                               ;; TODO: Should this be log-error?
+                               (log-warning "client address: ~A, selector: ~A, exception raised by handler: ~A"
+                                            client-address
+                                            selector
+                                            (get-condition-property ex 'exn 'message))
+                               (make-rendered-error-menu request "resource unavailable")))
+                           #f)))
                 (if response
-                    (cases Result response
-                      (Ok (v)
-                        (if (> (string-length v) (max-file-size))
-                            (begin
-                              (log-warning "client address: ~A, selector: ~A, data is too big to send"
-                                           client-address
-                                           selector)
-                              (write-string (make-rendered-error-menu request "resource is too big to send")
-                                            (max-file-size)
-                                            out))
-                            (write-string v (max-file-size) out)))
-                      (Error (e)
-                        (log-error "client address: ~A, selector: ~A, error from handler: ~A"
-                                   client-address
-                                   selector
-                                   e)
-                        (write-string (make-rendered-error-menu request "resource can not be accessed")
-                                      (max-file-size)
-                                      out)))
+                    (if (> (string-length response) (max-file-size))
+                        (begin
+                          (log-warning "client address: ~A, selector: ~A, data is too big to send"
+                                       client-address
+                                       selector)
+                          (write-string (make-rendered-error-menu request "resource is too big to send")
+                                        (max-file-size)
+                                        out))
+                        (write-string response (max-file-size) out))
                     (begin
                       (log-warning "client address: ~A, selector: ~A, no handler for selector"
                                    client-address
                                    selector)
-                      (Ok (make-rendered-error-menu request "path not found"))))))
+                      (write-string (make-rendered-error-menu request "path not found")
+                                    (max-file-size)
+                                    out)))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 

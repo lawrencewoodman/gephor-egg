@@ -20,9 +20,9 @@
         '("hello friend" "bye friend")
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (request)
-                                                    (Ok "hello friend")))
+                                                    "hello friend"))
                                     (cons "bye" (lambda (request)
-                                                  (Ok "bye friend")))))
+                                                  "bye friend"))))
                (thread (start-test-server port router)))
           (let ((responses (map (lambda (selector)
                                   (gopher-test-get port selector))
@@ -31,19 +31,19 @@
             responses) ) )
 
 
-  (test "server returns an 'unknown path' error menu if a route doesn't exist for the selector"
+  (test "server returns an 'path not found' error menu if a route doesn't exist for the selector"
         "3path not found\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (request)
-                                                    (Ok "hello friend")))))
+                                                    "hello friend"))))
                (thread (start-test-server port router)))
           (let ((response (gopher-test-get port "bye")))
             (stop-server thread)
             response) ) )
 
 
-  (test "server returns a 'resource can not be accessed' error menu if a handler raises an exception"
-        "3resource can not be accessed\t\tlocalhost\t7070\r\n.\r\n"
+  (test "server returns a 'resource unavailable"
+        "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (request)
                                                     (error "this is an error")))))
@@ -57,15 +57,15 @@
         "3resource is too big to send\t\tlocalhost\t7070\r\n.\r\n"
         (let ((port 7070)
               (router (make-router (cons "hello" (lambda (request)
-                                                         (Ok (string-intersperse
-                                                               '("1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"
-                                                                 "1234567890"))))))))
+                                                         (string-intersperse
+                                                           '("1234567890"
+                                                             "1234567890"
+                                                             "1234567890"
+                                                             "1234567890"
+                                                             "1234567890"
+                                                             "1234567890"
+                                                             "1234567890"
+                                                             "1234567890")))))))
           (parameterize ((max-file-size 60))
             (let* ((thread (start-test-server port router))
                    (response (gopher-test-get port "hello")))
@@ -77,7 +77,7 @@
         '("test" "test" "test")
         (let* ((port 7070)
                (router (make-router (cons "*" (lambda (request)
-                                                (Ok (request-selector request))))))
+                                                (request-selector request)))))
                (thread (start-test-server port router))
                (selectors '("  test" "test  " "  test  ")))
           (let ((responses (map (lambda (selector)
@@ -91,7 +91,7 @@
         '("/test" "test/" "/test/" "/  test" "test  /")
         (let* ((port 7070)
                (router (make-router (cons "*" (lambda (request)
-                                                (Ok (request-selector request))))))
+                                                (request-selector request)))))
                (thread (start-test-server port router))
                (selectors '("/test" "test/" "/test/" "/  test" "test  /")))
           (let ((responses (map (lambda (selector)
