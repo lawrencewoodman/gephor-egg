@@ -130,8 +130,8 @@
 ;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
 ;; NOTE: need to worry about percent decoding which should be done before
 ;; NOTE: any other checks.
+;; NOTE: This does not check if the path is world readable
 ;; TODO: Should we test for nul in a string as per Spiffy?
-;; TODO: check world readable?
 ;; TODO: Export and test thoroughly
 (define (unsafe-path? root-dir path)
   (let ((n-root-dir (normalize-pathname root-dir))

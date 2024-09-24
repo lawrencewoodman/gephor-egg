@@ -89,8 +89,7 @@
 
 
 ;; Converts a selector string into a local-path string by prepending root-dir.
-;; It also confirms that the path is safe, that it exists and is world
-;; readable.  Returns #f on failure.
+;; It also confirms that the path is safe.  Returns #f on failure.
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
@@ -98,7 +97,6 @@
          (selector (trim-path-selector selector))
          (local-path (make-pathname root-dir selector)))
     (and (safe-path? root-dir local-path)
-         (file-exists? local-path)
          local-path) ) )
 
 
