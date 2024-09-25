@@ -81,9 +81,10 @@
                                  (if (eof-object? contents)
                                      ""
                                      (if more?
-                                         (error* 'read-file "file: ~A, is greater than ~A bytes"
-                                                     path
-                                                     (max-file-size))
+                                         (error* 'read-file
+                                                 "file: ~A, is greater than ~A bytes"
+                                                 path
+                                                 (max-file-size))
                                          contents))))
                              #:binary) ) )
 
