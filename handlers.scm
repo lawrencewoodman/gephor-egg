@@ -111,7 +111,11 @@
                   ;; TODO: log an info message
                   (let ((response (process-index root-dir (request-selector request) nex-index)))
                     (cases Result response
-                      (Ok (v) (menu-render v))
+                      (Ok (v) (log-handler-info "serve-index"
+                                                request
+                                                "serve index: ~A"
+                                                index-path)
+                              (menu-render v))
                       (Error (e) (log-handler-error "serve-index"
                                                     request
                                                     "local-path: ~A, error serving index: ~A"
@@ -125,27 +129,25 @@
   ;; TODO: allow or don't allow gophermap to be downloaded?
   (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
     (and (regular-file? local-path)
-         (begin
-           (and-let* ((response (read-file local-path)))
-             (log-handler-info "serve-file" request "request file: ~A" local-path)
-             response) ) ) ) )
+         (and-let* ((response (read-file local-path)))
+           (log-handler-info "serve-file" request "request file: ~A" local-path)
+           response) ) ) )
 
 
 (define (serve-dir root-dir request)
   (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
     (and (directory? local-path)
-         (begin
-           (log-handler-info "serve-dir" request "list directory: ~A" local-path)
-           (let* ((response (list-dir (request-selector request) local-path)))
-             (cases Result response
-               (Ok (v) (menu-render v))
-               (Error (e) (log-handler-error "serve-dir"
-                                               request
-                                               "local-path: ~A, error serving directory: ~A"
-                                               local-path
-                                               e)
-                          ;; TODO: make e work better in a string
-                          #f) ) ) ) ) ) )
+         (let* ((response (list-dir (request-selector request) local-path)))
+           (cases Result response
+             (Ok (v) (log-handler-info "serve-dir" request "list directory: ~A" local-path)
+                     (menu-render v))
+             (Error (e) (log-handler-error "serve-dir"
+                                             request
+                                             "local-path: ~A, error serving directory: ~A"
+                                             local-path
+                                             e)
+                        ;; TODO: make e work better in a string
+                        #f) ) ) ) ) )
 
 
 ;; List of handlers that serve-path will try
