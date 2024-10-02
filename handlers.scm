@@ -108,7 +108,6 @@
          (let ((index-path (make-pathname local-path "index")))
            (and (file-exists? index-path)
                 (and-let* ((nex-index (read-file index-path)))
-                  ;; TODO: log an info message
                   (let ((response (process-index root-dir (request-selector request) nex-index)))
                     (cases Result response
                       (Ok (v) (log-handler-info "serve-index"
