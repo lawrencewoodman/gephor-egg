@@ -27,7 +27,7 @@
 
 
 ; Pass the arguments to sprintf to create the error string making it easy to
-; create a formatted erro string
+; create a formatted error string
 (define (Error-fmt . args)
   (Error (list (apply sprintf args) ) ) )
 
