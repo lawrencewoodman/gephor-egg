@@ -27,7 +27,7 @@
   (define (file-item path username)
     (define (make-item full-path item-selector)
       (cond
-        ((unsafe-path? root-dir full-path)
+        ((not (safe-path? root-dir full-path))
            (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
         ((directory? full-path)
            (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"

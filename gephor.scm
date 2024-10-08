@@ -133,18 +133,14 @@
 ;; NOTE: This does not check if the path is world readable
 ;; TODO: Should we test for nul in a string as per Spiffy?
 ;; TODO: Export and test thoroughly
-(define (unsafe-path? root-dir path)
+(define (safe-path? root-dir path)
   (let ((n-root-dir (normalize-pathname root-dir))
         (n-path (normalize-pathname path)))
-    (or (not (absolute-pathname? root-dir))
-        (substring-index "./" path)
-        (substring-index ".." path)
-        (substring-index "\\" path)
-        (< (string-length n-path) (string-length n-root-dir))
-        (not (substring=? n-root-dir n-path) ) ) ) )
-
-;; TODO: Merge this and unsafe-path?
-(define safe-path? (complement unsafe-path?) )
-
+    (and (absolute-pathname? root-dir)
+         (not (substring-index "./" path))
+         (not (substring-index ".." path))
+         (not (substring-index "\\" path))
+         (>= (string-length n-path) (string-length n-root-dir))
+         (substring=? n-root-dir n-path) ) ) )
 
 )
