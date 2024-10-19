@@ -26,14 +26,9 @@
 
   (define (file-item path username)
     (define (make-item full-path item-selector)
-      (cond
-        ((not (safe-path? root-dir full-path))
-           (Error-fmt "path: ~A, full-path: ~A, isn't safe" path full-path))
-        ((directory? full-path)
-           (Error-fmt "path: ~A, full-path: ~A, is a directory but link missing trailing '/'"
-                      path full-path))
-        (else
-           (menu-item-file full-path username item-selector) ) ) )
+      (and (safe-path? root-dir full-path)
+           (not (directory? full-path))
+           (menu-item-file full-path username item-selector) ) )
 
     (if (absolute-pathname? path)
         (let ((full-path (make-pathname root-dir (trim-path-selector path))))
@@ -76,14 +71,18 @@
   (let* ((lines (string-split (string-trim-both nex-index char-set:whitespace) "\n" #t))
          (parsed-lines
            (do ((lines lines (cdr lines))
+                (line-num 1 (+ line-num 1))
                 (result '() (let ((item (parse-line (car lines))))
-                              (cases Result item
-                                (Ok (v) (cons v result))
-                                (Error (e) (Error-wrap item "error processing index"))))))
-                ((or (null? lines) (Error? result)) result))))
-    (if (Error? parsed-lines)
-        parsed-lines
-        (Ok (reverse parsed-lines) ) ) ) )
+                              (if item
+                                  (cons item result)
+                                  (begin
+                                    (log-error "selector: ~A, index line: ~A, error processing index"
+                                               selector
+                                               line-num)
+                                    #f)))))
+                ((or (null? lines) (not result)) result))))
+    (and parsed-lines
+         (reverse parsed-lines) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------

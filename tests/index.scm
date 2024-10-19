@@ -3,45 +3,64 @@
 (test-group "index"
 
 
-  (test "process-index returns Error if file in 'index' doesn't exist"
-        (Error (list "error processing index"
-                     (sprintf "local-path: ~A, file doesn't exist"
-                              (make-pathname (list fixtures-dir
-                                                   "dir-a")
-                                             "nonexistent.txt"))))
-        (let ((index "=> nonexistent.txt"))
-          (process-index fixtures-dir "dir-a" index) ) )
+  (test "process-index returns #f and logs an error if file in 'index' doesn't exist"
+        (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
+        (let ((index "=> nonexistent.txt")
+              (port (open-output-string)))
+          (parameterize ((log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (process-index fixtures-dir "dir-a" index)
+                  (get-output-string port) ) ) ) )
 
 
-  (test "process-index returns Error if an absolute link in 'index' is unsafe"
-        (Error (list "error processing index"
-                     (sprintf "path: /../run.scm, full-path: ~A/../run.scm, isn't safe"
-                              fixtures-dir)))
-        (let ((index "=> /../run.scm An unsafe absolute link\n"))
-          (process-index fixtures-dir "dir-a" index) ) )
+  (test "process-index returns #f and logs an error if an absolute link in 'index' is unsafe"
+        (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
+        (let ((index "=> /../run.scm An unsafe absolute link\n")
+              (port (open-output-string)))
+          (parameterize ((log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (process-index fixtures-dir "dir-a" index)
+                  (get-output-string port) ) ) ) )
 
 
-  (test "process-index returns Error if a link to a directory doesn't have a trailing '/'"
-        (Error (list "error processing index"
-                     (sprintf "path: dir-ba, full-path: ~A/dir-b/dir-ba, is a directory but link missing trailing '/'"
-                              fixtures-dir)))
-        (let ((index "=> dir-ba This is actually a directory"))
-          (process-index fixtures-dir "dir-b" index) ) )
+  (test "process-index returns #f and logs an error if a link to a directory doesn't have a trailing '/'"
+        (list #f "[ERROR] selector: dir-b, index line: 1, error processing index\n")
+        (let ((index "=> dir-ba This is actually a directory")
+              (port (open-output-string)))
+          (parameterize ((log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (process-index fixtures-dir "dir-b" index)
+                  (get-output-string port) ) ) ) )
 
 
   (test "process-index returns Error if a relative link in 'index' is unsafe"
-        (Error (list "error processing index"
-                     (sprintf "path: ../run.scm, full-path: ~A/dir-a/../run.scm, isn't safe"
-                              fixtures-dir)))
-        (let ((index "=> ../run.scm An unsafe relative link"))
-          (process-index fixtures-dir "dir-a" index) ) )
+        (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
+        (let ((index "=> ../run.scm An unsafe relative link")
+              (port (open-output-string)))
+          (parameterize ((log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (process-index fixtures-dir "dir-a" index)
+                  (get-output-string port) ) ) ) )
 
 
   (test "process-index returns Error if a URL link protocol is unknown"
-        (Error (list "error processing index"
-                     "url: fred://example.com, unsupported protocol: fred"))
-        (let ((index "=> fred://example.com"))
-          (process-index fixtures-dir "dir-a" index) ) )
+        (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
+        (let ((index "=> fred://example.com")
+              (port (open-output-string)))
+          (parameterize ((log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (process-index fixtures-dir "dir-a" index)
+                  (get-output-string port) ) ) ) )
 
 
   (test "process-index removes blank lines at top and bottom of index"
@@ -56,10 +75,7 @@
                        ""
                        "")
                        "\n")))
-          (cases Result
-                 (process-index fixtures-dir "dir-a" index)
-                 (Ok (v) (menu-render v))
-                 (Error (e) e) ) ) )
+          (menu-render (process-index fixtures-dir "dir-a" index) ) ) )
 
 
   (test "process-index only recognizes links where => is at the beginning of the line"
@@ -72,10 +88,7 @@
                        "=> / A link with => starting at the beginning of the line"
                        " => / This isn't a link because => doesn't start at the beginning of the line")
                        "\n")))
-          (cases Result
-                 (process-index fixtures-dir "dir-a" index)
-                 (Ok (v) (menu-render v))
-                 (Error (e) e) ) ) )
+          (menu-render (process-index fixtures-dir "dir-a" index) ) ) )
 
 
   (test "process-index supports absolute links"
@@ -94,10 +107,7 @@
                        "=>     /dir-a/    Lots of white space (will be removed)    "
                        "=>     /b.txt     Lots of white space (will be removed)    ")
                        "\n")))
-          (cases Result
-                 (process-index fixtures-dir "dir-a" index)
-                 (Ok (v) (menu-render v))
-                 (Error (e) e) ) ) )
+          (menu-render (process-index fixtures-dir "dir-a" index) ) ) )
 
 
   (test "process-index supports relative links"
@@ -121,10 +131,7 @@
                        "=>     dir-ba/baa.txt     Lots of white space (will be removed)    ")
                        "\n")))
 
-          (cases Result
-                 (process-index fixtures-dir "dir-b" index)
-                 (Ok (v) (menu-render v))
-                 (Error (e) e) ) ) )
+          (menu-render (process-index fixtures-dir "dir-b" index) ) ) )
 
 
   (test "process-index supports URL links"
@@ -143,11 +150,7 @@
                        "=> http://example.com/fred Fred's things"
                        "=> http://example.com/fred      Lots of white space (will be removed)   ")
                        "\n")))
-          (cases Result
-
-                 (process-index fixtures-dir "dir-b" index)
-                 (Ok (v) (menu-render v))
-                 (Error (e) e) ) ) )
+          (menu-render (process-index fixtures-dir "dir-b" index) ) ) )
 
 
 

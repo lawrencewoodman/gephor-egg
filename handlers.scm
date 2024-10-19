@@ -70,8 +70,7 @@
 
 ;; Parameter: max-file-size controls the maximum size file
 ;; that can be read, anything bigger than this returns an Error Result.
-;; Returns #f if not world readable and an exception if file is too big
-;; other exceptions raised as well
+;; Returns #f if not world readable or file is too big
 (define (read-file path)
   (and (world-readable? path)
        (call-with-input-file path
@@ -81,16 +80,18 @@
                                  (if (eof-object? contents)
                                      ""
                                      (if more?
-                                         (error* 'read-file
-                                                 "file: ~A, is greater than ~A bytes"
-                                                 path
-                                                 (max-file-size))
+                                         (begin
+                                           (log-error "read-file, file: ~A, is greater than ~A bytes"
+                                                      path
+                                                      (max-file-size))
+                                           #f)
                                          contents))))
                              #:binary) ) )
 
 
 ;; Converts a selector string into a local-path string by prepending root-dir.
-;; It also confirms that the path is safe.  Returns #f on failure.
+;; It also confirms that the path is safe.
+;; Returns #f on failure.
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
@@ -107,21 +108,10 @@
     (and (directory? local-path)
          (let ((index-path (make-pathname local-path "index")))
            (and (file-exists? index-path)
-                (and-let* ((nex-index (read-file index-path)))
-                  (let ((response (process-index root-dir (request-selector request) nex-index)))
-                    (cases Result response
-                      (Ok (v) (log-handler-info "serve-index"
-                                                request
-                                                "serve index: ~A"
-                                                index-path)
-                              (menu-render v))
-                      (Error (e) (log-handler-error "serve-index"
-                                                    request
-                                                    "local-path: ~A, error serving index: ~A"
-                                                    local-path
-                                                    e)
-                                 ;; TODO: make e work better in a string
-                                 #f) ) ) ) ) ) ) ) )
+                (and-let* ((nex-index (read-file index-path))
+                           (response (process-index root-dir (request-selector request) nex-index)))
+                  (log-handler-info "serve-index" request "serve index: ~A" index-path)
+                  (menu-render response) ) ) ) ) ) )
 
 
 (define (serve-file root-dir request)
@@ -136,17 +126,9 @@
 (define (serve-dir root-dir request)
   (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
     (and (directory? local-path)
-         (let* ((response (list-dir (request-selector request) local-path)))
-           (cases Result response
-             (Ok (v) (log-handler-info "serve-dir" request "list directory: ~A" local-path)
-                     (menu-render v))
-             (Error (e) (log-handler-error "serve-dir"
-                                             request
-                                             "local-path: ~A, error serving directory: ~A"
-                                             local-path
-                                             e)
-                        ;; TODO: make e work better in a string
-                        #f) ) ) ) ) )
+         (and-let* ((response (list-dir (request-selector request) local-path)))
+           (log-handler-info "serve-dir" request "list directory: ~A" local-path)
+           (menu-render response) ) ) ) )
 
 
 ;; List of handlers that serve-path will try
@@ -171,7 +153,9 @@
 
 ;; TODO: Move this, export? and rename?
 ;; TODO: Make sure paths and selectors are safe
-;; TODO: Should this return false if failed?
+;; Returns #f if not world readable, otherwise a list of menu
+;; items representing the files in the directory
+(: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
   ;; This trims the selector to create a correct menu entry
@@ -199,19 +183,14 @@
                           filename
                           selector) ) ) )
 
-  (if (world-readable? local-path)
-      (let* ((filenames (directory local-path))
-             (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-             (menu (do ((entries entries (cdr entries))
-                        (result '() (let* ((item (entry->menu-item (car entries))))
-                                      (cases Result item
-                                        (Ok (v) (cons v result))
-                                        (Error (e) (Error-wrap item "error listing directory"))))))
-                       ((or (null? entries) (Error? result)) result))))
-        (if (Error? menu)
-            menu
-            (Ok (reverse menu))))
-      (Error-fmt "local-path: ~A, isn't world readable" local-path) ) )
+  (and (world-readable? local-path)
+       (let* ((filenames (directory local-path))
+              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
+              (menu (do ((entries entries (cdr entries))
+                         (result '() (let* ((item (entry->menu-item (car entries))))
+                                       (if item (cons item result) result))))
+                        ((null? entries) result))))
+         (reverse menu) ) ) )
 
 
 

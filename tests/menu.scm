@@ -12,11 +12,6 @@
             try-path
             (loop (cdr dirs))))))
 
-  ;; Get the Ok value and if Error thae raise an exception
-  (define (Result-get-ok r)
-    (cases Result r
-           (Ok (v) v)
-           (Error (e) (error (sprintf 'Result-get-ok "Result is Error: ~A" e) ) ) ) )
 
 
   (test "make-render adds correct .<cr><lf> to end of menu"
@@ -24,7 +19,7 @@
           "1Somewhere interesting\t/interesting\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((menu (list (Result-get-ok (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70)))))
+        (let* ((menu (list (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70))))
           (menu-render menu)))
 
 
@@ -70,10 +65,9 @@
                  (g "A Gif" "gif g" "localhost" 70)
                  (image "Some image" "image image" "localhost" 70)
                  (I "Some image" "image I" "localhost" 70)))
-               (menu (map (lambda (x)
-                            (Result-get-ok (apply menu-item x)))
-                           menu-src)))
-          (menu-render menu)))
+               (menu (map (lambda (x) (apply menu-item x))
+                          menu-src)))
+          (menu-render menu) ) )
 
 
   (test "make-item allows a single letter itemtype if unknown"
@@ -81,15 +75,13 @@
           "usomething\t/fred/hi\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (Result-get-ok (menu-item 'u "something" "/fred/hi" "localhost" 70)))))
-          (menu-render menu)))
+        (let ((menu (list (menu-item 'u "something" "/fred/hi" "localhost" 70))))
+          (menu-render menu) ) )
 
 
-  (test "make-item returns Error if unknown itemtype is longer than a single letter"
-        '(error ("unknown itemtype: uu"))
-        (cases Result (menu-item 'uu "something" "/fred/hi" "localhost" 70)
-          (Ok (v) (list 'ok v))
-          (Error (e) (list 'error e) ) ) )
+  (test "make-item returns #f if unknown itemtype is longer than a single letter"
+        #f
+        (menu-item 'uu "something" "/fred/hi" "localhost" 70) )
 
 
   (test "make-item allows username > 69 despite warning"
@@ -102,9 +94,9 @@
           "\r\n")
         (let* ((lengths '(68 69 70 71))
                (menu (map (lambda (l)
-                            (Result-get-ok (menu-item 'info (make-string l #\a) "" "localhost" 70)))
+                            (menu-item 'info (make-string l #\a) "" "localhost" 70))
                           lengths)))
-          (menu-render menu)))
+          (menu-render menu) ) )
 
 
   (test "make-item logs a warning if username > 69 characters but uses anyway"
@@ -131,15 +123,14 @@
           ".\r\n")
           "\r\n")
         (parameterize ((server-hostname "localhost") (server-port 70))
-          (let ((menu (list (Result-get-ok (menu-item-file (make-pathname fixtures-dir "noext")
-                                                           "A file with no extension"
-                                                           "noext")))))
+          (let ((menu (list (menu-item-file (make-pathname fixtures-dir "noext")
+                                            "A file with no extension"
+                                            "noext"))))
             (menu-render menu) ) ) )
 
 
-  (test "make-item-file returns an Error if the file doesn't exist"
-        (Error-fmt "local-path: ~A, file doesn't exist"
-                   (make-pathname fixtures-dir "nonexistent.txt"))
+  (test "make-item-file returns #f if the file doesn't exist"
+        #f
         (parameterize ((server-hostname "localhost") (server-port 70))
           (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
                           "A file that doesn't exist"
@@ -177,9 +168,8 @@
                  ("gopher://example.com:7070/0~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
                  ("gopher://example.com:7070/1/~myuser/phlog" . "My phlog")
                  ("gopher://example.com:7070/0/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-               (menu (map (lambda (x)
-                            (Result-get-ok (menu-item-url (cdr x) (car x))))
-                           urls)))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
           (menu-render menu) ) ) )
 
 
@@ -206,9 +196,8 @@
                  ("http://example.com:8080/" . "A good http example")
                  ("http://example.com:8080/~myuser/phlog" . "My phlog")
                  ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-               (menu (map (lambda (x)
-                            (Result-get-ok (menu-item-url (cdr x) (car x))))
-                           urls)))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
           (menu-render menu) ) ) )
 
 
@@ -234,9 +223,8 @@
                  ("https://example.com:8443/" . "A good https example")
                  ("https://example.com:8443/~myuser/phlog" . "My phlog")
                  ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-               (menu (map (lambda (x)
-                            (Result-get-ok (menu-item-url (cdr x) (car x))))
-                           urls)))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
           (menu-render menu) ) ) )
 
 
@@ -262,9 +250,8 @@
                  ("ssh://example.com:2320/user/bob" . "some ssh bbs")
                  ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
                  ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
-               (menu (map (lambda (x)
-                            (Result-get-ok (menu-item-url (cdr x) (car x))))
-                           urls)))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
           (menu-render menu) ) ) )
 
 
@@ -278,14 +265,13 @@
         (let* ((urls '(
                  ("GoPher://example.com" . "A good gopher example")
                  ("htTP://example.com" . "A good http example")))
-               (menu (map (lambda (x)
-                            (Result-get-ok (menu-item-url (cdr x) (car x))))
-                           urls)))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
           (menu-render menu) ) ) )
 
 
-  (test "make-item-url returns Error if protocol is unsupported"
-        (Error (list "url: fred://example.com, unsupported protocol: fred"))
+  (test "make-item-url returns #f if protocol is unsupported"
+        #f
         (parameterize ((server-hostname "localhost") (server-port 70))
           (menu-item-url "Something interesting" "fred://example.com") ) )
 

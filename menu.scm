@@ -29,10 +29,9 @@
 ;;
 ;; logs a warning if usernames > 69 characters as per RFC 1436
 ;;
-;; Returns a Result type
-;; It will return an Error of an unknown itemtype is used which is
-;; longer than 1 character
-(: menu-item (symbol string string string fixnum --> menu-item))
+;; Returns #f if an unknown itemtype is used which is
+;; longer than 1 character, otherwise a menu-item is returned
+(: menu-item (symbol string string string fixnum --> (or menu-item false)))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace)))
@@ -41,54 +40,52 @@
                   username selector hostname port))
     ;; TODO: Add more items
     (case itemtype
-      ((text |0|)   (Ok (list "0" username selector hostname port)))
-      ((menu |1|)   (Ok (list "1" username selector hostname port)))
-      ((error |3|)  (Ok (list "3" username selector hostname port)))
-      ((binhex |4|) (Ok (list "4" username selector hostname port)))
-      ((binary |9|) (Ok (list "9" username selector hostname port)))
-      ((info i)     (Ok (list "i" username selector hostname port)))
-      ((html h)     (Ok (list "h" username selector hostname port)))
-      ((gif g)      (Ok (list "g" username selector hostname port)))
-      ((image I)    (Ok (list "I" username selector hostname port)))
+      ((text |0|)   (list "0" username selector hostname port))
+      ((menu |1|)   (list "1" username selector hostname port))
+      ((error |3|)  (list "3" username selector hostname port))
+      ((binhex |4|) (list "4" username selector hostname port))
+      ((binary |9|) (list "9" username selector hostname port))
+      ((info i)     (list "i" username selector hostname port))
+      ((html h)     (list "h" username selector hostname port))
+      ((gif g)      (list "g" username selector hostname port))
+      ((image I)    (list "I" username selector hostname port))
       (else
         (let ((maybe-itemtype (symbol->string itemtype)))
-          (if (= (string-length maybe-itemtype) 1)
-              (Ok (list maybe-itemtype username selector hostname port))
-              (Error-fmt "unknown itemtype: ~A" itemtype) ) ) ) ) ) )
+          (and (= (string-length maybe-itemtype) 1)
+               (list maybe-itemtype username selector hostname port) ) ) ) ) ) )
 
 
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
 ;; using libmagic.
 ;;
-;; Returns a Result type
-(: menu-item-file (string string string --> (struct Result)))
+;; Returns #f if the file doesn't exist or the type can't be determined,
+;; otherwise a menu-item is returned
+(: menu-item-file (string string string --> (or menu-item false)))
 (define (menu-item-file local-path username selector)
   ;; TODO: Check local-path is safe
   ;; TODO: check if a directory?
-  (if (not (file-exists? local-path))
-      (Error-fmt "local-path: ~A, file doesn't exist" local-path)
-      (let* ((mime-type (identify local-path 'mime))
-             (mime-match (irregex-search mime-split-regex mime-type)))
-        (if (irregex-match-data? mime-match)
-            (let ((media-type (irregex-match-substring mime-match 1))
-                  (media-subtype (irregex-match-substring mime-match 2)))
-              (let ((itemtype (cond
-                                ((string=? media-type "image")
-                                   (if (string=? media-subtype "gif")
-                                       'gif
-                                       'image))
-                                ((string=? media-type "text")
-                                   (if (string=? media-subtype "html")
-                                       'html)
-                                       'text)
-                                (else 'binary))))
-                (menu-item itemtype
-                           username
-                           selector
-                           (server-hostname)
-                           (server-port))))
-            (Error-fmt "local-path: ~A, file type check failed" local-path) ) ) ) )
+  (and (file-exists? local-path)
+       (let* ((mime-type (identify local-path 'mime))
+              (mime-match (irregex-search mime-split-regex mime-type)))
+         (and (irregex-match-data? mime-match)
+              (let ((media-type (irregex-match-substring mime-match 1))
+                    (media-subtype (irregex-match-substring mime-match 2)))
+                (let ((itemtype (cond
+                                  ((string=? media-type "image")
+                                     (if (string=? media-subtype "gif")
+                                         'gif
+                                         'image))
+                                  ((string=? media-type "text")
+                                     (if (string=? media-subtype "html")
+                                         'html)
+                                         'text)
+                                  (else 'binary))))
+                  (menu-item itemtype
+                             username
+                             selector
+                             (server-hostname)
+                             (server-port) ) ) ) ) ) ) )
 
 
 
@@ -101,9 +98,9 @@
 ;; This is currently used by ssh, http and https and conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Returns a Result type
-;; Returns an Error if protocol is unknown
-(: menu-item-url (string string --> (struct Result)))
+;; Returns #f if URL is invalid or if the protcol is unknown,
+;; otherwise a menu-item is returned
+(: menu-item-url (string string --> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
     (case (string->symbol protocol)
@@ -118,7 +115,7 @@
                    (server-hostname)
                    (server-port)))
       (else
-        (Error-fmt "url: ~A, unsupported protocol: ~A" url protocol) ) ) ) )
+        #f) ) ) )
 
 
 ;; Render the menu as text ready for sending
@@ -141,9 +138,7 @@
 ;; could lead to an attack on the client.
 (define (make-rendered-error-menu request msg)
   (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
-    (cases Result item
-      (Ok (v) (menu-render (list v)))
-      (Error (e) (error* 'menu-item-rendered-error-menu e) ) ) ) )
+       (menu-render (list item) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------

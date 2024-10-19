@@ -238,12 +238,17 @@
           (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
 
 
-  (test "serve-path raises an exception if file is greater than the number of bytes set by max-file-size"
-        (sprintf "file: ~A, is greater than 5 bytes"
-                 (make-pathname fixtures-dir "a.txt"))
-        (parameterize ((max-file-size 5))
-          (condition-case (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir)
-            (ex () (get-condition-property ex 'exn 'message) ) ) ) )
+  (test "serve-path returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
+        (list #f (sprintf "[ERROR] read-file, file: ~A, is greater than 5 bytes\n"
+                          (make-pathname fixtures-dir "a.txt")))
+        (let ((port (open-output-string)))
+          (parameterize ((max-file-size 5)
+                         (log-level 0)
+                         (error-logger-config
+                           (config-logger (error-logger-config)
+                                          port: port)))
+            (list (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir)
+                  (get-output-string port) ) ) ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"

@@ -40,7 +40,6 @@
 
 
 ;; Test each exported component
-(include-relative "result.scm")
 (include-relative "router.scm")
 (include-relative "menu.scm")
 (include-relative "index.scm")

@@ -17,7 +17,6 @@
    process-index
    serve-url
    serve-path
-   Result Result? Ok Error Error? Error-ex Error-fmt Error-wrap
    max-file-size
    server-hostname
    server-port)
@@ -39,7 +38,6 @@
         (chicken string)
         (chicken tcp)
         (chicken type)
-        datatype
         queues
         magic
         simple-logger
@@ -53,7 +51,6 @@
 ;; srfi-13  - String library
 ;; srfi-14  - Character set library
 ;; srfi-18  - Multithreading support
-;; datatype - Variant records
 ;; queues   - In the source code it says that the procedures used
 ;;            here are thread safe
 ;; magic    - Magic file type recognition
@@ -85,9 +82,6 @@
 
 
 ;; Include rest of the code -------------------------------------------------
-
-;; Definitions for Result variant type
-(include-relative "result.scm")
 
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
