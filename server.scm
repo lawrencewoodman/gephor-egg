@@ -70,22 +70,20 @@
               (let* ((handler (router-match router selector))
                      (request (make-request selector client-address))
                      (response
-                       (if handler
+                       (and handler
                            (condition-case (handler request)
                              (ex ()
-                               ;; TODO: Should this be log-error?
-                               (log-warning "client address: ~A, selector: ~A, exception raised by handler: ~A"
-                                            client-address
-                                            selector
-                                            (get-condition-property ex 'exn 'message))
-                               (make-rendered-error-menu request "resource unavailable")))
-                           #f)))
+                               (log-error "client address: ~A, selector: ~A, exception raised by handler: ~A"
+                                          client-address
+                                          selector
+                                          (get-condition-property ex 'exn 'message))
+                               (make-rendered-error-menu request "resource unavailable"))))))
                 (if response
                     (if (> (string-length response) (max-file-size))
                         (begin
-                          (log-warning "client address: ~A, selector: ~A, data is too big to send"
-                                       client-address
-                                       selector)
+                          (log-error "client address: ~A, selector: ~A, data is too big to send"
+                                     client-address
+                                     selector)
                           (write-string (make-rendered-error-menu request "resource is too big to send")
                                         (max-file-size)
                                         out))
