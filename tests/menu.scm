@@ -137,6 +137,18 @@
                           "nonexistent.txt") ) )
 
 
+  (test "make-item-file detects directories properly"
+        (string-intersperse '(
+          "1A directory\tdir\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (let ((menu (list (menu-item-file (make-pathname fixtures-dir "dir-world_readable")
+                                            "A directory"
+                                            "dir"))))
+            (menu-render menu) ) ) )
+
+
 (test "make-item-url handles gopher protocol"
       (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"

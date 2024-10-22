@@ -57,35 +57,36 @@
 
 ;; Creates a menu item for a file.
 ;; local-path is the path to the file whose itemtype will be determined
-;; using libmagic.
+;; using libmagic unless it is a directory.
 ;;
 ;; Returns #f if the file doesn't exist or the type can't be determined,
 ;; otherwise a menu-item is returned
 (: menu-item-file (string string string --> (or menu-item false)))
 (define (menu-item-file local-path username selector)
   ;; TODO: Check local-path is safe
-  ;; TODO: check if a directory?
   (and (file-exists? local-path)
-       (let* ((mime-type (identify local-path 'mime))
-              (mime-match (irregex-search mime-split-regex mime-type)))
-         (and (irregex-match-data? mime-match)
-              (let ((media-type (irregex-match-substring mime-match 1))
-                    (media-subtype (irregex-match-substring mime-match 2)))
-                (let ((itemtype (cond
-                                  ((string=? media-type "image")
-                                     (if (string=? media-subtype "gif")
-                                         'gif
-                                         'image))
-                                  ((string=? media-type "text")
-                                     (if (string=? media-subtype "html")
-                                         'html)
-                                         'text)
-                                  (else 'binary))))
-                  (menu-item itemtype
-                             username
-                             selector
-                             (server-hostname)
-                             (server-port) ) ) ) ) ) ) )
+       (if (directory? local-path)
+           (menu-item 'menu username selector (server-hostname) (server-port))
+           (let* ((mime-type (identify local-path 'mime))
+                  (mime-match (irregex-search mime-split-regex mime-type)))
+             (and (irregex-match-data? mime-match)
+                  (let ((media-type (irregex-match-substring mime-match 1))
+                        (media-subtype (irregex-match-substring mime-match 2)))
+                    (let ((itemtype (cond
+                                      ((string=? media-type "image")
+                                         (if (string=? media-subtype "gif")
+                                             'gif
+                                             'image))
+                                      ((string=? media-type "text")
+                                         (if (string=? media-subtype "html")
+                                             'html)
+                                             'text)
+                                      (else 'binary))))
+                      (menu-item itemtype
+                                 username
+                                 selector
+                                 (server-hostname)
+                                 (server-port) ) ) ) ) ) ) ) )
 
 
 
