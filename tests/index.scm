@@ -134,6 +134,19 @@
           (menu-render (process-index fixtures-dir "dir-b" index) ) ) )
 
 
+  (test "process-index supports links to directories that don't exist as long as the link ends with '/'"
+        (string-intersperse '(
+          "1/unknown\tunknown\tlocalhost\t70"
+          "1unknown\tdir-a/unknown\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let ((index (string-intersperse '(
+                       "=> /unknown/"
+                       "=> unknown/")
+                       "\n")))
+          (menu-render (process-index fixtures-dir "dir-a" index) ) ) )
+
+
   (test "process-index supports URL links"
         (string-intersperse '(
           "hhttp://example.com\tURL:http://example.com\tlocalhost\t70"
