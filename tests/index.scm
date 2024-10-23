@@ -39,7 +39,7 @@
                   (get-output-string port) ) ) ) )
 
 
-  (test "process-index returns Error if a relative link in 'index' is unsafe"
+  (test "process-index returns #f and logs an error if a relative link in 'index' is unsafe"
         (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
         (let ((index "=> ../run.scm An unsafe relative link")
               (port (open-output-string)))
@@ -51,7 +51,7 @@
                   (get-output-string port) ) ) ) )
 
 
-  (test "process-index returns Error if a URL link protocol is unknown"
+  (test "process-index returns #f and logs an error if a URL link protocol is unknown"
         (list #f "[ERROR] selector: dir-a, index line: 1, error processing index\n")
         (let ((index "=> fred://example.com")
               (port (open-output-string)))
