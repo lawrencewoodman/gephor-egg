@@ -63,7 +63,6 @@
 ;; otherwise a menu-item is returned
 (: menu-item-file (string string string --> (or menu-item false)))
 (define (menu-item-file local-path username selector)
-  ;; TODO: Check local-path is safe
   (and (file-exists? local-path)
        (if (directory? local-path)
            (menu-item 'menu username selector (server-hostname) (server-port))
