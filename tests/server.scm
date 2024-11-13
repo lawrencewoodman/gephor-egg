@@ -100,5 +100,45 @@
             (stop-server thread)
             responses) ) )
 
+
+  (test "server logs a warning message if there is a timeout while waiting for the selector"
+        "[WARNING] client address: 127.0.0.1, read selector timeout\n"
+        (let ((log-port (open-output-string)))
+          (parameterize ((tcp-read-timeout 0)
+                         (log-level 30)
+                         (warning-logger-config
+                           (config-logger (warning-logger-config)
+                                          port: log-port)))
+            (let* ((port 7070)
+                   (router (make-router (cons "*" (lambda (request)
+                                                    (request-selector request)))))
+                   (thread (start-test-server port router)))
+              (let-values (((in out) (tcp-connect "localhost" port)))
+                ;; TODO: Add a server-ready? function so that we don't need to sleep
+                (sleep 1)
+                (close-input-port in)
+                (close-output-port out)
+                (stop-server thread)
+                (get-output-string log-port) ) ) ) ) )
+
+
+  (test "server logs a warning message if the connection is broken while waiting for the selector"
+        "[WARNING] client address: 127.0.0.1, problem reading selector, bad argument type\n"
+        (let ((log-port (open-output-string)))
+          (parameterize ((tcp-read-timeout 2)
+                         (log-level 30)
+                         (warning-logger-config
+                           (config-logger (warning-logger-config)
+                                          port: log-port)))
+            (let* ((port 7070)
+                   (router (make-router (cons "*" (lambda (request)
+                                                    (request-selector request)))))
+                   (thread (start-test-server port router)))
+              (let-values (((in out) (tcp-connect "localhost" port)))
+                (close-input-port in)
+                (close-output-port out)
+                (stop-server thread)
+                (get-output-string log-port) ) ) ) ) )
+
 )
 

@@ -17,55 +17,29 @@
                             router)
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
-  ;; connects-mutex is used to prevent simultaneous queue operations
-  ;; connects-get-cond is used to wait for an item in the connects queue
-  (let ((requests (make-queue))
-        (connects (make-queue))
-        (server-ready-mutex (make-mutex))
-        (connects-mutex (make-mutex))
-        (connects-get-cond (make-condition-variable)))
+  ;; connections-mutex is used to prevent simultaneous changing of connection count
+  ;; max-number-of-connections specifies how many connections can be handled at one time
+  ;; number-of-connections is the current number of connections to the server
+  (let ((server-ready-mutex (make-mutex))
+        (connections-mutex (make-mutex))
+        (max-number-of-connections 50)   ;; TODO: parameterize this?
+        (number-of-connections 0))
 
-  ;; Add a connect to connects queue
-  ;; Thread safety is maintained by connects-mutex and connects-get-cond
-  (define (add-connect! connect)
-    (mutex-lock! connects-mutex)
-    (queue-add! connects connect)
-    (condition-variable-signal! connects-get-cond)
-    (mutex-unlock! connects-mutex) )
+  (define (inc-connection-count)
+    (mutex-lock! connections-mutex)
+    (set! number-of-connections (add1 number-of-connections))
+    (mutex-unlock! connections-mutex) )
 
-  ;; Returns a connect from connects queue or #f if times out waiting
-  ;; for a connect item in queue
-  ;; Thread safety is maintained by connects-mutex and connects-get-cond
-  (define (get-connect!)
-    ;; TODO: What should timeout be, tcp-accept-timeout? or a custom parameter?
-    ;; TODO: A longer value than 0.1 would be more efficient but slower for testing
-    (let ((timeout 0.1))
-      (if (not (mutex-lock! connects-mutex timeout))
-          #f
-          (if (not (queue-empty? connects))
-              (let ((connect (queue-remove! connects)))
-                (mutex-unlock! connects-mutex)
-                connect)
-              (begin
-                (if (not (mutex-unlock! connects-mutex connects-get-cond timeout))
-                    #f
-                    (get-connect!) ) ) ) ) ) )
-
-  (define (client-connect in out)
-    (let-values ([(_ client-address) (tcp-addresses in)])
-      (log-info "client address: ~A, connection request" client-address)
-      (add-connect! (list (cons 'in in) (cons 'out out)
-                          (cons 'client-address client-address) ) ) ) )
-
+  (define (dec-connection-count)
+    (mutex-lock! connections-mutex)
+    (set! number-of-connections (sub1 number-of-connections))
+    (mutex-unlock! connections-mutex) )
 
   ;; Parameter: max-file-size controls the maximum size file
   ;; that can be written
-  (define (handle-connect connect)
-    (let ((in (alist-ref 'in connect))
-          (out (alist-ref 'out connect))
-          (client-address (alist-ref 'client-address connect)))
+  (define (handle-connect in out)
+    (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
-        ;; TODO: Should this return a timeout error if selector #f?
         (when selector
               (let* ((handler (router-match router selector))
                      (request (make-request selector client-address))
@@ -98,48 +72,28 @@
         (close-input-port in)
         (close-output-port out ) ) ) )
 
-
-  (define (start-connect-handler-thread)
-    (define (connect-handler)
-      (do ()
-          ((stop-requested?))
+  (define (start-connect-thread in out)
+    (thread-start!
+      (make-thread
+        (lambda ()
+          (inc-connection-count)
           (handle-exceptions ex
             (begin
+              (dec-connection-count)
+              ;; TODO: Improve error message
               (log-error "connect handler thread: ~A"
                          (get-condition-property ex 'exn 'message))
-              (signal ex))
-            (let ((connect (get-connect!)))
-              (when connect
-                    (handle-connect connect) ) ) ) ) )
-    (let ((thread (make-thread connect-handler)))
-      ;; thread-specific value indicates if thread has been told to stop
-      (thread-specific-set! thread #f)
-      (thread-start! thread) ) )
+              (signal ex))     ;; TODO: signal?
+            (handle-connect in out)
+            (dec-connection-count))))))
 
-
-  ;; Returns a list of threads
-  (define (start-connect-handler-threads num-threads)
-    (let loop ((n num-threads))
-      (if (= n 0)
-          '()
-          (let ((thread (start-connect-handler-thread)))
-            (cons thread (loop (- n 1) ) ) ) ) ) )
-
-
-  (define (stop-requested?)
-    (thread-specific (current-thread) ) )
-
-
-  (define (stop-connect-handler-threads threads)
-    ;; First tell the threads to stop
-    (for-each (lambda (thread)
-                (thread-specific-set! thread #t))
-              threads)
-    ;; Then wait for them to finish
-    (for-each (lambda (thread)
-                (thread-join! thread))
-              threads) )
-
+  (define (wait-for-connections-to-finish)
+    (let loop ()
+      (mutex-lock! connections-mutex)
+      (let ((count number-of-connections))
+        (mutex-unlock! connections-mutex)
+        (unless (= count 0)
+                (loop) ) ) ) )
 
   ;; TODO: Document use of tcp-accept-timeout parameter and possibly change
   ;; TODO: external parameter name to server-accept-timeout, should this
@@ -152,15 +106,19 @@
     (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
-        (let ((connect-handler-threads (start-connect-handler-threads 10)))
-          (do ()
-              ((stop-requested?))
+        (let loop ()
+          (if (>= number-of-connections max-number-of-connections)
+              (log-info "thread limit reached: ~A" number-of-connections)
               (let-values (((in out) (tcp-accept/handle-timeout listener)))
                 (when (and in out)
-                      (client-connect in out))))
-          (stop-connect-handler-threads connect-handler-threads)
-          (tcp-close listener) ) ) ) )
+                      (start-connect-thread in out))
+                (unless (stop-requested?)
+                        (loop)))))
+        (wait-for-connections-to-finish)
+        (tcp-close listener) ) ) )
 
+  (define (stop-requested?)
+    (thread-specific (current-thread) ) )
 
   (parameterize ((server-hostname hostname)
                  (server-port port))
@@ -185,10 +143,10 @@
 
 ;; Internal Definitions ------------------------------------------------------
 
-;; TODO: Test this including timeout and breaking connection
+;; Read the selector and trim whitespace from the beginning and the end
 ;; Exceptions, including timeouts, are caught and logged.  If an exception
 ;; is caught #f is returned
-;; Read the selector and trim whitespace from the beginning and the end
+;; Timeout is controlled with tcp-read-timeout
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)

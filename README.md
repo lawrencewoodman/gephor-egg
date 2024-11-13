@@ -17,7 +17,6 @@ Requirements
 The following eggs need to be installed:
 * fmt
 * magic
-* queues
 * simple-logger
 * srfi-1
 * srfi-13

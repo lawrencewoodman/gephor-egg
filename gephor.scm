@@ -38,7 +38,6 @@
         (chicken string)
         (chicken tcp)
         (chicken type)
-        queues
         magic
         simple-logger
         srfi-1
@@ -51,8 +50,6 @@
 ;; srfi-13  - String library
 ;; srfi-14  - Character set library
 ;; srfi-18  - Multithreading support
-;; queues   - In the source code it says that the procedures used
-;;            here are thread safe
 ;; magic    - Magic file type recognition
 
 
