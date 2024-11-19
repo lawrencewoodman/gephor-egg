@@ -12,6 +12,12 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
+
+;; Start the gopher server in a separate thread.
+;; Returns a thread which can be passed to stop-server to stop the server.
+;;
+;; Uses the paramaters tcp-accept-timeout and tcp-read-timeout to control
+;; timeouts.
 (define (start-server #!key (hostname (server-hostname))
                             (port (server-port))
                             router)
@@ -95,10 +101,6 @@
         (unless (= count 0)
                 (loop) ) ) ) )
 
-  ;; TODO: Document use of tcp-accept-timeout parameter and possibly change
-  ;; TODO: external parameter name to server-accept-timeout, should this
-  ;; TODO: change except for testing?  Perhaps have another parameter that
-  ;; TODO: is only exported for testing
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
   ;; thread which is stopped by stop-sever.
