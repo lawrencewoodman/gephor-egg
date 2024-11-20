@@ -84,14 +84,11 @@
         (lambda ()
           (inc-connection-count)
           (handle-exceptions ex
-            (begin
-              (dec-connection-count)
-              ;; TODO: Improve error message
-              (log-error "connect handler thread: ~A"
+            ;; TODO: Improve error message
+            (log-error "connect handler thread: ~A"
                          (get-condition-property ex 'exn 'message))
-              (signal ex))     ;; TODO: signal?
-            (handle-connect in out)
-            (dec-connection-count))))))
+            (handle-connect in out))
+          (dec-connection-count)))))
 
   (define (wait-for-connections-to-finish)
     (let loop ()
