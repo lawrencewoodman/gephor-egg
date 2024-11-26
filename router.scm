@@ -42,7 +42,6 @@
         (router-sort-routes (cons route router) ) ) ) ) )
 
 
-;; TODO: should this return the pattern as well, perhaps using values?
 (: router-match (router string --> (or handler false)))
 (define (router-match router selector)
   (let loop ((routes router))
