@@ -299,5 +299,11 @@
           (menu-item-url "Something interesting" "fred://example.com") ) )
 
 
+  (test "make-item-url returns #f if URL isn't valid"
+        #f
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (menu-item-url "Something interesting" "invalidURL") ) )
+
+
 )
 

@@ -103,7 +103,7 @@
 (: menu-item-url (string string --> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
-    (case (string->symbol protocol)
+    (and protocol (case (string->symbol protocol)
       ((gopher)
         ;; Gopher URLs should conform to RFC 4266
         (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
@@ -115,7 +115,7 @@
                    (server-hostname)
                    (server-port)))
       (else
-        #f) ) ) )
+        #f) ) ) ) )
 
 
 ;; Render the menu as text ready for sending
