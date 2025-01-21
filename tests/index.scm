@@ -62,7 +62,6 @@
             (list (process-index fixtures-dir "dir-a" index)
                   (get-output-string port) ) ) ) )
 
-
   (test "process-index removes blank lines at top and bottom of index"
         (string-intersperse '(
           "iThere are blank lines above and below this line that should be stripped\tdir-a\tlocalhost\t70"
@@ -164,6 +163,15 @@
                        "=> http://example.com/fred      Lots of white space (will be removed)   ")
                        "\n")))
           (menu-render (process-index fixtures-dir "dir-b" index) ) ) )
+
+
+  (test "process-index supports URL links with a ':' in path"
+        (string-intersperse '(
+          "hOld Example\tURL:https://example.com/http://old.example.com/\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (let ((index "=> https://example.com/http://old.example.com/ Old Example"))
+          (menu-render (process-index fixtures-dir "dir-a" index) ) ) )
 
 
 

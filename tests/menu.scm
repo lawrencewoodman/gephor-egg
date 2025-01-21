@@ -282,6 +282,17 @@
           (menu-render menu) ) ) )
 
 
+  (test "make-item-url handles urls containing a ':' in path"
+        (string-intersperse '(
+          "hOld Example\tURL:https://example.com/http://old.example.com/\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (parameterize ((server-hostname "localhost") (server-port 70))
+          (let ((username "Old Example")
+                (url "https://example.com/http://old.example.com/"))
+            (menu-render (list (menu-item-url username url) ) ) ) ) )
+
+
   (test "make-item-url returns #f if protocol is unsupported"
         #f
         (parameterize ((server-hostname "localhost") (server-port 70))

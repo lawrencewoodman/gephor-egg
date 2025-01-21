@@ -91,5 +91,5 @@
 (define index-link-split-regex (string->irregex "^=>[ ]+([^ ]+)[ ]*(.*)$"))
 
 ;; Regular expression to identify a URL in a => style link
-(define url-regex (string->irregex "^.*:\/\/[^:/]+(:[0-9]*)?.*$"))
+(define url-regex (string->irregex "^.+?:\/\/[^:/]+(:[0-9]*)?.*$"))
 

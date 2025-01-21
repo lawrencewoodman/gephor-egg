@@ -27,7 +27,7 @@
 ;; |5| Dos Binary itemtype not recommended as it is unclear what this
 ;;     is and it should be able to be replaced by |9| in every instance.
 ;;
-;; logs a warning if usernames > 69 characters as per RFC 1436
+;; Logs a warning if username > 69 characters as per RFC 1436
 ;;
 ;; Returns #f if an unknown itemtype is used which is
 ;; longer than 1 character, otherwise a menu-item is returned
@@ -144,7 +144,7 @@
 ;; Internal Definitions ------------------------------------------------------
 
 ;; Compiled Regular Expressions to split URLs
-(define url-split-regex (string->irregex "^(.*):\/\/([^:/]+)(:([0-9]*))?(.*)$"))
+(define url-split-regex (string->irregex "^(.+?):\/\/([^:/]+)(:([0-9]*))?(.*)$"))
 (define gopher-path-split-regex (string->irregex "^\/(.)(.*)$"))
 
 ;; Compiled Regular Expression to split magic file mime types
