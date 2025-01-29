@@ -104,7 +104,6 @@
 
 
 (define (serve-index root-dir request)
-  ;; TODO: Do we want to use 'index' as filename?
   (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
     (and (directory? local-path)
          (let ((index-path (make-pathname local-path "index")))
@@ -116,7 +115,6 @@
 
 
 (define (serve-file root-dir request)
-  ;; TODO: allow or don't allow gophermap to be downloaded?
   (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
     (and (regular-file? local-path)
          (and-let* ((response (read-file local-path)))

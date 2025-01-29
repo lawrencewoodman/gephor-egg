@@ -194,6 +194,11 @@
         (serve-path (make-request "dir-b" "127.0.0.1") fixtures-dir) )
 
 
+  (test "serve-path return contents of 'index' file if index file requested by selector"
+        "A simple index file to check it is interpreted by serve-path\n"
+        (serve-path (make-request "dir-b/index" "127.0.0.1") fixtures-dir) )
+
+
   (test "serve-path process empty 'index' files properly if present"
         ;; Whitespace is stripped at the beginning and end of file
         (string-intersperse '(
