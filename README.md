@@ -15,7 +15,6 @@ Requirements
 * libmagic and associated development files for the magic egg
 
 The following eggs need to be installed:
-* fmt
 * magic
 * simple-logger
 * srfi-1
