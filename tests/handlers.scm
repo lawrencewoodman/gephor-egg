@@ -7,7 +7,100 @@
 
   ;; TODO: Add test for root-dir not existing in case specific incorrectly
 
-  (test "serve-path supportes empty selector"
+  ;; TODO: Add Test for working through the three handlers in serve-path
+
+  (test "selector->local-path returns false if selector contains '..'"
+        #f
+        (selector->local-path fixtures-dir "../dir-a") )
+
+  (test "selector->local-path returns false if selector contains './'"
+        #f
+        (selector->local-path fixtures-dir "./dir-a") )
+
+  (test "selector->local-path returns false if selector contains a '\\'"
+        #f
+        (selector->local-path fixtures-dir "dir-a\\fred") )
+
+  (test "selector->local-path returns false if root-dir is a relative dir"
+        #f
+        (selector->local-path "tests/fixtures" "dir-a") )
+
+  (test "selector->local-path returns false if root-dir is a relative dir of the form ./"
+        #f
+        (selector->local-path "./" "dir-a") )
+
+  (test "selector->local-path returns false if root-dir contains ./"
+        #f
+        (selector->local-path "/tmp/./this" "dir-a") )
+
+  (test "selector->local-path false if root-dir contains .."
+        #f
+        (selector->local-path "/.." "dir-a") )
+
+  (test "selector->local-path returns false if root-dir contains \\"
+        #f
+        (selector->local-path "/\\" "dir-a") )
+
+  (test "selector->local-path doesn't allow percent decoding to turn %2E%2E into .."
+        (make-pathname fixtures-dir "dir-a/%2E%2E")
+        (selector->local-path fixtures-dir "dir-a/%2E%2E") )
+
+  (test "selector->local-path forms a local-path from root-dir and selector"
+        (make-pathname fixtures-dir "dir-a")
+        (selector->local-path fixtures-dir "dir-a") )
+
+  (test "selector->local-path allows root-dir to end with a '/'"
+        (make-pathname fixtures-dir "dir-a")
+        (let ((root-dir (sprintf "~A/" fixtures-dir)))
+          (selector->local-path root-dir "dir-a") ) )
+
+  (test "selector->local-path allows root-dir to not end with a '/'"
+        (make-pathname fixtures-dir "dir-a")
+        (let ((root-dir (string-chomp fixtures-dir "/")))
+          (selector->local-path root-dir "dir-a") ) )
+
+
+  ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
+  (test "selector->local-path allows root-dir to be '/'"
+    "/"
+    (selector->local-path "/" "") )
+
+
+  (test "selector->local-path trims whitespace and '/' characters from both ends of a selector"
+    '(#t #t #t #t #t #t #t #t #t)
+    (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
+                       "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
+        (map (lambda (selector)
+                     (equal? (make-pathname fixtures-dir "dir-a")
+                             (selector->local-path fixtures-dir selector)))
+             selectors) ) )
+
+
+  ;; TODO: Need to test log messages for this as well
+  (test "serve-dir returns false if listing a directory that isn't world readable"
+        (list (string-intersperse '(
+                "1dir-a\tdir-a\tlocalhost\t70"
+                "1dir-b\tdir-b\tlocalhost\t70"
+                ".\r\n")
+                "\r\n")
+              #f)
+        (let* ((tmpdir (create-temporary-directory))
+               (request (make-request "" "127.0.0.1")))
+          (create-directory (make-pathname tmpdir "dir-a"))
+          (create-directory (make-pathname tmpdir "dir-b"))
+          (let ((response1 (serve-dir tmpdir request))
+                (response2
+                  (begin
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! tmpdir
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-dir tmpdir request))))
+            (list response1 response2) ) ) )
+
+
+  ;; TODO: test against serve-index as well
+  (test "serve-dir supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
@@ -20,10 +113,11 @@
           "9noext\tnoext\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (serve-path (make-request "" "127.0.0.1") fixtures-dir) )
+        (serve-dir fixtures-dir (make-request "" "127.0.0.1") ) )
 
 
-  (test "serve-path supportes subpath ('dir-a') selector"
+  ;; TODO: test against serve-index and serve-file as well
+  (test "serve-dir supportes subpath ('dir-a') selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(
           "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
@@ -32,218 +126,51 @@
           "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (serve-path (make-request "dir-a" "127.0.0.1") fixtures-dir) )
+        (serve-dir fixtures-dir (make-request "dir-a" "127.0.0.1") ) )
 
 
-  (test "serve-path allows root-dir to end with a '/'"
-        ;; Directories come before regular files and each in alphabetical order
-        (string-intersperse '(
-          "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
-          "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
-          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (root-dir (sprintf "~A/" fixtures-dir)))
-          (serve-path request root-dir) ) )
-
-  (test "serve-path allows root-dir to not end with a '/'"
-        ;; Directories come before regular files and each in alphabetical order
-        (string-intersperse '(
-          "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
-          "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
-          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (let ((request (make-request "dir-a" "127.0.0.1"))
-              (root-dir (string-chomp fixtures-dir "/")))
-          (serve-path request root-dir) ) )
 
 
-  ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
-  (test "serve-path allows root-dir to be '/'"
-        '(0 0 0 0 0 0)
-        (filter-map (lambda (x) (or (substring-index "1bin\t" x)
-                                    (substring-index "1dev\t" x)
-                                    (substring-index "1home\t" x)
-                                    (substring-index "1sbin\t" x)
-                                    (substring-index "1usr\t" x)
-                                    (substring-index "1var\t" x)))
-                    (string-split (serve-path (make-request "" "127.0.0.1") "/")
-                                  "\r\n") ) )
-
-  (test "serve-path trims whitespace and '/' characters from both ends of a selector"
-        '(#t #t #t #t #t #t #t #t #t)
-        (let ((expect (string-intersperse '(
-                        ;; Directories come before regular files and each in alphabetical order
-                        "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
-                        "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-                        "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
-                        "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
-                        ".\r\n")
-                        "\r\n"))
-             (selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
-                          "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
-        (map (lambda (selector)
-               (equal? expect
-                       (serve-path (make-request selector "127.0.0.1") fixtures-dir)))
-             selectors) ) )
-
-
-  (test "serve-path returns false if selector contains '..'"
-        #f
-        (serve-path (make-request "../dir-a" "127.0.0.1") fixtures-dir) )
-
-  (test "serve-path returns false if selector contains './'"
-        #f
-        (serve-path (make-request "./dir-a" "127.0.0.1") fixtures-dir) )
-
-  (test "serve-path returns false if selector contains a '\\'"
-        #f
-        (serve-path (make-request "dir-a\\fred" "127.0.0.1") fixtures-dir) )
-
-  (test "serve-path doesn't allow percent decoding to allow .."
-        #f
-        (serve-path (make-request "dir-a/%2E%2E" "127.0.0.1") fixtures-dir) )
-
-  (test "serve-path returns false if root-dir is a relative dir"
-        #f
-        (serve-path (make-request "dir-a" "127.0.0.1") "tests/fixtures") )
-
-  (test "serve-path returns false if root-dir is a relative dir of the form ./"
-        #f
-        (serve-path (make-request "dir-a" "127.0.0.1") "./") )
-
-  (test "serve-path returns false if root-dir contains ./"
-        #f
-        (serve-path (make-request "dir-a" "127.0.0.1") "/tmp/./this") )
-
-  (test "serve-path false if root-dir contains .."
-        #f
-        (serve-path (make-request "dir-a" "127.0.0.1") "/..") )
-
-  (test "serve-path returns false if root-dir contains \\"
-        #f
-        (serve-path (make-request "dir-a" "127.0.0.1") "/\\") )
-
-
-  (test "serve-path returns false if trying to serve a file that isn't world readable"
+  (test "serve-file returns false if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
               #f)
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
                      (make-pathname tmpdir "hello.txt"))
-          (let ((response1 (serve-path request tmpdir))
+          (let ((response1 (serve-file tmpdir request))
                 (response2
                   (begin
                     ;; Make tmpdir non world readable
                     (set-file-permissions! (make-pathname tmpdir "hello.txt")
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
-                    (serve-path request tmpdir))))
+                    (serve-file tmpdir request))))
             (list response1 response2) ) ) )
 
 
-  ;; TODO: Need to test log messages for this as well
-  (test "serve-path returns false if listing a directory that isn't world readable"
-        (list (string-intersperse '(
-                "1dir-a\tdir-a\tlocalhost\t70"
-                "1dir-b\tdir-b\tlocalhost\t70"
-                ".\r\n")
-                "\r\n")
-              #f)
-        (let* ((tmpdir (create-temporary-directory))
-               (request (make-request "" "127.0.0.1")))
-          (create-directory (make-pathname tmpdir "dir-a"))
-          (create-directory (make-pathname tmpdir "dir-b"))
-          (let ((response1 (serve-path request tmpdir))
-                (response2
-                  (begin
-                    ;; Make tmpdir non world readable
-                    (set-file-permissions! tmpdir
-                                           (bitwise-and (file-permissions tmpdir)
-                                                        (bitwise-not perm/iroth)))
-                    (serve-path request tmpdir))))
-            (list response1 response2) ) ) )
-
-
-  (test "serve-path returns false if path doesn't exist"
-        #f
-        (serve-path (make-request "unknown" "127.0.0.1") fixtures-dir) )
-
-
-  (test "serve-path returns the contents of a binary file"
+  (test "serve-file returns the contents of a binary file"
         "This is text followed by a null (00)\x00 now some more text."
-        (serve-path (make-request "dir-a/ac.bin" "127.0.0.1") fixtures-dir) )
+        (serve-file fixtures-dir (make-request "dir-a/ac.bin" "127.0.0.1") ) )
 
 
-  (test "serve-path returns the contents of an empty file"
+  (test "serve-file returns the contents of an empty file"
         ""
-        (serve-path (make-request "dir-a/empty.txt" "127.0.0.1") fixtures-dir) )
+        (serve-file fixtures-dir (make-request "dir-a/empty.txt" "127.0.0.1") ) )
 
 
-  (test "serve-path process 'index' files properly if present"
-        ;; Whitespace is stripped at the beginning and end of file
-        (string-intersperse '(
-          "iA simple index file to check it is interpreted by serve-path\tdir-b\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (serve-path (make-request "dir-b" "127.0.0.1") fixtures-dir) )
-
-
-  (test "serve-path return contents of 'index' file if index file requested by selector"
+  (test "serve-file return contents of 'index' file if index file requested by selector"
         "A simple index file to check it is interpreted by serve-path\n"
-        (serve-path (make-request "dir-b/index" "127.0.0.1") fixtures-dir) )
+        (serve-file fixtures-dir (make-request "dir-b/index" "127.0.0.1") ) )
 
 
-  (test "serve-path process empty 'index' files properly if present"
-        ;; Whitespace is stripped at the beginning and end of file
-        (string-intersperse '(
-          "i\tdir-index_empty_file\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (serve-path (make-request "dir-index_empty_file" "127.0.0.1")
-                    fixtures-dir) )
-
-
-  (test "serve-path lists the directory if an 'index' file isn't world readable"
-        (list (string-intersperse '(
-                "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
-                ".\r\n")
-                "\r\n")
-              (string-intersperse '(
-                "1dir-a\tdir-a\tlocalhost\t70"
-                "1dir-b\tdir-b\tlocalhost\t70"
-                "0index\tindex\tlocalhost\t70"
-                ".\r\n")
-                "\r\n"))
-        (let* ((tmpdir (create-temporary-directory))
-               (request (make-request "" "127.0.0.1")))
-          (create-directory (make-pathname tmpdir "dir-a"))
-          (create-directory (make-pathname tmpdir "dir-b"))
-          (copy-file (make-pathname (list fixtures-dir "dir-index_world_readable") "index")
-                     (make-pathname tmpdir "index"))
-          (let ((response1 (serve-path request tmpdir))
-                (response2
-                  (begin
-                    ;; Make tmpdir non world readable
-                    (set-file-permissions! (make-pathname tmpdir "index")
-                                           (bitwise-and (file-permissions tmpdir)
-                                                        (bitwise-not perm/iroth)))
-                    (serve-path request tmpdir))))
-            (list response1 response2) ) ) )
-
-
-  (test "serve-path can serve a file that is equal to the number of bytes set by max-file-size"
+  (test "serve-file can serve a file that is equal to the number of bytes set by max-file-size"
         "hello\n"
         (parameterize ((max-file-size 6))
-          (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir) ) )
+          (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") ) ) )
 
 
-  (test "serve-path returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
+  (test "serve-file returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
         (list #f (sprintf "[ERROR] read-file, file: ~A, is greater than 5 bytes\n"
                           (make-pathname fixtures-dir "a.txt")))
         (let ((port (open-output-string)))
@@ -252,8 +179,55 @@
                          (error-logger-config
                            (config-logger (error-logger-config)
                                           port: port)))
-            (list (serve-path (make-request "a.txt" "127.0.0.1") fixtures-dir)
+            (list (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") )
                   (get-output-string port) ) ) ) )
+
+
+  (test "serve-index process 'index' files properly if present"
+        ;; Whitespace is stripped at the beginning and end of file
+        (string-intersperse '(
+          "iA simple index file to check it is interpreted by serve-path\tdir-b\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (serve-index fixtures-dir (make-request "dir-b" "127.0.0.1") ) )
+
+
+  (test "serve-index process empty 'index' files properly if present"
+        ;; Whitespace is stripped at the beginning and end of file
+        (string-intersperse '(
+          "i\tdir-index_empty_file\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
+        (serve-index fixtures-dir
+                    (make-request "dir-index_empty_file" "127.0.0.1") ) )
+
+
+  (test "serve-index returns #f  if an 'index' file isn't world readable"
+        (list (string-intersperse '(
+                "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
+                ".\r\n")
+                "\r\n")
+              #f)
+        (let* ((tmpdir (create-temporary-directory))
+               (request (make-request "" "127.0.0.1")))
+          (create-directory (make-pathname tmpdir "dir-a"))
+          (create-directory (make-pathname tmpdir "dir-b"))
+          (copy-file (make-pathname (list fixtures-dir "dir-index_world_readable") "index")
+                     (make-pathname tmpdir "index"))
+          (let ((response1 (serve-index tmpdir request))
+                (response2
+                  (begin
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! (make-pathname tmpdir "index")
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-index tmpdir request))))
+            (list response1 response2) ) ) )
+
+
+  (test "serve-path returns false if path doesn't exist"
+        #f
+        (serve-path fixtures-dir (make-request "unknown" "127.0.0.1") ) )
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"

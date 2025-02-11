@@ -1,7 +1,8 @@
 ;;; The route handlers
 ;;;
 ;;; Definitions are exported in gephor.scm
-;;; From this file the following are exported: serve-url serve-path
+;;; From this file the following are exported:
+;;;   selector->local-path serve-dir serve-file servie-index serve-path serve-url
 ;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -11,6 +12,72 @@
 
 
 ;; Exported Definitions ------------------------------------------------------
+
+;; Converts a selector string into a local-path string by prepending root-dir.
+;; It also confirms that the path is safe.
+;; Returns #f on failure.
+(define (selector->local-path root-dir selector)
+  (let* ((root-dir (if (> (string-length root-dir) 1)
+                       (string-chomp root-dir "/")
+                       root-dir))
+         (selector (trim-path-selector selector))
+         (local-path (make-pathname root-dir selector)))
+    (and (safe-path? root-dir local-path)
+         local-path) ) )
+
+
+;; The selector must be a valid file path.  Whitespace and '/' characters
+;; will be trimmed from both ends of the selector to ensure safe and
+;; predicatable local path creation.  Whitespace is trimmed even though
+;; it should be by the server because the removal of a leading or terminating
+;; '/' character might leave whitespace.
+;; TODO: Perhaps move the above advice elsewhere or handle same as Phricken
+(define (serve-path root-dir request)
+  (any (lambda (h) (h root-dir request))
+       serve-path-handlers) )
+
+
+;; If the path formed by root-dir and request is a diretory list the directory.
+;; Returns #f if can't list a directory.
+(define (serve-dir root-dir request)
+  ;; local-path is formed here rather than being passed in to ensure that it
+  ;; is formed safely
+  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
+    (and (directory? local-path)
+         (and-let* ((response (list-dir (request-selector request) local-path)))
+           (log-handler-info "serve-dir" request "list directory: ~A" local-path)
+           (menu-render response) ) ) ) )
+
+
+;; If the path formed by root-dir and request is a regular file and readable
+;; return the file.
+;; Returns #f if can't return a file.
+(define (serve-file root-dir request)
+  ;; local-path is formed here rather than being passed in to ensure that it
+  ;; is formed safely
+  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
+    (and (regular-file? local-path)
+         (and-let* ((response (read-file local-path)))
+           (log-handler-info "serve-file" request "request file: ~A" local-path)
+           response) ) ) )
+
+
+;; If an 'index' file is in the directory formed from root-dir and request
+;; process the index file and return the result.
+;;  Returns #f if index file doesn't exist or can't be processed properly.
+(define (serve-index root-dir request)
+  ;; local-path is formed here rather than being passed in to ensure that it
+  ;; is formed safely
+  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
+    (and (directory? local-path)
+         (let ((index-path (make-pathname local-path "index")))
+           (and (file-exists? index-path)
+                (and-let* ((nex-index (read-file index-path))
+                           (response (process-index root-dir (request-selector request)
+                                                             nex-index)))
+                  (log-handler-info "serve-index" request "serve index: ~A" index-path)
+                  (menu-render response) ) ) ) ) ) )
+
 
 ;; Serve an html page for cases when the selector begins with 'URL:' followed
 ;; by a URL.  This is for clients that don't support the 'URL:' selector
@@ -24,17 +91,6 @@
        (let* ((url (substring (request-selector request) 4)))
          (log-handler-info "serve-url" request "serving url: ~A" url)
          (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
-
-
-;; The selector must be a valid file path.  Whitespace and '/' characters
-;; will be trimmed from both ends of the selector to ensure safe and
-;; predicatable local path creation.  Whitespace is trimmed even though
-;; it should be by the server because the removal of a leading or terminating
-;; '/' character might leave whitespace.
-;; TODO: Perhaps move the above advice elsewhere or handle same as Phricken
-(define (serve-path request root-dir)
-  (any (lambda (h) (h root-dir request))
-       serve-path-handlers) )
 
 
 
@@ -88,46 +144,6 @@
                                            #f)
                                          contents))))
                              #:binary) ) )
-
-
-;; Converts a selector string into a local-path string by prepending root-dir.
-;; It also confirms that the path is safe.
-;; Returns #f on failure.
-(define (selector->local-path root-dir selector)
-  (let* ((root-dir (if (> (string-length root-dir) 1)
-                       (string-chomp root-dir "/")
-                       root-dir))
-         (selector (trim-path-selector selector))
-         (local-path (make-pathname root-dir selector)))
-    (and (safe-path? root-dir local-path)
-         local-path) ) )
-
-
-(define (serve-index root-dir request)
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (directory? local-path)
-         (let ((index-path (make-pathname local-path "index")))
-           (and (file-exists? index-path)
-                (and-let* ((nex-index (read-file index-path))
-                           (response (process-index root-dir (request-selector request) nex-index)))
-                  (log-handler-info "serve-index" request "serve index: ~A" index-path)
-                  (menu-render response) ) ) ) ) ) )
-
-
-(define (serve-file root-dir request)
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (regular-file? local-path)
-         (and-let* ((response (read-file local-path)))
-           (log-handler-info "serve-file" request "request file: ~A" local-path)
-           response) ) ) )
-
-
-(define (serve-dir root-dir request)
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (directory? local-path)
-         (and-let* ((response (list-dir (request-selector request) local-path)))
-           (log-handler-info "serve-dir" request "list directory: ~A" local-path)
-           (menu-render response) ) ) ) )
 
 
 ;; List of handlers that serve-path will try

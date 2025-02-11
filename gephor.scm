@@ -15,8 +15,12 @@
    menu-item menu-item-file menu-item-url
    menu-render
    process-index
-   serve-url
+   selector->local-path
+   serve-dir
+   serve-file
+   serve-index
    serve-path
+   serve-url
    max-file-size
    server-hostname
    server-port)
