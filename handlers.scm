@@ -15,6 +15,13 @@
 
 ;; Converts a selector string into a local-path string by prepending root-dir.
 ;; It also confirms that the path is safe.
+;;
+;; The selector must be a valid file path.  Whitespace and '/' characters
+;; will be trimmed from both ends of the selector to ensure safe and
+;; predicatable local path creation.  Whitespace is trimmed even though
+;; it should be by the server because the removal of a leading or terminating
+;; '/' character might leave whitespace.
+;;
 ;; Returns #f on failure.
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
@@ -26,18 +33,20 @@
          local-path) ) )
 
 
-;; The selector must be a valid file path.  Whitespace and '/' characters
-;; will be trimmed from both ends of the selector to ensure safe and
-;; predicatable local path creation.  Whitespace is trimmed even though
-;; it should be by the server because the removal of a leading or terminating
-;; '/' character might leave whitespace.
 ;; TODO: Perhaps move the above advice elsewhere or handle same as Phricken
+;; Tries the following handlers in turn until one returns non-false or the
+;; last one fails:
+;;   serve-index serve-file serve-dir
+;; See the documentation for each handler for more information.
+;; Returns the value of the last handler tried.
 (define (serve-path root-dir request)
   (any (lambda (h) (h root-dir request))
-       serve-path-handlers) )
+       (list serve-index serve-file serve-dir) ) )
 
 
-;; If the path formed by root-dir and request is a diretory list the directory.
+;; If the path formed by root-dir and request is a diretory return a menu
+;; listing the files and directories in the directory.
+;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't list a directory.
 (define (serve-dir root-dir request)
   ;; local-path is formed here rather than being passed in to ensure that it
@@ -51,6 +60,7 @@
 
 ;; If the path formed by root-dir and request is a regular file and readable
 ;; return the file.
+;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't return a file.
 (define (serve-file root-dir request)
   ;; local-path is formed here rather than being passed in to ensure that it
@@ -64,6 +74,7 @@
 
 ;; If an 'index' file is in the directory formed from root-dir and request
 ;; process the index file and return the result.
+;; See selector->local-path for more information about selector requirements.
 ;;  Returns #f if index file doesn't exist or can't be processed properly.
 (define (serve-index root-dir request)
   ;; local-path is formed here rather than being passed in to ensure that it
