@@ -99,14 +99,11 @@
             (list response1 response2) ) ) )
 
 
-  ;; TODO: test against serve-index as well
   (test "serve-dir supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
-          "1dir-index_empty_file\tdir-index_empty_file\tlocalhost\t70"
-          "1dir-index_world_readable\tdir-index_world_readable\tlocalhost\t70"
           "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
           "0b.txt\tb.txt\tlocalhost\t70"
@@ -116,7 +113,7 @@
         (serve-dir fixtures-dir (make-request "" "127.0.0.1") ) )
 
 
-  ;; TODO: test against serve-index and serve-file as well
+  ;; TODO: test against serve-file as well
   (test "serve-dir supportes subpath ('dir-a') selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(
@@ -127,7 +124,6 @@
           ".\r\n")
           "\r\n")
         (serve-dir fixtures-dir (make-request "dir-a" "127.0.0.1") ) )
-
 
 
 
@@ -160,7 +156,12 @@
 
 
   (test "serve-file return contents of 'index' file if index file requested by selector"
-        "A simple index file to check it is interpreted by serve-path\n"
+        (string-intersperse '(
+          "A simple index file to check it can be served without being"
+          "processed."
+          "=> http://example.com This link line should show the processind =>"
+          "")
+          "\n")
         (serve-file fixtures-dir (make-request "dir-b/index" "127.0.0.1") ) )
 
 
@@ -181,48 +182,6 @@
                                           port: port)))
             (list (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") )
                   (get-output-string port) ) ) ) )
-
-
-  (test "serve-index process 'index' files properly if present"
-        ;; Whitespace is stripped at the beginning and end of file
-        (string-intersperse '(
-          "iA simple index file to check it is interpreted by serve-path\tdir-b\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (serve-index fixtures-dir (make-request "dir-b" "127.0.0.1") ) )
-
-
-  (test "serve-index process empty 'index' files properly if present"
-        ;; Whitespace is stripped at the beginning and end of file
-        (string-intersperse '(
-          "i\tdir-index_empty_file\tlocalhost\t70"
-          ".\r\n")
-          "\r\n")
-        (serve-index fixtures-dir
-                    (make-request "dir-index_empty_file" "127.0.0.1") ) )
-
-
-  (test "serve-index returns #f  if an 'index' file isn't world readable"
-        (list (string-intersperse '(
-                "iThis is used to test an index file that isn't world readable\t\tlocalhost\t70"
-                ".\r\n")
-                "\r\n")
-              #f)
-        (let* ((tmpdir (create-temporary-directory))
-               (request (make-request "" "127.0.0.1")))
-          (create-directory (make-pathname tmpdir "dir-a"))
-          (create-directory (make-pathname tmpdir "dir-b"))
-          (copy-file (make-pathname (list fixtures-dir "dir-index_world_readable") "index")
-                     (make-pathname tmpdir "index"))
-          (let ((response1 (serve-index tmpdir request))
-                (response2
-                  (begin
-                    ;; Make tmpdir non world readable
-                    (set-file-permissions! (make-pathname tmpdir "index")
-                                           (bitwise-and (file-permissions tmpdir)
-                                                        (bitwise-not perm/iroth)))
-                    (serve-index tmpdir request))))
-            (list response1 response2) ) ) )
 
 
   (test "serve-path returns false if path doesn't exist"

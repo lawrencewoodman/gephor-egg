@@ -1,7 +1,7 @@
 ;;; A Gopher server module for Chicken Scheme
 ;;;
 ;;;
-;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
@@ -14,11 +14,9 @@
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
    menu-render
-   process-index
    selector->local-path
    serve-dir
    serve-file
-   serve-index
    serve-path
    serve-url
    max-file-size
@@ -86,9 +84,6 @@
 
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
-
-;; Procedures for processing index files
-(include-relative "index.scm")
 
 ;; Procedures for creating Gopher menus
 (include-relative "menu.scm")

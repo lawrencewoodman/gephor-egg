@@ -60,6 +60,6 @@ There is a testsuite in `tests/`.  To run it:
 
 Licence
 -------
-Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
+Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 
 This software is licensed under an MIT Licence.  Please see the file, [LICENCE.md](https://github.com/lawrencewoodman/gephor-egg/blob/master/LICENCE.md), for details.

@@ -2,9 +2,9 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   selector->local-path serve-dir serve-file servie-index serve-path serve-url
+;;;   selector->local-path serve-dir serve-file serve-path serve-url
 ;;;
-;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
@@ -33,15 +33,14 @@
          local-path) ) )
 
 
-;; TODO: Perhaps move the above advice elsewhere or handle same as Phricken
 ;; Tries the following handlers in turn until one returns non-false or the
 ;; last one fails:
-;;   serve-index serve-file serve-dir
+;;   serve-file serve-dir
 ;; See the documentation for each handler for more information.
 ;; Returns the value of the last handler tried.
 (define (serve-path root-dir request)
   (any (lambda (h) (h root-dir request))
-       (list serve-index serve-file serve-dir) ) )
+       (list serve-file serve-dir) ) )
 
 
 ;; If the path formed by root-dir and request is a diretory return a menu
@@ -70,24 +69,6 @@
          (and-let* ((response (read-file local-path)))
            (log-handler-info "serve-file" request "request file: ~A" local-path)
            response) ) ) )
-
-
-;; If an 'index' file is in the directory formed from root-dir and request
-;; process the index file and return the result.
-;; See selector->local-path for more information about selector requirements.
-;;  Returns #f if index file doesn't exist or can't be processed properly.
-(define (serve-index root-dir request)
-  ;; local-path is formed here rather than being passed in to ensure that it
-  ;; is formed safely
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (directory? local-path)
-         (let ((index-path (make-pathname local-path "index")))
-           (and (file-exists? index-path)
-                (and-let* ((nex-index (read-file index-path))
-                           (response (process-index root-dir (request-selector request)
-                                                             nex-index)))
-                  (log-handler-info "serve-index" request "serve index: ~A" index-path)
-                  (menu-render response) ) ) ) ) ) )
 
 
 ;; Serve an html page for cases when the selector begins with 'URL:' followed
@@ -155,10 +136,6 @@
                                            #f)
                                          contents))))
                              #:binary) ) )
-
-
-;; List of handlers that serve-path will try
-(define serve-path-handlers (list serve-index serve-file serve-dir))
 
 
 ;; Sort files so that directories come before regular files and then
