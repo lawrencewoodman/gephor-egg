@@ -21,7 +21,9 @@
    serve-url
    max-file-size
    server-hostname
-   server-port)
+   server-port
+   trim-path-selector
+   safe-path?)
 
 
 (import scheme
@@ -94,43 +96,9 @@
 ;; Procedures for starting and stopping a Gopher server
 (include-relative "server.scm")
 
+;; Miscellaneous procedures
+(include-relative "misc.scm")
 
 
-;; Miscellaneous definitions ------------------------------------------------
-
-;; A char set for trimming selectors
-(define path-selector-trim-char-set
-  (char-set-adjoin char-set:whitespace #\/) )
-
-;; Trim beginning and end of selector to remove whitespace and
-;; '/' characters
-(define (trim-path-selector selector)
-  (string-trim-both selector path-selector-trim-char-set) )
-
-;; Similar to error but passes arguments after location to sprintf to form
-;; error message
-(define (error* location . args)
-  (error location (apply sprintf args) ) )
-
-;; We want to prevent directory traversal attacks to ensure that path
-;; can't reach the parent directory of root-dir  We include '\' in the
-;; list of invalid characters because of an apparent bug according to
-;; the Spiffy web server source code which says that this can be turned
-;; into a '/' sometimes by Chicken. root-dir must be an absolute path.
-;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
-;; NOTE: need to worry about percent decoding which should be done before
-;; NOTE: any other checks.
-;; NOTE: This does not check if the path is world readable
-;; TODO: Should we test for nul in a string as per Spiffy?
-;; TODO: Export and test thoroughly
-(define (safe-path? root-dir path)
-  (let ((n-root-dir (normalize-pathname root-dir))
-        (n-path (normalize-pathname path)))
-    (and (absolute-pathname? root-dir)
-         (not (substring-index "./" path))
-         (not (substring-index ".." path))
-         (not (substring-index "\\" path))
-         (>= (string-length n-path) (string-length n-root-dir))
-         (substring=? n-root-dir n-path) ) ) )
 
 )
