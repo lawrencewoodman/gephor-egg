@@ -9,6 +9,7 @@
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
 ;;; NOTE: Any handler should log-info if it is the correct handler
+;;; TODO: Check if NOTE about log-info still makes sense
 
 
 ;; Exported Definitions ------------------------------------------------------
@@ -31,6 +32,7 @@
          (local-path (make-pathname root-dir selector)))
     (and (safe-path? root-dir local-path)
          local-path) ) )
+;; TODO: log-warning if path not safe
 
 
 ;; Tries the following handlers in turn until one returns non-false or the
@@ -48,13 +50,19 @@
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't list a directory.
 (define (serve-dir root-dir request)
-  ;; local-path is formed here rather than being passed in to ensure that it
-  ;; is formed safely
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (directory? local-path)
-         (and-let* ((response (list-dir (request-selector request) local-path)))
-           (log-handler-info "serve-dir" request "list directory: ~A" local-path)
-           (menu-render response) ) ) ) )
+  (let ((selector (request-selector request))
+        (client-address (request-client-address request)))
+    ;; local-path is formed here rather than being passed in to ensure that it
+    ;; is formed safely
+    (and-let* ((local-path (selector->local-path root-dir selector)))
+      (and (directory? local-path)
+           (and-let* ((response (list-dir selector local-path)))
+             (log-info "serve directory listing"
+                       (cons 'handler 'serve-dir)
+                       (cons 'directory local-path)
+                       (cons 'selector selector)
+                       (cons 'client-address client-address))
+             (menu-render response) ) ) ) ) )
 
 
 ;; If the path formed by root-dir and request is a regular file and readable
@@ -62,13 +70,19 @@
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't return a file.
 (define (serve-file root-dir request)
-  ;; local-path is formed here rather than being passed in to ensure that it
-  ;; is formed safely
-  (and-let* ((local-path (selector->local-path root-dir (request-selector request))))
-    (and (regular-file? local-path)
-         (and-let* ((response (read-file local-path)))
-           (log-handler-info "serve-file" request "request file: ~A" local-path)
-           response) ) ) )
+  (let ((selector (request-selector request))
+        (client-address (request-client-address request)))
+    ;; local-path is formed here rather than being passed in to ensure that it
+    ;; is formed safely
+    (and-let* ((local-path (selector->local-path root-dir selector)))
+      (and (regular-file? local-path)
+           (and-let* ((response (read-file local-path)))
+             (log-info "serve file"
+                       (cons 'handler 'serve-file)
+                       (cons 'file local-path)
+                       (cons 'selector selector)
+                       (cons 'client-address client-address))
+             response) ) ) ) )
 
 
 ;; Serve an html page for cases when the selector begins with 'URL:' followed
@@ -79,11 +93,18 @@
 ;; Returns #f if failure
 ;; TODO: rename
 (define (serve-url request)
-  (and (substring=? (request-selector request) "URL:")
-       (let* ((url (substring (request-selector request) 4)))
-         (log-handler-info "serve-url" request "serving url: ~A" url)
-         (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) )
+  (let ((selector (request-selector request))
+        (client-address (request-client-address request)))
+    (and (substring=? (request-selector request) "URL:")
+         (let* ((url (substring (request-selector request) 4)))
+           (log-info "serve URL as HTML page"
+                     (cons 'handler 'serve-url)
+                     (cons 'url url)
+                     (cons 'selector selector)
+                     (cons 'client-address client-address))
+           (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
+;; TODO: add a connection id to all log key value pairs to join all messages for a connection
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -93,49 +114,31 @@
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
 
 
-(define (log-handler-info handler-name request . args)
-  (apply log-info (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
-                  (request-client-address request)
-                  (request-selector request)
-                  handler-name
-                  (cdr args) ) )
-
-
-(define (log-handler-warning handler-name request . args)
-  (apply log-warning (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
-                     (request-client-address request)
-                     (request-selector request)
-                     handler-name
-                     (cdr args) ) )
-
-(define (log-handler-error handler-name request . args)
-  (apply log-error (conc "client address: ~A, selector: ~A, handler: ~A, " (car args))
-                   (request-client-address request)
-                   (request-selector request)
-                   handler-name
-                   (cdr args) ) )
-
-
-
 ;; Parameter: max-file-size controls the maximum size file
 ;; that can be read, anything bigger than this returns an Error Result.
 ;; Returns #f if not world readable or file is too big
 (define (read-file path)
-  (and (world-readable? path)
-       (call-with-input-file path
-                             (lambda (port)
-                               (let* ((contents (read-string (max-file-size) port))
-                                      (more? (not (eof-object? (read-string 1 port)))))
-                                 (if (eof-object? contents)
-                                     ""
-                                     (if more?
-                                         (begin
-                                           (log-error "read-file, file: ~A, is greater than ~A bytes"
-                                                      path
-                                                      (max-file-size))
-                                           #f)
-                                         contents))))
-                             #:binary) ) )
+  (if (world-readable? path)
+      (call-with-input-file path
+                            (lambda (port)
+                              (let* ((contents (read-string (max-file-size) port))
+                                     (more? (not (eof-object? (read-string 1 port)))))
+                                (if (eof-object? contents)
+                                    ""
+                                    (if more?
+                                        (begin
+                                          (log-warning "file is too big to read"
+                                                       (cons 'file path)
+                                                       (cons 'max-file-size (max-file-size)))
+                                          #f)
+                                        contents))))
+                            #:binary)
+      (begin
+        (log-warning "file isn't world readable"
+                     (cons 'file path)
+                     (cons 'function "read-file"))
+        #f) ) )
+;; TODO: Document what a warning is as it may not be obvious
 
 
 ;; Sort files so that directories come before regular files and then

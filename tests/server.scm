@@ -102,13 +102,11 @@
 
 
   (test "server logs a warning message if there is a timeout while waiting for the selector"
-        "[WARNING] client address: 127.0.0.1, read selector timeout\n"
-        (let ((log-port (open-output-string)))
+        "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1\n"
+        (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 0)
                          (log-level 30)
-                         (warning-logger-config
-                           (config-logger (warning-logger-config)
-                                          port: log-port)))
+                         (log-port log-test-port))
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
                                                     (request-selector request)))))
@@ -119,17 +117,15 @@
                 (close-input-port in)
                 (close-output-port out)
                 (stop-server thread)
-                (get-output-string log-port) ) ) ) ) )
+                (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
 
 
   (test "server logs a warning message if the connection is broken while waiting for the selector"
-        "[WARNING] client address: 127.0.0.1, problem reading selector, bad argument type\n"
-        (let ((log-port (open-output-string)))
+        "ts=#t level=warning msg=\"exception when reading selector\" client-address=127.0.0.1 exception-msg=\"bad argument type\"\n"
+        (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 2)
                          (log-level 30)
-                         (warning-logger-config
-                           (config-logger (warning-logger-config)
-                                          port: log-port)))
+                         (log-port log-test-port))
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
                                                     (request-selector request)))))
@@ -138,7 +134,7 @@
                 (close-input-port in)
                 (close-output-port out)
                 (stop-server thread)
-                (get-output-string log-port) ) ) ) ) )
+                (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
 
 )
 

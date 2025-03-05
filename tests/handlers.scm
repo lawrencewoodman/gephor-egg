@@ -152,7 +152,7 @@
 
   (test "serve-file returns the contents of an empty file"
         ""
-        (serve-file fixtures-dir (make-request "dir-a/empty.txt" "127.0.0.1") ) )
+        (serve-file fixtures-dir (make-request "dir-a/empty.txt" "127.0.0.1")))
 
 
   (test "serve-file return contents of 'index' file if index file requested by selector"
@@ -162,31 +162,30 @@
           "=> http://example.com This link line should show the processind =>"
           "")
           "\n")
-        (serve-file fixtures-dir (make-request "dir-b/index" "127.0.0.1") ) )
+        (serve-file fixtures-dir (make-request "dir-b/index" "127.0.0.1")))
 
 
   (test "serve-file can serve a file that is equal to the number of bytes set by max-file-size"
         "hello\n"
         (parameterize ((max-file-size 6))
-          (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") ) ) )
+          (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1"))))
 
 
   (test "serve-file returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
-        (list #f (sprintf "[ERROR] read-file, file: ~A, is greater than 5 bytes\n"
-                          (make-pathname fixtures-dir "a.txt")))
-        (let ((port (open-output-string)))
+        (list #f
+             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5\n"
+                      (make-pathname fixtures-dir "a.txt")))
+        (let ((log-test-port (open-output-string)))
           (parameterize ((max-file-size 5)
-                         (log-level 0)
-                         (error-logger-config
-                           (config-logger (error-logger-config)
-                                          port: port)))
-            (list (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") )
-                  (get-output-string port) ) ) ) )
+                         (log-level 30)
+                         (log-port log-test-port))
+            (list (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1"))
+                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
 
 
   (test "serve-path returns false if path doesn't exist"
         #f
-        (serve-path fixtures-dir (make-request "unknown" "127.0.0.1") ) )
+        (serve-path fixtures-dir (make-request "unknown" "127.0.0.1")))
 
 
   (test "serve-url returns a HTML document populated with the supplied URL"
@@ -209,7 +208,7 @@
           "  </BODY>"
           "</HTML>")
           "\n")
-        (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
+          (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1")))
 
 
   (test "serve-url returns a HTML document populated with the supplied URL including trailing '/'"
@@ -232,12 +231,12 @@
           "  </BODY>"
           "</HTML>")
           "\n")
-        (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1") ) )
+        (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1")))
 
 
   (test "serve-url returns false if selector isn't valid"
         #f
-        (serve-url (make-request "FURL:https://example.com/blog" "127.0.0.1") ) )
+        (serve-url (make-request "FURL:https://example.com/blog" "127.0.0.1")))
 
 
 ) )

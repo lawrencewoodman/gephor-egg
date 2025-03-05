@@ -43,18 +43,19 @@
         (chicken tcp)
         (chicken type)
         magic
-        simple-logger
+        logfmt-logger
         srfi-1
         srfi-13
         srfi-14
         srfi-18)
 
 ;; Import notes -------------------------------------------------------------
-;; srfi-1   - List procedures
-;; srfi-13  - String library
-;; srfi-14  - Character set library
-;; srfi-18  - Multithreading support
-;; magic    - Magic file type recognition
+;; srfi-1         - List procedures
+;; srfi-13        - String library
+;; srfi-14        - Character set library
+;; srfi-18        - Multithreading support
+;; magic          - Magic file type recognition
+;; logfmt-logger  - Logging using logfmt
 
 
 

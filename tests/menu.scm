@@ -100,21 +100,20 @@
 
 
   (test "make-item logs a warning if username > 69 characters but uses anyway"
-        (conc
-          (sprintf "[WARNING] username: ~A, selector: , hostname: localhost, port: 70, username > 69 characters\n"
+        (string-intersperse (list
+          (sprintf "ts=#t level=warning msg=\"username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70"
                    (make-string 70 #\a))
-          (sprintf "[WARNING] username: ~A, selector: , hostname: localhost, port: 70, username > 69 characters\n"
+          (sprintf "ts=#t level=warning msg=\"username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70\n"
                    (make-string 71 #\a)))
+          "\n")
         (let ((lengths '(68 69 70 71))
               (port (open-output-string)))
           (parameterize ((log-level 0)
-                         (warning-logger-config
-                           (config-logger (warning-logger-config)
-                                          port: port)))
+                         (log-port port))
             (for-each (lambda (l)
                         (menu-item 'info (make-string l #\a) "" "localhost" 70))
                       lengths)
-            (get-output-string port) ) ) )
+            (confirm-log-entries-valid-timestamp (get-output-string port) ) ) ) )
 
 
   (test "make-item-file handles a selector with no file extension"

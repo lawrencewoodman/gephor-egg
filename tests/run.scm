@@ -15,8 +15,12 @@
         (chicken string)
         (chicken tcp)
         datatype
-        simple-logger
+        logfmt-logger
         srfi-1)
+
+;; Import notes -------------------------------------------------------------
+;; srfi-1         - List procedures
+;; logfmt-logger  - Logging using logfmt
 
 
 (load-relative "../gephor.scm")
@@ -24,8 +28,6 @@
 
 (define dummy)
 
-
-;; TODO: Test log output
 (log-level 100)
 
 
@@ -37,6 +39,14 @@
       (if (and (file-exists? try-path) (directory? try-path))
           try-path
           (loop (cdr dirs))))))
+
+
+;; Check log timestamp (ts) field is in the expected ISO 8601 format
+;; Returns the log entry with ts=#t if timestamp is valid
+(define (confirm-log-entries-valid-timestamp entry)
+  (irregex-replace/all "ts=\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d[+-]\\d\\d\\d\\d "
+                       entry
+                       "ts=#t ") )
 
 
 ;; Test each exported component

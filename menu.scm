@@ -35,9 +35,15 @@
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace)))
-    (if (> (string-length username) 69)
-        (log-warning "username: ~A, selector: ~A, hostname: ~A, port: ~A, username > 69 characters"
-                  username selector hostname port))
+    (when (> (string-length username) 69)
+          ;; TODO: look at keys, should they all be the same prefix and what
+          ;; TODO: about selector as it's meaning is different from
+          ;; TODO: that used by handlers and server
+          (log-warning "username > 69 characters"
+                       (cons 'username username)
+                       (cons 'selector selector)
+                       (cons 'hostname hostname)
+                       (cons 'port port)))
     ;; TODO: Add more items
     (case itemtype
       ((text |0|)   (list "0" username selector hostname port))

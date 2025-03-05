@@ -44,6 +44,7 @@
   ;; Parameter: max-file-size controls the maximum size file
   ;; that can be written
   (define (handle-connect in out)
+    ;; TODO: Increment a connection-id to add to log entries
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
         (when selector
@@ -53,25 +54,26 @@
                        (and handler
                            (condition-case (handler request)
                              (ex ()
-                               (log-error "client address: ~A, selector: ~A, exception raised by handler: ~A"
-                                          client-address
-                                          selector
-                                          (get-condition-property ex 'exn 'message))
+                               ;; TODO: Should this log-error list the handler
+                               (log-error "exception raised by handler"
+                                          (cons 'client-address client-address)
+                                          (cons 'selector selector)
+                                          (cons 'exception-msg (get-condition-property ex 'exn 'message)))
                                (make-rendered-error-menu request "resource unavailable"))))))
                 (if response
                     (if (> (string-length response) (max-file-size))
                         (begin
-                          (log-error "client address: ~A, selector: ~A, data is too big to send"
-                                     client-address
-                                     selector)
+                          (log-error "data is too big to send"
+                                     (cons 'client-address client-address)
+                                     (cons 'selector selector))
                           (write-string (make-rendered-error-menu request "resource is too big to send")
                                         (max-file-size)
                                         out))
                         (write-string response (max-file-size) out))
                     (begin
-                      (log-warning "client address: ~A, selector: ~A, no handler for selector"
-                                   client-address
-                                   selector)
+                      (log-warning "no handler for selector"
+                                   (cons 'client-address client-address)
+                                   (cons 'selector selector))
                       (write-string (make-rendered-error-menu request "path not found")
                                     (max-file-size)
                                     out)))))
@@ -85,8 +87,8 @@
           (inc-connection-count)
           (handle-exceptions ex
             ;; TODO: Improve error message
-            (log-error "connect handler thread: ~A"
-                         (get-condition-property ex 'exn 'message))
+            (log-error "exception in handler thread"
+                       (cons 'exception-msg (get-condition-property ex 'exn 'message)))
             (handle-connect in out))
           (dec-connection-count)))))
 
@@ -107,9 +109,9 @@
         (mutex-unlock! server-ready-mutex)
         (let loop ()
           (if (>= number-of-connections max-number-of-connections)
-              (log-info "thread limit reached: ~A/~A"
-                        number-of-connections
-                        max-number-of-connections)
+              (log-info "thread limit reached"
+                        (cons 'number-of-connections number-of-connections)
+                        (cons 'max-number-of-connections  max-number-of-connections))
               (let-values (((in out) (tcp-accept/handle-timeout listener)))
                 (when (and in out)
                       (start-connect-thread in out))
@@ -151,13 +153,14 @@
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
-      (log-warning "client address: ~A, read selector timeout"
-                   client-address)
+      (log-warning "read selector timeout"
+                   (cons 'client-address client-address))
       #f)
     (ex (exn)
-      (log-warning "client address: ~A, problem reading selector, ~A"
-                   client-address
-                   (get-condition-property ex 'exn 'message))
+      ;; TODO: Should this be a warning or error log level?
+      (log-warning "exception when reading selector"
+                   (cons 'client-address client-address)
+                   (cons 'exception-msg (get-condition-property ex 'exn 'message)))
       #f) ) )
 
 

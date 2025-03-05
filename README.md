@@ -1,10 +1,9 @@
 Gephor
 ======
 
-A [Gopher](https://en.wikipedia.org/wiki/Gopher_(protocol)) server module
-written in [Chicken Scheme](https://call-cc.org/).
+A [Gopher](https://en.wikipedia.org/wiki/Gopher_(protocol)) server module written in [Chicken Scheme](https://call-cc.org/).
 
-The module makes it easy to create simple or complex gopher servers by requiring this module in a Tcl script and then configuring the server as needed.  The servers can act as an embedded server within a program or as a standalone server.
+The module makes it easy to create simple or complex gopher servers by importing this module and then configuring the server as needed.  The server can act as an embedded server within a program or as a standalone server.
 
 This aims to conform to [RFC 1436 - The Internet Gopher Protocol](https://datatracker.ietf.org/doc/html/rfc1436).  There is one exception and that is that '`./r/n`' terminates menus but isn't added to any other files to indicate EOF, instead the port is just closed once transmission has finished.  This is because clients are not consistent in how they handle this and the RFC isn't entirely clear around this requirement so it seems better to omit this rather than corrupting files.
 
@@ -16,7 +15,7 @@ Requirements
 
 The following eggs need to be installed:
 * magic
-* simple-logger
+* logfmt-logger
 * srfi-1
 * srfi-13
 * srfi-14
@@ -25,13 +24,11 @@ The following eggs need to be installed:
 
 Logging
 -------
-
-The module uses [simple-logger](http://wiki.call-cc.org/eggref/5/simple-logger) which can be configured by the calling program to decide where the logger will output and what log level will be logged.
+The module uses [logfmt-logger](https://github.com/lawrencewoodman/logfmt-logger-egg) which can be configured by the calling code to decide where the logger will output and what log level will be logged.
 
 
 Signal Handling
 ---------------
-
 Some server modules install signal handling code within the server.  The decision has been made that this would be better handled in the calling program which can call `stop-server` to tell the server thread to stop.  This could easily be done with code such as the following:
 
 ```
@@ -47,7 +44,6 @@ Some server modules install signal handling code within the server.  The decisio
 
 Selectors
 ---------
-
 When selectors are read from the client they are stripped of any whitespace or '/' characters at the start or end of the selector.
 
 
