@@ -23,7 +23,8 @@
    server-hostname
    server-port
    trim-path-selector
-   safe-path?)
+   safe-path?
+   read-file)
 
 
 (import scheme

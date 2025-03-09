@@ -76,6 +76,59 @@
              selectors) ) )
 
 
+  (test "read-file returns #f and logs a warning if trying to serve a file that isn't world readable"
+        (list "Hello, this is used to test serving a non world readable file.\n"
+              #f
+              "ts=#t level=warning msg=\"file isn't world readable\" file=#t\n")
+        (let* ((log-test-port (open-output-string))
+               (tmpdir (create-temporary-directory))
+               (tmpfile (make-pathname tmpdir "hello.txt")))
+          (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
+                     tmpfile)
+          (parameterize ((log-level 30) (log-port log-test-port))
+            (let ((response1 (read-file tmpfile))
+                  (response2
+                    (begin
+                      ;; Make tmpfile non world readable
+                      (set-file-permissions! tmpfile
+                                             (bitwise-and (file-permissions tmpfile)
+                                                          (bitwise-not perm/iroth)))
+                      (read-file tmpfile))))
+              (list response1
+                    response2
+                    (irregex-replace/all "file=.*?hello.txt"
+                      (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
+                      "file=#t") ) ) ) ) )
+
+
+  (test "read-file returns #f and logs a warning if file is greater than the number of bytes set by max-file-size"
+        (list #f
+             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5\n"
+                      (make-pathname fixtures-dir "a.txt")))
+        (let ((log-test-port (open-output-string)))
+          (parameterize ((max-file-size 5)
+                         (log-level 30)
+                         (log-port log-test-port))
+            (list (read-file (make-pathname fixtures-dir "a.txt"))
+                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
+
+
+  (test "read-file can serve a file that is equal to the number of bytes set by max-file-size"
+        "hello\n"
+        (parameterize ((max-file-size 6))
+          (read-file (make-pathname fixtures-dir "a.txt") ) ) )
+
+
+  (test "read-file returns the contents of a binary file"
+        "This is text followed by a null (00)\x00 now some more text."
+        (read-file (make-pathname fixtures-dir "dir-a/ac.bin") ) )
+
+
+  (test "read-file returns the contents of an empty file"
+        ""
+        (read-file (make-pathname fixtures-dir "dir-a/empty.txt") ) )
+
+
   ;; TODO: Need to test log messages for this as well
   (test "serve-dir returns false if listing a directory that isn't world readable"
         (list (string-intersperse '(
@@ -168,19 +221,28 @@
   (test "serve-file can serve a file that is equal to the number of bytes set by max-file-size"
         "hello\n"
         (parameterize ((max-file-size 6))
-          (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1"))))
+          (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") ) ) )
 
 
-  (test "serve-file returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
-        (list #f
-             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5\n"
-                      (make-pathname fixtures-dir "a.txt")))
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((max-file-size 5)
-                         (log-level 30)
-                         (log-port log-test-port))
-            (list (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1"))
-                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
+  (test "serve-file returns #f if selector isn't safe"
+        #f
+        (serve-file fixtures-dir (make-request "../dir-a" "127.0.0.1") ) )
+
+
+  (test "serve-file returns false if path isn't a regular file"
+        #f
+        (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1")))
+
+
+  (test "serve-file returns #f if can't read file"
+        (list "hello\n" #f)
+        (let ((response1 (parameterize ((max-file-size 5000))
+                           (serve-file fixtures-dir
+                                       (make-request "a.txt" "127.0.0.1"))))
+              (response2 (parameterize ((max-file-size 5))
+                           (serve-file fixtures-dir
+                                       (make-request "a.txt" "127.0.0.1")))))
+          (list response1 response2) ) )
 
 
   (test "serve-path returns false if path doesn't exist"

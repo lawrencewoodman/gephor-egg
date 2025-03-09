@@ -107,16 +107,14 @@
 ;; TODO: add a connection id to all log key value pairs to join all messages for a connection
 
 
-;; Internal Definitions ------------------------------------------------------
-
-;; Does the file have word readable permissions?
-(define (world-readable? filename)
-  (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
-
-
 ;; Parameter: max-file-size controls the maximum size file
-;; that can be read, anything bigger than this returns an Error Result.
+;; that can be read, anything bigger than this will return #f
+;; and log a warning.  If the file isn't world readable #f will
+;; also be returned and it will log a warning
 ;; Returns #f if not world readable or file is too big
+;; TODO: Now this is exported it should probably be renamed to reduce
+;; TODO: the chance of name clashes
+;; TODO: Place this in another file?
 (define (read-file path)
   (if (world-readable? path)
       (call-with-input-file path
@@ -134,11 +132,18 @@
                                         contents))))
                             #:binary)
       (begin
-        (log-warning "file isn't world readable"
-                     (cons 'file path)
-                     (cons 'function "read-file"))
+        (log-warning "file isn't world readable" (cons 'file path))
         #f) ) )
 ;; TODO: Document what a warning is as it may not be obvious
+
+
+;; Internal Definitions ------------------------------------------------------
+
+;; Does the file have word readable permissions?
+(define (world-readable? filename)
+  (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
+
+
 
 
 ;; Sort files so that directories come before regular files and then
