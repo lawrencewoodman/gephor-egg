@@ -2,8 +2,8 @@
 *.swp
 
 # Build artifacts
-logfmt*.import.scm
-logfmt*.o
-logfmt*.so
-logfmt*.link
-logfmt*.sh
+gephor*.import.scm
+gephor*.o
+gephor*.so
+gephor*.link
+gephor*.sh
