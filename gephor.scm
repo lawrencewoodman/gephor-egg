@@ -37,7 +37,6 @@
         (chicken io)
         (chicken irregex)
         (chicken pathname)
-        (chicken port)
         (chicken process signal)
         (chicken sort)
         (chicken string)
