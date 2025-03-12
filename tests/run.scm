@@ -11,15 +11,11 @@
         (chicken load)
         (chicken pathname)
         (chicken process-context)
-        (chicken port)
         (chicken string)
         (chicken tcp)
-        datatype
-        logfmt-logger
-        srfi-1)
+        logfmt-logger)
 
 ;; Import notes -------------------------------------------------------------
-;; srfi-1         - List procedures
 ;; logfmt-logger  - Logging using logfmt
 
 
