@@ -1,5 +1,9 @@
 # Vim Swap files
 *.swp
 
-# Build files
-*.o
+# Build artifacts
+logfmt*.import.scm
+logfmt*.o
+logfmt*.so
+logfmt*.link
+logfmt*.sh
