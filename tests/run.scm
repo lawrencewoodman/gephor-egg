@@ -16,7 +16,7 @@
         logfmt-logger)
 
 ;; Import notes -------------------------------------------------------------
-;; logfmt-logger  - Logging using logfmt
+;; logfmt-logger  - Logger using logfmt
 
 
 (load-relative "../gephor.scm")

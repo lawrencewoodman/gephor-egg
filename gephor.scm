@@ -55,7 +55,7 @@
 ;; srfi-14        - Character set library
 ;; srfi-18        - Multithreading support
 ;; magic          - Magic file type recognition
-;; logfmt-logger  - Logging using logfmt
+;; logfmt-logger  - Logger using logfmt
 
 
 

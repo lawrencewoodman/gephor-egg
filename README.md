@@ -14,12 +14,12 @@ Requirements
 * libmagic and associated development files for the magic egg
 
 The following eggs need to be installed:
-* magic
-* logfmt-logger
 * srfi-1
 * srfi-13
 * srfi-14
 * srfi-18
+* magic
+* logfmt-logger
 
 
 Logging

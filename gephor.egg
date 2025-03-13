@@ -4,6 +4,6 @@
  (author "Lawrence Woodman")
  (category net)
  (dependencies magic logfmt-logger srfi-1 srfi-13 srfi-14 srfi-18)
- (test-dependencies test logfmt-logger )
+ (test-dependencies test logfmt-logger)
  (components (extension gephor)))
 
