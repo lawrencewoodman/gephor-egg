@@ -24,7 +24,7 @@
 
 
   ;; TODO: Will need to add more types as they become supported
-  (test "make-item handles a range of types and their human readable names"
+  (test "menu-item handles a range of types and their human readable names"
         (string-intersperse '(
           "0Some text\ttext text\tlocalhost\t70"
           "0Some text\ttext 0\tlocalhost\t70"
@@ -70,7 +70,7 @@
           (menu-render menu) ) )
 
 
-  (test "make-item allows a single letter itemtype if unknown"
+  (test "menu-item allows a single letter itemtype if unknown"
         (string-intersperse '(
           "usomething\t/fred/hi\tlocalhost\t70"
           ".\r\n")
@@ -79,12 +79,12 @@
           (menu-render menu) ) )
 
 
-  (test "make-item returns #f if unknown itemtype is longer than a single letter"
+  (test "menu-item returns #f if unknown itemtype is longer than a single letter"
         #f
         (menu-item 'uu "something" "/fred/hi" "localhost" 70) )
 
 
-  (test "make-item allows username > 69 despite warning"
+  (test "menu-item allows username > 69 despite warning"
         (string-intersperse (list
           (sprintf "i~A\t\tlocalhost\t70" (make-string 68 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 69 #\a))
@@ -99,7 +99,7 @@
           (menu-render menu) ) )
 
 
-  (test "make-item logs a warning if username > 69 characters but uses anyway"
+  (test "menu-item logs a warning if username > 69 characters but uses anyway"
         (string-intersperse (list
           (sprintf "ts=#t level=warning msg=\"username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70"
                    (make-string 70 #\a))
@@ -116,7 +116,7 @@
             (confirm-log-entries-valid-timestamp (get-output-string port) ) ) ) )
 
 
-  (test "make-item-file handles a selector with no file extension"
+  (test "menu-item-file handles a selector with no file extension"
         (string-intersperse '(
           "9A file with no extension\tnoext\tlocalhost\t70"
           ".\r\n")
@@ -128,7 +128,7 @@
             (menu-render menu) ) ) )
 
 
-  (test "make-item-file returns #f if the file doesn't exist"
+  (test "menu-item-file returns #f if the file doesn't exist"
         #f
         (parameterize ((server-hostname "localhost") (server-port 70))
           (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
@@ -136,7 +136,7 @@
                           "nonexistent.txt") ) )
 
 
-  (test "make-item-file detects directories properly"
+  (test "menu-item-file detects directories properly"
         (string-intersperse '(
           "1A directory\tdir\tlocalhost\t70"
           ".\r\n")
@@ -148,7 +148,7 @@
             (menu-render menu) ) ) )
 
 
-(test "make-item-url handles gopher protocol"
+(test "menu-item-url handles gopher protocol"
       (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "1A good gopher example\t/\texample.com\t70"
@@ -184,7 +184,7 @@
           (menu-render menu) ) ) )
 
 
-(test "make-item-url handles http protocol"
+(test "menu-item-url handles http protocol"
       (string-intersperse '(
         "hA good http example\tURL:http://example.com\tlocalhost\t70"
         "hA good http example\tURL:http://example.com/\tlocalhost\t70"
@@ -212,7 +212,7 @@
           (menu-render menu) ) ) )
 
 
-(test "make-item-url handles https protocol"
+(test "menu-item-url handles https protocol"
       (string-intersperse '(
         "hA good https example\tURL:https://example.com\tlocalhost\t70"
         "hA good https example\tURL:https://example.com/\tlocalhost\t70"
@@ -239,7 +239,7 @@
           (menu-render menu) ) ) )
 
 
-(test "make-item-url handles ssh protocol"
+(test "menu-item-url handles ssh protocol"
       (string-intersperse '(
         "hsome ssh bbs\tURL:ssh://example.com\tlocalhost\t70"
         "hsome ssh bbs\tURL:ssh://example.com/user/bob\tlocalhost\t70"
@@ -266,7 +266,7 @@
           (menu-render menu) ) ) )
 
 
-(test "make-item-url handles non lower case protocol"
+(test "menu-item-url handles non lower case protocol"
       (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
@@ -281,7 +281,7 @@
           (menu-render menu) ) ) )
 
 
-  (test "make-item-url handles urls containing a ':' in path"
+  (test "menu-item-url handles urls containing a ':' in path"
         (string-intersperse '(
           "hOld Example\tURL:https://example.com/http://old.example.com/\tlocalhost\t70"
           ".\r\n")
@@ -292,13 +292,13 @@
             (menu-render (list (menu-item-url username url) ) ) ) ) )
 
 
-  (test "make-item-url returns #f if protocol is unsupported"
+  (test "menu-item-url returns #f if protocol is unsupported"
         #f
         (parameterize ((server-hostname "localhost") (server-port 70))
           (menu-item-url "Something interesting" "fred://example.com") ) )
 
 
-  (test "make-item-url returns #f if URL isn't valid"
+  (test "menu-item-url returns #f if URL isn't valid"
         #f
         (parameterize ((server-hostname "localhost") (server-port 70))
           (menu-item-url "Something interesting" "invalidURL") ) )
