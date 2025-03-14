@@ -19,7 +19,7 @@ The following eggs need to be installed:
 * srfi-14
 * srfi-18
 * magic
-* logfmt-logger
+* [logfmt-logger](https://github.com/lawrencewoodman/logfmt-logger-egg)
 
 
 Logging
