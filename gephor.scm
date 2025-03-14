@@ -73,7 +73,6 @@
 
 ;; Record types -------------------------------------------------------------
 
-
 (define-record-type request
   (make-request selector client-address)
   request?

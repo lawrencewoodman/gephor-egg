@@ -26,7 +26,7 @@
                   ((not (valid-pattern? r-pattern))
                     (error* 'make-router "invalid pattern: ~A" r-pattern)))))
             args)
-  (router-sort-routes args) )
+  (sort-routes args) )
 
 
 (: router-add (router string handler --> router))
@@ -39,7 +39,7 @@
     (else
       (let ((route (cons pattern proc)))
         ; Add the route to the list of routes and resort
-        (router-sort-routes (cons route router) ) ) ) ) )
+        (sort-routes (cons route router) ) ) ) ) )
 
 
 (: router-match (router string --> (or handler false)))
@@ -57,7 +57,7 @@
               (if (string=? selector pattern)
                   proc
                   (loop (cdr routes) ) ) ) ) ) ) )
-                   
+
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -73,8 +73,8 @@
 ;; so that most general matches are at the end of the list.  If two
 ;; patterns are the same length sort in lexical order
 ;; TODO: rewrite explanation as it isn't quite right
-(: router-sort-routes (router --> router))
-(define (router-sort-routes router)
+(: sort-routes (router --> router))
+(define (sort-routes router)
   (sort router
         (lambda (a b)
           (let ((a-pat (car a))
