@@ -109,9 +109,8 @@
         (mutex-unlock! server-ready-mutex)
         (let loop ()
           (if (>= number-of-connections max-number-of-connections)
-              (log-info "thread limit reached"
-                        (cons 'number-of-connections number-of-connections)
-                        (cons 'max-number-of-connections  max-number-of-connections))
+              (log-warning "maximum connections limit reached"
+                           (cons 'number-of-connections number-of-connections))
               (let-values (((in out) (tcp-accept/handle-timeout listener)))
                 (when (and in out)
                       (start-connect-thread in out))
