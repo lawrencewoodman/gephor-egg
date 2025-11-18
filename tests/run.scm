@@ -13,6 +13,7 @@
         (chicken process-context)
         (chicken string)
         (chicken tcp)
+        (chicken time)
         logfmt-logger)
 
 ;; Import notes -------------------------------------------------------------

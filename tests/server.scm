@@ -110,14 +110,21 @@
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
                                                     (request-selector request)))))
-                   (thread (start-test-server port router)))
+                   (thread (start-test-server port router))
+                   (test-timeout-limit (+ (current-process-milliseconds) 1000)))
               (let-values (((in out) (tcp-connect "localhost" port)))
-                ;; TODO: Add a server-ready? function so that we don't need to sleep
-                (sleep 1)
-                (close-input-port in)
-                (close-output-port out)
-                (stop-server thread)
-                (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
+                (let ((final-log-entry
+                      (let loop ()
+                        (if (> (current-process-milliseconds) test-timeout-limit)
+                            "test timeout"
+                             (let ((log-entry (get-output-string log-test-port)))
+                               (if (not (equal? log-entry ""))
+                                   log-entry
+                                   (loop)))))))
+                     (close-input-port in)
+                     (close-output-port out)
+                     (stop-server thread)
+                     (confirm-log-entries-valid-timestamp final-log-entry) ) ) ) ) ) )
 
 
   (test "server logs a warning message if the connection is broken while waiting for the selector"
