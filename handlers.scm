@@ -30,9 +30,9 @@
                        root-dir))
          (selector (trim-path-selector selector))
          (local-path (make-pathname root-dir selector)))
-    (and (safe-path? root-dir local-path)
-         local-path) ) )
-;; TODO: log-warning if path not safe
+    (if (safe-path? root-dir local-path)
+        local-path
+        (begin (log-warning "path isn't safe" (cons 'path local-path) ) #f) ) ) )
 
 
 ;; Tries the following handlers in turn until one returns non-false or the

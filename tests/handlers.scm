@@ -62,18 +62,30 @@
 
   ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
   (test "selector->local-path allows root-dir to be '/'"
-    "/"
-    (selector->local-path "/" "") )
+        "/"
+        (selector->local-path "/" "") )
 
 
   (test "selector->local-path trims whitespace and '/' characters from both ends of a selector"
-    '(#t #t #t #t #t #t #t #t #t)
-    (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
-                       "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
-        (map (lambda (selector)
-                     (equal? (make-pathname fixtures-dir "dir-a")
-                             (selector->local-path fixtures-dir selector)))
-             selectors) ) )
+        '(#t #t #t #t #t #t #t #t #t)
+        (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
+                           "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
+            (map (lambda (selector)
+                         (equal? (make-pathname fixtures-dir "dir-a")
+                                 (selector->local-path fixtures-dir selector)))
+                 selectors) ) )
+
+
+  (test "selector->local-path returns #f and logs a warning if local-path isn't safe"
+        (list #f
+              "ts=#t level=warning msg=\"path isn't safe\" path=#t\n")
+        (let ((log-test-port (open-output-string))
+              (selector "../bin"))
+          (parameterize ((log-level 30) (log-port log-test-port))
+            (list (selector->local-path fixtures-dir selector)
+                  (irregex-replace/all "path=.*?../bin"
+                    (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
+                    "path=#t") ) ) ) )
 
 
   (test "read-file returns #f and logs a warning if trying to serve a file that isn't world readable"
