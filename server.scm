@@ -100,6 +100,12 @@
         (unless (= count 0)
                 (loop) ) ) ) )
 
+  (define (max-connections-reached?)
+    (mutex-lock! connections-mutex)
+    (let ((count number-of-connections))
+      (mutex-unlock! connections-mutex)
+      (>= count max-number-of-connections) ) )
+
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
   ;; thread which is stopped by stop-sever.
@@ -108,14 +114,14 @@
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
         (let loop ()
-          (if (>= number-of-connections max-number-of-connections)
+          (if (max-connections-reached?)
               (log-warning "maximum connections limit reached"
                            (cons 'number-of-connections number-of-connections))
               (let-values (((in out) (tcp-accept/handle-timeout listener)))
                 (when (and in out)
-                      (start-connect-thread in out))
-                (unless (stop-requested?)
-                        (loop)))))
+                      (start-connect-thread in out))))
+            (unless (stop-requested?)
+                    (loop)))
         (wait-for-connections-to-finish)
         (tcp-close listener) ) ) )
 
