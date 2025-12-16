@@ -138,6 +138,7 @@
       (mutex-lock! server-ready-mutex #f #f)
       (thread-start! thread)
       (mutex-lock! server-ready-mutex #f #f)
+      (log-info "server started" (cons 'hostname hostname) (cons 'port port))
       thread) ) ) )
 
 

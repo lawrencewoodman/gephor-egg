@@ -105,7 +105,7 @@
         "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1\n"
         (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 0)
-                         (log-level 30)
+                         (log-level 'warning)
                          (log-port log-test-port))
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
@@ -131,7 +131,7 @@
         "ts=#t level=warning msg=\"exception when reading selector\" client-address=127.0.0.1 exception-msg=\"bad argument type\"\n"
         (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 2)
-                         (log-level 30)
+                         (log-level 'warning)
                          (log-port log-test-port))
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
@@ -142,6 +142,23 @@
                 (close-output-port out)
                 (stop-server thread)
                 (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
+
+
+  (test "start-server logs an info message to say the server has started"
+        "ts=#t level=info msg=\"server started\" hostname=localhost port=7070"
+        (let ((log-test-port (open-output-string)))
+          (parameterize ((tcp-read-timeout 2)
+                         (log-level 'info)
+                         (log-port log-test-port))
+            (let* ((port 7070)
+                   (router (make-router (cons "*" (lambda (request)
+                                                    (request-selector request)))))
+                   (thread (start-server hostname: "localhost" port: port router: router)))
+              (let-values (((in out) (tcp-connect "localhost" port)))
+                (close-input-port in)
+                (close-output-port out)
+                (stop-server thread)
+                (confirm-log-entries-valid-timestamp (car (string-split (get-output-string log-test-port) "\n" #f) ) ) ) ) ) ) )
 
 )
 
