@@ -57,11 +57,11 @@
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (directory? local-path)
            (and-let* ((response (list-dir selector local-path)))
-             (log-info "serve directory listing"
-                       (cons 'handler 'serve-dir)
-                       (cons 'directory local-path)
-                       (cons 'selector selector)
-                       (cons 'client-address client-address))
+             (log-debug "serve directory listing"
+                        (cons 'handler 'serve-dir)
+                        (cons 'directory local-path)
+                        (cons 'selector selector)
+                        (cons 'client-address client-address))
              (menu-render response) ) ) ) ) )
 
 
@@ -77,11 +77,11 @@
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (regular-file? local-path)
            (and-let* ((response (read-file local-path)))
-             (log-info "serve file"
-                       (cons 'handler 'serve-file)
-                       (cons 'file local-path)
-                       (cons 'selector selector)
-                       (cons 'client-address client-address))
+             (log-debug "serve file"
+                        (cons 'handler 'serve-file)
+                        (cons 'file local-path)
+                        (cons 'selector selector)
+                        (cons 'client-address client-address))
              response) ) ) ) )
 
 
@@ -97,11 +97,11 @@
         (client-address (request-client-address request)))
     (and (substring=? (request-selector request) "URL:")
          (let* ((url (substring (request-selector request) 4)))
-           (log-info "serve URL as HTML page"
-                     (cons 'handler 'serve-url)
-                     (cons 'url url)
-                     (cons 'selector selector)
-                     (cons 'client-address client-address))
+           (log-debug "serve URL as HTML page"
+                      (cons 'handler 'serve-url)
+                      (cons 'url url)
+                      (cons 'selector selector)
+                      (cons 'client-address client-address))
            (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 ;; TODO: add a connection id to all log key value pairs to join all messages for a connection
