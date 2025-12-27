@@ -9,7 +9,8 @@
 
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gephor
-  (start-server stop-server
+  (connection-id
+   start-server stop-server
    make-request request-selector request-client-address
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
@@ -59,6 +60,14 @@
 
 
 
+;; Connections --------------------------------------------------------------
+
+;; Each connection receives it's own connection ID which is passed to the
+;; handler using this parameter.  It shouldn't be updated outside of this
+;; module.
+(define connection-id (make-parameter #f))
+
+
 ;; Configuration ------------------------------------------------------------
 
 (define server-hostname (make-parameter "localhost"))
@@ -73,6 +82,7 @@
 
 ;; Record types -------------------------------------------------------------
 
+;; TODO: Consider using parameters to pass this information around
 (define-record-type request
   (make-request selector client-address)
   request?

@@ -35,15 +35,19 @@
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace)))
+    ;; TODO: measure in UTF-8 characters/codepoints so that characters that
+    ;; TODO: are described using more than a single byte still only count as
+    ;; TODO: a single character.  Test.
     (when (> (string-length username) 69)
           ;; TODO: look at keys, should they all be the same prefix and what
           ;; TODO: about selector as it's meaning is different from
           ;; TODO: that used by handlers and server
-          (log-warning "username > 69 characters"
+          (log-warning "menu item username > 69 characters"
                        (cons 'username username)
                        (cons 'selector selector)
                        (cons 'hostname hostname)
-                       (cons 'port port)))
+                       (cons 'port port)
+                       (cons 'connection-id (connection-id))))
     ;; TODO: Add more items
     (case itemtype
       ((text |0|)   (list "0" username selector hostname port))

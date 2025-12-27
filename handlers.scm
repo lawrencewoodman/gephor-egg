@@ -32,7 +32,10 @@
          (local-path (make-pathname root-dir selector)))
     (if (safe-path? root-dir local-path)
         local-path
-        (begin (log-warning "path isn't safe" (cons 'path local-path) ) #f) ) ) )
+        (begin
+          (log-warning "path isn't safe" (cons 'path local-path)
+                                         (cons 'connection-id (connection-id)))
+          #f) ) ) )
 
 
 ;; Tries the following handlers in turn until one returns non-false or the
@@ -50,8 +53,7 @@
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't list a directory.
 (define (serve-dir root-dir request)
-  (let ((selector (request-selector request))
-        (client-address (request-client-address request)))
+  (let ((selector (request-selector request)))
     ;; local-path is formed here rather than being passed in to ensure that it
     ;; is formed safely
     (and-let* ((local-path (selector->local-path root-dir selector)))
@@ -60,8 +62,7 @@
              (log-debug "serve directory listing"
                         (cons 'handler 'serve-dir)
                         (cons 'directory local-path)
-                        (cons 'selector selector)
-                        (cons 'client-address client-address))
+                        (cons 'connection-id (connection-id)))
              (menu-render response) ) ) ) ) )
 
 
@@ -70,18 +71,16 @@
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't return a file.
 (define (serve-file root-dir request)
-  (let ((selector (request-selector request))
-        (client-address (request-client-address request)))
+  (let ((selector (request-selector request)))
     ;; local-path is formed here rather than being passed in to ensure that it
     ;; is formed safely
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (regular-file? local-path)
            (and-let* ((response (read-file local-path)))
-             (log-debug "serve file"
-                        (cons 'handler 'serve-file)
-                        (cons 'file local-path)
-                        (cons 'selector selector)
-                        (cons 'client-address client-address))
+               (log-debug "serve file"
+                          (cons 'handler 'serve-file)
+                          (cons 'file local-path)
+                          (cons 'connection-id (connection-id)))
              response) ) ) ) )
 
 
@@ -93,15 +92,13 @@
 ;; Returns #f if failure
 ;; TODO: rename
 (define (serve-url request)
-  (let ((selector (request-selector request))
-        (client-address (request-client-address request)))
+  (let ((selector (request-selector request)))
     (and (substring=? (request-selector request) "URL:")
          (let* ((url (substring (request-selector request) 4)))
            (log-debug "serve URL as HTML page"
                       (cons 'handler 'serve-url)
                       (cons 'url url)
-                      (cons 'selector selector)
-                      (cons 'client-address client-address))
+                      (cons 'connection-id (connection-id)))
            (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 ;; TODO: add a connection id to all log key value pairs to join all messages for a connection
@@ -127,12 +124,14 @@
                                         (begin
                                           (log-warning "file is too big to read"
                                                        (cons 'file path)
-                                                       (cons 'max-file-size (max-file-size)))
+                                                       (cons 'max-file-size (max-file-size))
+                                                       (cons 'connection-id (connection-id)))
                                           #f)
                                         contents))))
                             #:binary)
       (begin
-        (log-warning "file isn't world readable" (cons 'file path))
+        (log-warning "file isn't world readable" (cons 'file path)
+                                                 (cons 'connection-id (connection-id)))
         #f) ) )
 ;; TODO: Document what a warning is as it may not be obvious
 

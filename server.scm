@@ -2,7 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   start-server stop-server
+;;;   connection-id start-server stop-server
 ;;;
 ;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -10,8 +10,8 @@
 ;;;
 
 
-;; Exported Definitions ------------------------------------------------------
 
+;; Exported Definitions ------------------------------------------------------
 
 ;; Start the gopher server in a separate thread.
 ;; Returns a thread which can be passed to stop-server to stop the server.
@@ -21,15 +21,23 @@
 (define (start-server #!key (hostname (server-hostname))
                             (port (server-port))
                             router)
+
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
   ;; connections-mutex is used to prevent simultaneous changing of connection count
   ;; max-number-of-connections specifies how many connections can be handled at one time
   ;; number-of-connections is the current number of connections to the server
+  ;; connection-id-num is a unique ID for each connection to make logs messages
+  ;;                   easier to follow and link together for each connection.
+  ;;                   This is used to store the value used by the parameter
+  ;;                   connection-id.
+  ;; TODO: Is there a way of removing the need to use connection-id-num to
+  ;; TODO: update connection-id parameter
   (let ((server-ready-mutex (make-mutex))
         (connections-mutex (make-mutex))
         (max-number-of-connections 50)   ;; TODO: parameterize this?
-        (number-of-connections 0))
+        (number-of-connections 0)
+        (connection-id-num 0))
 
   (define (inc-connection-count)
     (mutex-lock! connections-mutex)
@@ -41,42 +49,77 @@
     (set! number-of-connections (sub1 number-of-connections))
     (mutex-unlock! connections-mutex) )
 
+  (define (max-connections-reached?)
+    (mutex-lock! connections-mutex)
+    (let ((count number-of-connections))
+      (mutex-unlock! connections-mutex)
+      (>= count max-number-of-connections) ) )
+
+  (define (num-connections)
+    (mutex-lock! connections-mutex)
+    (let ((count number-of-connections))
+      (mutex-unlock! connections-mutex)
+      count) )
+
+  ;; TODO: Give this it's own mutex
+  (define (next-connection-id)
+    (mutex-lock! connections-mutex)
+    (set! connection-id-num (add1 connection-id-num))
+    (let ((connection-id-num connection-id-num))
+      (mutex-unlock! connections-mutex)
+      connection-id-num) )
+
+
   ;; Parameter: max-file-size controls the maximum size file
   ;; that can be written
   (define (handle-connect in out)
-    ;; TODO: Increment a connection-id to add to log entries
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
+        ;; TODO: What happens if selector is #f?
         (when selector
-              (let* ((handler (router-match router selector))
-                     (request (make-request selector client-address))
-                     (response
-                       (and handler
-                           (condition-case (handler request)
-                             (ex ()
-                               ;; TODO: Should this log-error list the handler
-                               (log-error "exception raised by handler"
-                                          (cons 'client-address client-address)
-                                          (cons 'selector selector)
-                                          (cons 'exception-msg (get-condition-property ex 'exn 'message)))
-                               (make-rendered-error-menu request "resource unavailable"))))))
-                (if response
-                    (if (> (string-length response) (max-file-size))
-                        (begin
-                          (log-error "data is too big to send"
+              (parameterize ((connection-id (next-connection-id)))
+                (let* ((handler (router-match router selector))
+                       (request (make-request selector client-address))
+                       (response
+                         (and handler
+                             (condition-case (handler request)
+                               (ex ()
+                                 ;; TODO: Should this log-error list the handler
+                                 (log-error "exception raised by handler"
+                                            (cons 'client-address client-address)
+                                            (cons 'connection-id (connection-id))
+                                            (cons 'selector selector)
+                                            (cons 'exception-msg (get-condition-property ex 'exn 'message))
+                                            (cons 'num-connections (num-connections)))
+                                 (make-rendered-error-menu request "resource unavailable"))))))
+                  (if response
+                      (if (> (string-length response) (max-file-size))
+                          (begin
+                            (log-error "data is too big to send"
+                                       (cons 'client-address client-address)
+                                       (cons 'connection-id (connection-id))
+                                       (cons 'selector selector)
+                                       (cons 'num-connections (num-connections)))
+                            (write-string (make-rendered-error-menu request "resource is too big to send")
+                                          (max-file-size)
+                                          out))
+                          (begin
+                            (write-string response (max-file-size) out)
+                            (when handler
+                              (log-info "connection handled"
+                                        (cons 'client-address client-address)
+                                        (cons 'connection-id (connection-id))
+                                        (cons 'selector selector)
+                                        (cons 'num-connections (num-connections))))))
+                      (begin
+                        (log-warning "no handler for selector"
                                      (cons 'client-address client-address)
-                                     (cons 'selector selector))
-                          (write-string (make-rendered-error-menu request "resource is too big to send")
-                                        (max-file-size)
-                                        out))
-                        (write-string response (max-file-size) out))
-                    (begin
-                      (log-warning "no handler for selector"
-                                   (cons 'client-address client-address)
-                                   (cons 'selector selector))
-                      (write-string (make-rendered-error-menu request "path not found")
-                                    (max-file-size)
-                                    out)))))
+                                     (cons 'connection-id (connection-id))
+                                     (cons 'selector selector)
+                                     (cons 'num-connections (num-connections)))
+                        (write-string (make-rendered-error-menu request "path not found")
+                                      (max-file-size)
+                                      out))))))
         (close-input-port in)
         (close-output-port out ) ) ) )
 
@@ -87,6 +130,7 @@
           (inc-connection-count)
           (handle-exceptions ex
             ;; TODO: Improve error message
+            ;; TODO: Add connection-id - would it always be updated?`
             (log-error "exception in handler thread"
                        (cons 'exception-msg (get-condition-property ex 'exn 'message)))
             (handle-connect in out))
@@ -99,12 +143,6 @@
         (mutex-unlock! connections-mutex)
         (unless (= count 0)
                 (loop) ) ) ) )
-
-  (define (max-connections-reached?)
-    (mutex-lock! connections-mutex)
-    (let ((count number-of-connections))
-      (mutex-unlock! connections-mutex)
-      (>= count max-number-of-connections) ) )
 
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
@@ -159,11 +197,13 @@
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
+      ;; TODO: Add connection-id ?
       (log-warning "read selector timeout"
                    (cons 'client-address client-address))
       #f)
     (ex (exn)
       ;; TODO: Should this be a warning or error log level?
+      ;; TODO: Add connection-id ?
       (log-warning "exception when reading selector"
                    (cons 'client-address client-address)
                    (cons 'exception-msg (get-condition-property ex 'exn 'message)))

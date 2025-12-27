@@ -78,10 +78,12 @@
 
   (test "selector->local-path returns #f and logs a warning if local-path isn't safe"
         (list #f
-              "ts=#t level=warning msg=\"path isn't safe\" path=#t\n")
+              "ts=#t level=warning msg=\"path isn't safe\" path=#t connection-id=3\n")
         (let ((log-test-port (open-output-string))
               (selector "../bin"))
-          (parameterize ((log-level 30) (log-port log-test-port))
+          (parameterize ((log-level 30)
+                         (log-port log-test-port)
+                         (connection-id 3))
             (list (selector->local-path fixtures-dir selector)
                   (irregex-replace/all "path=.*?../bin"
                     (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
@@ -91,13 +93,15 @@
   (test "read-file returns #f and logs a warning if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
               #f
-              "ts=#t level=warning msg=\"file isn't world readable\" file=#t\n")
+              "ts=#t level=warning msg=\"file isn't world readable\" file=#t connection-id=3\n")
         (let* ((log-test-port (open-output-string))
                (tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
                      tmpfile)
-          (parameterize ((log-level 30) (log-port log-test-port))
+          (parameterize ((log-level 30)
+                         (log-port log-test-port)
+                         (connection-id 3))
             (let ((response1 (read-file tmpfile))
                   (response2
                     (begin
@@ -115,12 +119,13 @@
 
   (test "read-file returns #f and logs a warning if file is greater than the number of bytes set by max-file-size"
         (list #f
-             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5\n"
+             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5 connection-id=3\n"
                       (make-pathname fixtures-dir "a.txt")))
         (let ((log-test-port (open-output-string)))
           (parameterize ((max-file-size 5)
                          (log-level 30)
-                         (log-port log-test-port))
+                         (log-port log-test-port)
+                         (connection-id 3))
             (list (read-file (make-pathname fixtures-dir "a.txt"))
                   (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
 

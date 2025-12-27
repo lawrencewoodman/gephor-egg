@@ -101,15 +101,16 @@
 
   (test "menu-item logs a warning if username > 69 characters but uses anyway"
         (string-intersperse (list
-          (sprintf "ts=#t level=warning msg=\"username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70"
+          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70 connection-id=3"
                    (make-string 70 #\a))
-          (sprintf "ts=#t level=warning msg=\"username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70\n"
+          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70 connection-id=3\n"
                    (make-string 71 #\a)))
           "\n")
         (let ((lengths '(68 69 70 71))
               (port (open-output-string)))
           (parameterize ((log-level 0)
-                         (log-port port))
+                         (log-port port)
+                         (connection-id 3))
             (for-each (lambda (l)
                         (menu-item 'info (make-string l #\a) "" "localhost" 70))
                       lengths)
