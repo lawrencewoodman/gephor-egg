@@ -40,7 +40,7 @@
     ;; TODO: a single character.  Test.
     (when (> (string-length username) 69)
           ;; TODO: look at keys, should they all be the same prefix and what
-          ;; TODO: about selector as it's meaning is different from
+          ;; TODO: about selector as its meaning is different from
           ;; TODO: that used by handlers and server
           (log-warning "menu item username > 69 characters"
                        (cons 'username username)
