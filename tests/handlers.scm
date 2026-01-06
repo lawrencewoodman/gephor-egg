@@ -83,7 +83,7 @@
               (selector "../bin"))
           (parameterize ((log-level 30)
                          (log-port log-test-port)
-                         (connection-id 3))
+                         (log-context (list (cons 'connection-id 3))))
             (list (selector->local-path fixtures-dir selector)
                   (irregex-replace/all "path=.*?../bin"
                     (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
@@ -101,7 +101,7 @@
                      tmpfile)
           (parameterize ((log-level 30)
                          (log-port log-test-port)
-                         (connection-id 3))
+                         (log-context (list (cons 'connection-id 3))))
             (let ((response1 (read-file tmpfile))
                   (response2
                     (begin
@@ -125,7 +125,7 @@
           (parameterize ((max-file-size 5)
                          (log-level 30)
                          (log-port log-test-port)
-                         (connection-id 3))
+                         (log-context (list (cons 'connection-id 3))))
             (list (read-file (make-pathname fixtures-dir "a.txt"))
                   (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
 
@@ -147,7 +147,7 @@
 
 
   ;; TODO: Need to test log messages for this as well
-  (test "serve-dir returns false if listing a directory that isn't world readable"
+  (test "serve-dir returns #f if listing a directory that isn't world readable"
         (list (string-intersperse '(
                 "1dir-a\tdir-a\tlocalhost\t70"
                 "1dir-b\tdir-b\tlocalhost\t70"

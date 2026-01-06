@@ -27,17 +27,15 @@
   ;; connections-mutex is used to prevent simultaneous changing of connection count
   ;; max-number-of-connections specifies how many connections can be handled at one time
   ;; number-of-connections is the current number of connections to the server
-  ;; connection-id-num is a unique ID for each connection to make logs messages
-  ;;                   easier to follow and link together for each connection.
-  ;;                   This is used to store the value used by the parameter
-  ;;                   connection-id.
-  ;; TODO: Is there a way of removing the need to use connection-id-num to
-  ;; TODO: update connection-id parameter
+  ;; connection-id is a unique ID for each connection to make logs messages
+  ;;               easier to follow and link together for each connection.
+  ;;               This is used to store the value used by the parameter
+  ;;               connection-id.
   (let ((server-ready-mutex (make-mutex))
         (connections-mutex (make-mutex))
         (max-number-of-connections 50)   ;; TODO: parameterize this?
         (number-of-connections 0)
-        (connection-id-num 0))
+        (connection-id 0))
 
   (define (inc-connection-count)
     (mutex-lock! connections-mutex)
@@ -64,10 +62,10 @@
   ;; TODO: Give this it's own mutex
   (define (next-connection-id)
     (mutex-lock! connections-mutex)
-    (set! connection-id-num (add1 connection-id-num))
-    (let ((connection-id-num connection-id-num))
+    (set! connection-id (add1 connection-id))
+    (let ((connection-id connection-id))
       (mutex-unlock! connections-mutex)
-      connection-id-num) )
+      connection-id) )
 
 
   ;; Parameter: max-file-size controls the maximum size file
@@ -77,7 +75,9 @@
       (let ((selector (read-selector client-address in)))
         ;; TODO: What happens if selector is #f?
         (when selector
-              (parameterize ((connection-id (next-connection-id)))
+              (parameterize ((log-context (list (cons 'connection-id (next-connection-id))
+                                                (cons 'client-address client-address)
+                                                (cons 'selector selector))))
                 (let* ((handler (router-match router selector))
                        (request (make-request selector client-address))
                        (response
@@ -85,38 +85,30 @@
                              (condition-case (handler request)
                                (ex ()
                                  ;; TODO: Should this log-error list the handler
-                                 (log-error "exception raised by handler"
-                                            (cons 'client-address client-address)
-                                            (cons 'connection-id (connection-id))
-                                            (cons 'selector selector)
-                                            (cons 'exception-msg (get-condition-property ex 'exn 'message))
-                                            (cons 'num-connections (num-connections)))
+                                 (apply log-error "exception raised by handler"
+                                        (cons 'exception-msg (get-condition-property ex 'exn 'message))
+                                        (cons 'num-connections (num-connections))
+                                        (log-context))
                                  (make-rendered-error-menu request "resource unavailable"))))))
                   (if response
                       (if (> (string-length response) (max-file-size))
                           (begin
-                            (log-error "data is too big to send"
-                                       (cons 'client-address client-address)
-                                       (cons 'connection-id (connection-id))
-                                       (cons 'selector selector)
-                                       (cons 'num-connections (num-connections)))
+                            (apply log-error "data is too big to send"
+                                   (cons 'num-connections (num-connections))
+                                   (log-context))
                             (write-string (make-rendered-error-menu request "resource is too big to send")
                                           (max-file-size)
                                           out))
                           (begin
                             (write-string response (max-file-size) out)
                             (when handler
-                              (log-info "connection handled"
-                                        (cons 'client-address client-address)
-                                        (cons 'connection-id (connection-id))
-                                        (cons 'selector selector)
-                                        (cons 'num-connections (num-connections))))))
+                              (apply log-info "connection handled"
+                                     (cons 'num-connections (num-connections))
+                                     (log-context)))))
                       (begin
-                        (log-warning "no handler for selector"
-                                     (cons 'client-address client-address)
-                                     (cons 'connection-id (connection-id))
-                                     (cons 'selector selector)
-                                     (cons 'num-connections (num-connections)))
+                        (apply log-warning "no handler for selector"
+                               (cons 'num-connections (num-connections))
+                               (log-context))
                         (write-string (make-rendered-error-menu request "path not found")
                                       (max-file-size)
                                       out))))))
@@ -197,13 +189,13 @@
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
-      ;; TODO: Add connection-id ?
+      ;; TODO: Add log-context ?
       (log-warning "read selector timeout"
                    (cons 'client-address client-address))
       #f)
     (ex (exn)
       ;; TODO: Should this be a warning or error log level?
-      ;; TODO: Add connection-id ?
+      ;; TODO: Add log-context ?
       (log-warning "exception when reading selector"
                    (cons 'client-address client-address)
                    (cons 'exception-msg (get-condition-property ex 'exn 'message)))

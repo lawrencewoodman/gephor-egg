@@ -33,8 +33,10 @@
     (if (safe-path? root-dir local-path)
         local-path
         (begin
-          (log-warning "path isn't safe" (cons 'path local-path)
-                                         (cons 'connection-id (connection-id)))
+          (apply log-warning
+                 "path isn't safe"
+                 (cons 'path local-path)
+                 (log-context))
           #f) ) ) )
 
 
@@ -52,6 +54,7 @@
 ;; listing the files and directories in the directory.
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't list a directory.
+(: serve-dir (string * -> (or string false)))
 (define (serve-dir root-dir request)
   (let ((selector (request-selector request)))
     ;; local-path is formed here rather than being passed in to ensure that it
@@ -59,10 +62,11 @@
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (directory? local-path)
            (and-let* ((response (list-dir selector local-path)))
-             (log-info "serve directory listing"
-                       (cons 'handler 'serve-dir)
-                       (cons 'directory local-path)
-                       (cons 'connection-id (connection-id)))
+             (apply log-info
+                    "serve directory listing"
+                    (cons 'handler 'serve-dir)
+                    (cons 'directory local-path)
+                    (log-context))
              (menu-render response) ) ) ) ) )
 
 
@@ -70,6 +74,7 @@
 ;; return the file.
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't return a file.
+(: serve-file (string * -> (or string false)))
 (define (serve-file root-dir request)
   (let ((selector (request-selector request)))
     ;; local-path is formed here rather than being passed in to ensure that it
@@ -77,10 +82,11 @@
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (regular-file? local-path)
            (and-let* ((response (read-file local-path)))
-               (log-info "serve file"
-                         (cons 'handler 'serve-file)
-                         (cons 'file local-path)
-                         (cons 'connection-id (connection-id)))
+             (apply log-info
+                    "serve file"
+                    (cons 'handler 'serve-file)
+                    (cons 'file local-path)
+                    (log-context))
              response) ) ) ) )
 
 
@@ -91,17 +97,17 @@
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;; Returns #f if failure
 ;; TODO: rename
+(: serve-url (* -> (or string false)))
 (define (serve-url request)
   (let ((selector (request-selector request)))
     (and (substring=? (request-selector request) "URL:")
          (let* ((url (substring (request-selector request) 4)))
-           (log-info "serve URL as HTML page"
-                     (cons 'handler 'serve-url)
-                     (cons 'url url)
-                     (cons 'connection-id (connection-id)))
+           (apply log-info
+                  "serve URL as HTML page"
+                  (cons 'handler 'serve-url)
+                  (cons 'url url)
+                  (log-context))
            (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
-
-;; TODO: add a connection id to all log key value pairs to join all messages for a connection
 
 
 ;; Parameter: max-file-size controls the maximum size file
@@ -112,6 +118,7 @@
 ;; TODO: Now this is exported it should probably be renamed to reduce
 ;; TODO: the chance of name clashes
 ;; TODO: Place this in another file?
+(: read-file (string -> (or string false)))
 (define (read-file path)
   (if (world-readable? path)
       (call-with-input-file path
@@ -122,16 +129,19 @@
                                     ""
                                     (if more?
                                         (begin
-                                          (log-warning "file is too big to read"
-                                                       (cons 'file path)
-                                                       (cons 'max-file-size (max-file-size))
-                                                       (cons 'connection-id (connection-id)))
+                                          (apply log-warning
+                                                 "file is too big to read"
+                                                 (cons 'file path)
+                                                 (cons 'max-file-size (max-file-size))
+                                                 (log-context))
                                           #f)
                                         contents))))
                             #:binary)
       (begin
-        (log-warning "file isn't world readable" (cons 'file path)
-                                                 (cons 'connection-id (connection-id)))
+        (apply log-warning
+               "file isn't world readable"
+               (cons 'file path)
+               (log-context))
         #f) ) )
 ;; TODO: Document what a warning is as it may not be obvious
 
@@ -165,6 +175,7 @@
 ;; TODO: Make sure paths and selectors are safe
 ;; Returns #f if not world readable, otherwise a list of menu
 ;; items representing the files in the directory
+;; If not world readable it logs an error message
 (: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
@@ -177,8 +188,9 @@
               (list filename #t selector))
             ((regular-file? full-local-filename)
               (list filename #f selector))
-            (else #f))))
+            (else #f) ) ) )
 
+  ;; TODO: Truncate usernames for filenames that are > 69 characters
   (define (entry->menu-item entry)
     (let ((filename (first entry))
            (is-dir? (second entry))
@@ -193,14 +205,23 @@
                           filename
                           selector) ) ) )
 
-  (and (world-readable? local-path)
-       (let* ((filenames (directory local-path))
-              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-              (menu (do ((entries entries (cdr entries))
-                         (result '() (let* ((item (entry->menu-item (car entries))))
-                                       (if item (cons item result) result))))
+  (if (world-readable? local-path)
+      (let* ((filenames (directory local-path))
+             (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
+             (menu (do ((entries entries (cdr entries))
+                        (result '() (let ((item (entry->menu-item (car entries))))
+                                      (if item
+                                          (cons item result)
+                                           result))))
                         ((null? entries) result))))
-         (reverse menu) ) ) )
+        ;; TODO: If resulting menu is empty should return #f and log an error
+        (reverse menu))
+      (begin
+        (apply log-error
+               "can't list dir, path isn't world readable"
+               (cons 'local-path local-path)
+               (log-context))
+        #f) ) )
 
 
 

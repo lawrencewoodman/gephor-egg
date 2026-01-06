@@ -9,7 +9,7 @@
 
 ;; TODO: rename  exported functions to make consistent and more predictable?
 (module gephor
-  (connection-id
+  (log-context
    start-server stop-server
    make-request request-selector request-client-address
    make-router router-add router-match
@@ -60,16 +60,11 @@
 
 
 
-;; Connections --------------------------------------------------------------
-
-;; Each connection receives it's own connection ID which is passed to the
-;; handler using this parameter.  It shouldn't be updated outside of this
-;; module.
-(define connection-id (make-parameter #f))
+;; Logging ------------------------------------------------------------------
+(define log-context (make-parameter '()))
 
 
 ;; Configuration ------------------------------------------------------------
-
 (define server-hostname (make-parameter "localhost"))
 (define server-port     (make-parameter 70))
 

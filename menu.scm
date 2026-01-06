@@ -27,42 +27,47 @@
 ;; |5| Dos Binary itemtype not recommended as it is unclear what this
 ;;     is and it should be able to be replaced by |9| in every instance.
 ;;
-;; Logs a warning if username > 69 characters as per RFC 1436
+;; Returns #f if an error otherwise a menu-item is returned
 ;;
-;; Returns #f if an unknown itemtype is used which is
-;; longer than 1 character, otherwise a menu-item is returned
-(: menu-item (symbol string string string fixnum --> (or menu-item false)))
+;; Logs a warning if the menu item > 69 chracters (as per RFC 1436)
+;; Logs an error if am unknown itemtype if > 1 character
+(: menu-item (symbol string string string fixnum -> (or menu-item false)))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
-        (selector (string-trim-both selector char-set:whitespace)))
-    ;; TODO: measure in UTF-8 characters/codepoints so that characters that
-    ;; TODO: are described using more than a single byte still only count as
-    ;; TODO: a single character.  Test.
-    (when (> (string-length username) 69)
-          ;; TODO: look at keys, should they all be the same prefix and what
-          ;; TODO: about selector as its meaning is different from
-          ;; TODO: that used by handlers and server
-          (log-warning "menu item username > 69 characters"
+        (selector (string-trim-both selector char-set:whitespace))
+        (itemtype-char
+          ;; TODO: Add more items
+          (case itemtype
+            ((text |0|)   "0")
+            ((menu |1|)   "1")
+            ((error |3|)  "3")
+            ((binhex |4|) "4")
+            ((binary |9|) "9")
+            ((info i)     "i")
+            ((html h)     "h")
+            ((gif g)      "g")
+            ((image I)    "I")
+            (else
+              (let ((maybe-itemtype (symbol->string itemtype)))
+                (and (= (string-length maybe-itemtype) 1)
+                     maybe-itemtype))))))
+    (if itemtype-char
+        (begin
+          ;; TODO: measure in UTF-8 characters/codepoints so that characters that
+          ;; TODO: are described using more than a single byte still only count as
+          ;; TODO: a single character.  Test.
+          (when (> (string-length username) 69)
+                (apply log-warning
+                       "menu item username > 69 characters"
                        (cons 'username username)
-                       (cons 'selector selector)
-                       (cons 'hostname hostname)
-                       (cons 'port port)
-                       (cons 'connection-id (connection-id))))
-    ;; TODO: Add more items
-    (case itemtype
-      ((text |0|)   (list "0" username selector hostname port))
-      ((menu |1|)   (list "1" username selector hostname port))
-      ((error |3|)  (list "3" username selector hostname port))
-      ((binhex |4|) (list "4" username selector hostname port))
-      ((binary |9|) (list "9" username selector hostname port))
-      ((info i)     (list "i" username selector hostname port))
-      ((html h)     (list "h" username selector hostname port))
-      ((gif g)      (list "g" username selector hostname port))
-      ((image I)    (list "I" username selector hostname port))
-      (else
-        (let ((maybe-itemtype (symbol->string itemtype)))
-          (and (= (string-length maybe-itemtype) 1)
-               (list maybe-itemtype username selector hostname port) ) ) ) ) ) )
+                       (log-context)))
+          (list itemtype-char username selector hostname port))
+        (begin
+          (apply log-error
+                 "invalid itemtype"
+                 (cons 'itemtype itemtype)
+                 (log-context))
+          #f) ) ) )
 
 
 ;; Creates a menu item for a file.
@@ -71,32 +76,45 @@
 ;;
 ;; Returns #f if the file doesn't exist or the type can't be determined,
 ;; otherwise a menu-item is returned
-(: menu-item-file (string string string --> (or menu-item false)))
+;;
+;; Logs error messgaes for file doesn't exist or type can't be determined
+(: menu-item-file (string string string -> (or menu-item false)))
 (define (menu-item-file local-path username selector)
-  (and (file-exists? local-path)
-       (if (directory? local-path)
-           (menu-item 'menu username selector (server-hostname) (server-port))
-           (let* ((mime-type (identify local-path 'mime))
-                  (mime-match (irregex-search mime-split-regex mime-type)))
-             (and (irregex-match-data? mime-match)
-                  (let ((media-type (irregex-match-substring mime-match 1))
-                        (media-subtype (irregex-match-substring mime-match 2)))
-                    (let ((itemtype (cond
-                                      ((string=? media-type "image")
-                                         (if (string=? media-subtype "gif")
-                                             'gif
-                                             'image))
-                                      ((string=? media-type "text")
-                                         (if (string=? media-subtype "html")
-                                             'html)
-                                             'text)
-                                      (else 'binary))))
-                      (menu-item itemtype
-                                 username
-                                 selector
-                                 (server-hostname)
-                                 (server-port) ) ) ) ) ) ) ) )
-
+  (if (file-exists? local-path)
+      (if (directory? local-path)
+          (menu-item 'menu username selector (server-hostname) (server-port))
+          (let* ((mime-type (identify local-path 'mime))
+                 (mime-match (irregex-search mime-split-regex mime-type)))
+            (if (irregex-match-data? mime-match)
+                (let ((media-type (irregex-match-substring mime-match 1))
+                      (media-subtype (irregex-match-substring mime-match 2)))
+                  (let ((itemtype (cond
+                                    ((string=? media-type "image")
+                                      (if (string=? media-subtype "gif")
+                                           'gif
+                                         'image))
+                                    ((string=? media-type "text")
+                                      (if (string=? media-subtype "html")
+                                           'html)
+                                          'text)
+                                    (else 'binary))))
+                     (menu-item itemtype
+                                username
+                                selector
+                                (server-hostname)
+                                (server-port))))
+                (begin
+                  (apply log-error
+                         "unknown file type"
+                         (cons 'local-path local-path)
+                         (log-context))
+                  #f))))
+      (begin
+        (apply log-error
+               "file doesn't exist"
+               (cons 'local-path local-path)
+               (log-context))
+        #f) ) )
 
 
 ;; Supporters protocols: gopher ssh http https
@@ -108,25 +126,38 @@
 ;; This is currently used by ssh, http and https and conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Returns #f if URL is invalid or if the protcol is unknown,
+;; Returns #f if URL is invalid or if the protcol is unknown (and log an error),
 ;; otherwise a menu-item is returned
-(: menu-item-url (string string --> (or menu-item false)))
+(: menu-item-url (string string -> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((protocol host port path itemtype) (split-url url)))
-    (and protocol
-         (case (string->symbol protocol)
-           ((gopher)
-             ;; Gopher URLs should conform to RFC 4266
-             (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
-               (menu-item itemtype username path host (or port 70))))
-           ((ssh http https)
-             (menu-item 'html
-                        username
-                        (sprintf "URL:~A" url)
-                        (server-hostname)
-                        (server-port)))
-           (else
-             #f) ) ) ) )
+    (if protocol
+        (case (string->symbol protocol)
+          ((gopher)
+            ;; Gopher URLs should conform to RFC 4266
+            (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
+              (menu-item itemtype username path host (or port 70))))
+          ((ssh http https)
+            (menu-item 'html
+                      username
+                       (sprintf "URL:~A" url)
+                       (server-hostname)
+                      (server-port)))
+          (else
+            (apply log-error
+                   "unknown protocol"
+                   (cons 'username username)
+                   (cons 'url url)
+                   (log-context))
+            #f))
+        (begin
+            (apply log-error
+                   "invalid URL"
+                   (cons 'username username)
+                   (cons 'url url)
+                   (log-context))
+            #f) ) ) )
+
 
 
 ;; Render the menu as text ready for sending
@@ -147,9 +178,10 @@
 ;; Make an error menu that has been rendered and is ready for sending
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
+;; TODO: should request be removed?
 (define (make-rendered-error-menu request msg)
   (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
-       (menu-render (list item) ) ) )
+    (menu-render (list item) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------

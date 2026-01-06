@@ -19,8 +19,12 @@
           "1Somewhere interesting\t/interesting\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let* ((menu (list (menu-item 'menu "Somewhere interesting" "/interesting" "localhost" 70))))
-          (menu-render menu)))
+        (let ((item (menu-item 'menu
+                               "Somewhere interesting"
+                               "/interesting"
+                               "localhost"
+                               70)))
+          (menu-render (list item) ) ) )
 
 
   ;; TODO: Will need to add more types as they become supported
@@ -75,16 +79,22 @@
           "usomething\t/fred/hi\tlocalhost\t70"
           ".\r\n")
           "\r\n")
-        (let ((menu (list (menu-item 'u "something" "/fred/hi" "localhost" 70))))
-          (menu-render menu) ) )
+        (let ((item (menu-item 'u "something" "/fred/hi" "localhost" 70)))
+          (menu-render (list item) ) ) )
 
 
-  (test "menu-item returns #f if unknown itemtype is longer than a single letter"
-        #f
-        (menu-item 'uu "something" "/fred/hi" "localhost" 70) )
+  (test "menu-item returns #f and logs an error if unknown itemtype is longer than a single letter"
+        (list #f "ts=#t level=error msg=\"invalid itemtype\" itemtype=uu connection-id=3\n")
+        (let ((log-test-port (open-output-string)))
+          (parameterize ((log-level 30)
+                         (log-port log-test-port)
+                         (log-context (list (cons 'connection-id 3))))
+            (list (menu-item 'uu "something" "/fred/hi" "localhost" 70)
+                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
 
 
-  (test "menu-item allows username > 69 despite warning"
+
+  (test "menu-item allows username > 69"
         (string-intersperse (list
           (sprintf "i~A\t\tlocalhost\t70" (make-string 68 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 69 #\a))
@@ -93,28 +103,28 @@
           ".\r\n")
           "\r\n")
         (let* ((lengths '(68 69 70 71))
-               (menu (map (lambda (l)
-                            (menu-item 'info (make-string l #\a) "" "localhost" 70))
+               (menu (map (lambda (l) (menu-item 'info
+                                                 (make-string l #\a)
+                                                 ""
+                                                 "localhost"
+                                                 70))
                           lengths)))
           (menu-render menu) ) )
 
 
-  (test "menu-item logs a warning if username > 69 characters but uses anyway"
+  (test "menu-item logs a warning a message if username > 69 characters"
         (string-intersperse (list
-          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70 connection-id=3"
-                   (make-string 70 #\a))
-          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A selector=\"\" hostname=localhost port=70 connection-id=3\n"
-                   (make-string 71 #\a)))
+          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A connection-id=3" (make-string 70 #\a))
+          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A connection-id=3\n" (make-string 71 #\a)))
           "\n")
-        (let ((lengths '(68 69 70 71))
-              (port (open-output-string)))
-          (parameterize ((log-level 0)
-                         (log-port port)
-                         (connection-id 3))
-            (for-each (lambda (l)
-                        (menu-item 'info (make-string l #\a) "" "localhost" 70))
+        (let ((log-test-port (open-output-string))
+              (lengths '(68 69 70 71)))
+          (parameterize ((log-level 30)
+                         (log-port log-test-port)
+                         (log-context (list (cons 'connection-id 3))))
+            (for-each (lambda (l) (menu-item 'info (make-string l #\a) "" "localhost" 70))
                       lengths)
-            (confirm-log-entries-valid-timestamp (get-output-string port) ) ) ) )
+            (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) )
 
 
   (test "menu-item-file handles a selector with no file extension"
@@ -123,18 +133,25 @@
           ".\r\n")
           "\r\n")
         (parameterize ((server-hostname "localhost") (server-port 70))
-          (let ((menu (list (menu-item-file (make-pathname fixtures-dir "noext")
-                                            "A file with no extension"
-                                            "noext"))))
-            (menu-render menu) ) ) )
+          (let ((item (menu-item-file (make-pathname fixtures-dir "noext")
+                                      "A file with no extension"
+                                      "noext")))
+            (menu-render (list item) ) ) ) )
 
 
-  (test "menu-item-file returns #f if the file doesn't exist"
-        #f
-        (parameterize ((server-hostname "localhost") (server-port 70))
-          (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
-                          "A file that doesn't exist"
-                          "nonexistent.txt") ) )
+  (test "menu-item-file returns #f and logs an error if the file doesn't exist"
+        (list #f
+              (sprintf "ts=#t level=error msg=\"file doesn't exist\" local-path=~A connection-id=3\n"
+                        (make-pathname fixtures-dir "nonexistent.txt")))
+        (let ((log-test-port (open-output-string)))
+          (parameterize ((server-hostname "localhost") (server-port 70)
+                         (log-level 30)
+                         (log-port log-test-port)
+                         (log-context (list (cons 'connection-id 3))))
+            (list (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
+                                  "A file that doesn't exist"
+                                  "nonexistent.txt")
+                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
 
 
   (test "menu-item-file detects directories properly"
@@ -143,10 +160,10 @@
           ".\r\n")
           "\r\n")
         (parameterize ((server-hostname "localhost") (server-port 70))
-          (let ((menu (list (menu-item-file (make-pathname fixtures-dir "dir-world_readable")
-                                            "A directory"
-                                            "dir"))))
-            (menu-render menu) ) ) )
+          (let ((item (menu-item-file (make-pathname fixtures-dir "dir-world_readable")
+                                      "A directory"
+                                      "dir")))
+            (menu-render (list item) ) ) ) )
 
 
 (test "menu-item-url handles gopher protocol"
