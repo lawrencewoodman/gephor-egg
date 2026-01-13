@@ -53,6 +53,9 @@
             response) ) )
 
 
+  ;; TODO: Compare this with files being 'too big to read'
+  ;; TODO: Perhaps these should be checked for their size before
+  ;; TODO: attempting to read them
   (test "server returns a 'resource too big to send' error menu if data to send is > max-file-size bytes"
         "3resource is too big to send\t\tlocalhost\t7070\r\n.\r\n"
         (let ((port 7070)
@@ -102,11 +105,12 @@
 
 
   (test "server logs a warning message if there is a timeout while waiting for the selector"
-        "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1\n"
+        "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1 connection-id=3\n"
         (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 0)
                          (log-level 'warning)
-                         (log-port log-test-port))
+                         (log-port log-test-port)
+                         (log-context (list (cons 'connection-id 3))))
             (let* ((port 7070)
                    (router (make-router (cons "*" (lambda (request)
                                                     (request-selector request)))))

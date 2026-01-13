@@ -187,9 +187,10 @@
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
-      ;; TODO: Add log-context ?
-      (log-warning "read selector timeout"
-                   (cons 'client-address client-address))
+      (apply log-warning
+             "read selector timeout"
+             (cons 'client-address client-address)
+             (log-context))
       #f)
     (ex (exn)
       ;; TODO: Should this be a warning or error log level?

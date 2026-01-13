@@ -8,8 +8,6 @@
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
-;;; NOTE: Any handler should log-info if it is the correct handler
-;;; TODO: Check if NOTE about log-info still makes sense
 
 
 ;; Exported Definitions ------------------------------------------------------
