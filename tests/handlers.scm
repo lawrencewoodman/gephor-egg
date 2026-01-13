@@ -90,10 +90,10 @@
                     "path=#t") ) ) ) )
 
 
-  (test "read-file returns #f and logs a warning if trying to serve a file that isn't world readable"
+  (test "read-file returns #f and logs an error if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
               #f
-              "ts=#t level=warning msg=\"file isn't world readable\" file=#t connection-id=3\n")
+              "ts=#t level=error msg=\"file isn't world readable\" file=#t connection-id=3\n")
         (let* ((log-test-port (open-output-string))
                (tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
@@ -117,9 +117,9 @@
                       "file=#t") ) ) ) ) )
 
 
-  (test "read-file returns #f and logs a warning if file is greater than the number of bytes set by max-file-size"
+  (test "read-file returns #f and logs an error if file is greater than the number of bytes set by max-file-size"
         (list #f
-             (sprintf "ts=#t level=warning msg=\"file is too big to read\" file=~A max-file-size=5 connection-id=3\n"
+             (sprintf "ts=#t level=error msg=\"file is too big to read\" file=~A max-file-size=5 connection-id=3\n"
                       (make-pathname fixtures-dir "a.txt")))
         (let ((log-test-port (open-output-string)))
           (parameterize ((max-file-size 5)

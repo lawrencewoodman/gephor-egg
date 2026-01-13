@@ -112,9 +112,8 @@
 
 ;; Parameter: max-file-size controls the maximum size file
 ;; that can be read, anything bigger than this will return #f
-;; and log a warning.  If the file isn't world readable #f will
-;; also be returned and it will log a warning
-;; Returns #f if not world readable or file is too big
+;; and log an error  If the file isn't world readable #f will
+;; be returned and it will log an error.
 ;; TODO: Now this is exported it should probably be renamed to reduce
 ;; TODO: the chance of name clashes
 ;; TODO: Place this in another file?
@@ -129,7 +128,7 @@
                                     ""
                                     (if more?
                                         (begin
-                                          (apply log-warning
+                                          (apply log-error
                                                  "file is too big to read"
                                                  (cons 'file path)
                                                  (cons 'max-file-size (max-file-size))
@@ -138,7 +137,7 @@
                                         contents))))
                             #:binary)
       (begin
-        (apply log-warning
+        (apply log-error
                "file isn't world readable"
                (cons 'file path)
                (log-context))
