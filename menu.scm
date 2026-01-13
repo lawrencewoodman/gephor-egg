@@ -175,10 +175,9 @@
     (string-append menu-str ".\r\n") ) )
 
 
-;; Make an error menu that has been rendered and is ready for sending
+;; Make an error menu that has been rendered and is ready for sending.
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
-;; TODO: should request be removed?
 (define (make-rendered-error-menu request msg)
   (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
     (menu-render (list item) ) ) )
