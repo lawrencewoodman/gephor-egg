@@ -20,6 +20,7 @@
    serve-file
    serve-path
    serve-url
+   max-connections
    max-file-size
    server-hostname
    server-port
@@ -69,10 +70,12 @@
 (define server-port     (make-parameter 70))
 
 
-;; The maximum size of a file that can be read and sent
-;; Defaults to 50Mb
+;; The maximum size of a file that can be read and sent. Defaults to 50Mb.
 ;; TODO: Is this name ok.  Should it be read/write as not just files sent
 (define max-file-size (make-parameter 50000000))
+
+;; The maximum number of simultaneously connections. Defaults to 50.
+(define max-connections (make-parameter 50))
 
 
 ;; Record types -------------------------------------------------------------

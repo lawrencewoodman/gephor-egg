@@ -25,7 +25,6 @@
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
   ;; connections-mutex is used to prevent simultaneous changing of connection count
-  ;; max-number-of-connections specifies how many connections can be handled at one time
   ;; number-of-connections is the current number of connections to the server
   ;; connection-id is a unique ID for each connection to make logs messages
   ;;               easier to follow and link together for each connection.
@@ -33,7 +32,6 @@
   ;;               connection-id.
   (let ((server-ready-mutex (make-mutex))
         (connections-mutex (make-mutex))
-        (max-number-of-connections 50)   ;; TODO: parameterize this?
         (number-of-connections 0)
         (connection-id 0))
 
@@ -51,7 +49,7 @@
     (mutex-lock! connections-mutex)
     (let ((count number-of-connections))
       (mutex-unlock! connections-mutex)
-      (>= count max-number-of-connections) ) )
+      (>= count (max-connections) ) ) )
 
   (define (num-connections)
     (mutex-lock! connections-mutex)
