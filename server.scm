@@ -142,6 +142,12 @@
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
         (let loop ()
+          ;; TODO: Look at how spiffy and other servers handle this
+          ;; TODO: Maybe just output an error saying unavailable
+          ;; TODO: Which is worse returning an error menu before
+          ;; TODO: a selector has been sent or just dropping connection
+          ;; TODO: compare how different browsers handle this and document
+          ;; TODO: could also potentially wait for a connection to become free
           (if (max-connections-reached?)
               (log-warning "maximum connections limit reached"
                            (cons 'number-of-connections number-of-connections))
@@ -184,6 +190,8 @@
 ;; Exceptions, including timeouts, are caught and logged.  If an exception
 ;; is caught #f is returned
 ;; Timeout is controlled with tcp-read-timeout
+;; TODO: Think about what tcp-read-timeout should be because this could
+;; TODO: make a DOS attack easier the longer the timeout
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
