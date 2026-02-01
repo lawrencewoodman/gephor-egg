@@ -4,7 +4,7 @@
 ;;; From this file the following are exported:
 ;;;   connection-id start-server stop-server
 ;;;
-;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
@@ -65,9 +65,36 @@
       (mutex-unlock! connections-mutex)
       connection-id) )
 
+    (define (log-connection-handled)
+      (apply log-info
+             "connection handled"
+             (cons 'num-connections (num-connections))
+             (log-context) ) )
 
-  ;; Parameter: max-file-size controls the maximum size file
-  ;; that can be written
+    (define (try-handler handler request out)
+      (handle-exceptions exn
+                         (begin
+                           ;; TODO: Should this log-error list the handler
+                           (apply log-error "exception raised by handler"
+                                            (cons 'exception-msg
+                                                  (get-condition-property exn
+                                                                          'exn
+                                                                          'message))
+                                            (cons 'num-connections
+                                                  (num-connections))
+                                            (log-context))
+                           (send-response/error-menu "resource unavailable" out))
+                         (let ((response (handler request)))
+                           (if response
+                               (when (send-response response out)
+                                     (log-connection-handled))
+                               (begin
+                                 (apply log-warning "error in handler"
+                                        (cons 'num-connections (num-connections))
+                                        (log-context))
+                                 (send-response/error-menu "resource not available"
+                                                            out) ) ) ) ) )
+
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
@@ -76,42 +103,18 @@
               (parameterize ((log-context (list (cons 'connection-id (next-connection-id))
                                                 (cons 'client-address client-address)
                                                 (cons 'selector selector))))
-                (let* ((handler (router-match router selector))
-                       (request (make-request selector client-address))
-                       (response
-                         (and handler
-                             (condition-case (handler request)
-                               (ex ()
-                                 ;; TODO: Should this log-error list the handler
-                                 (apply log-error "exception raised by handler"
-                                        (cons 'exception-msg (get-condition-property ex 'exn 'message))
-                                        (cons 'num-connections (num-connections))
-                                        (log-context))
-                                 (make-rendered-error-menu request "resource unavailable"))))))
-                  (if response
-                      (if (> (string-length response) (max-file-size))
-                          (begin
-                            (apply log-error "data is too big to send"
-                                   (cons 'num-connections (num-connections))
-                                   (log-context))
-                            (write-string (make-rendered-error-menu request "resource is too big to send")
-                                          (max-file-size)
-                                          out))
-                          (begin
-                            (write-string response (max-file-size) out)
-                            (when handler
-                              (apply log-info "connection handled"
-                                     (cons 'num-connections (num-connections))
-                                     (log-context)))))
+                (let ((handler (router-match router selector))
+                      (request (make-request selector client-address)))
+                  (if handler
+                      (try-handler handler request out)
                       (begin
                         (apply log-warning "no handler for selector"
                                (cons 'num-connections (num-connections))
                                (log-context))
-                        (write-string (make-rendered-error-menu request "path not found")
-                                      (max-file-size)
-                                      out))))))
+                        (send-response/error-menu "path not found" out))))))
         (close-input-port in)
-        (close-output-port out ) ) ) )
+        (close-output-port out) ) ) )
+
 
   (define (start-connect-thread in out)
     (thread-start!

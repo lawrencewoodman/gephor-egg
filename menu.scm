@@ -29,7 +29,7 @@
 ;;
 ;; Returns #f if an error otherwise a menu-item is returned
 ;;
-;; Logs a warning if the menu item > 69 chracters (as per RFC 1436)
+;; Logs a warning if the username > 69 characters (as per RFC 1436)
 ;; Logs an error if am unknown itemtype if > 1 character
 (: menu-item (symbol string string string fixnum -> (or menu-item false)))
 (define (menu-item itemtype username selector hostname port)
@@ -173,14 +173,6 @@
                  menu-items)))
     ;; Properly constructed menus should end with ".\r\n"
     (string-append menu-str ".\r\n") ) )
-
-
-;; Make an error menu that has been rendered and is ready for sending.
-;; The selector isn't included in the error menu item in case that
-;; could lead to an attack on the client.
-(define (make-rendered-error-menu request msg)
-  (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
-    (menu-render (list item) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------

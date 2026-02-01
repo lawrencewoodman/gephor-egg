@@ -1,5 +1,9 @@
 ;;; Tests for the main server procedures
 
+
+;; TODO: Add tests using a handler such as serve-file?
+
+
 (test-group "server"
 
   (define (gopher-test-get port selector)
@@ -19,10 +23,10 @@
   (test "server responds correctly to simple routes without a splat"
         '("hello friend" "bye friend")
         (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (request)
-                                                    "hello friend"))
-                                    (cons "bye" (lambda (request)
-                                                  "bye friend"))))
+               (router (make-router (cons "hello"
+                                          (lambda (request) "hello friend"))
+                                    (cons "bye"
+                                          (lambda (request) "bye friend"))))
                (thread (start-test-server port router)))
           (let ((responses (map (lambda (selector)
                                   (gopher-test-get port selector))
@@ -34,15 +38,15 @@
   (test "server returns an 'path not found' error menu if a route doesn't exist for the selector"
         "3path not found\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (request)
-                                                    "hello friend"))))
+               (router (make-router (cons "hello"
+                                          (lambda (request) "hello friend"))))
                (thread (start-test-server port router)))
           (let ((response (gopher-test-get port "bye")))
             (stop-server thread)
             response) ) )
 
 
-  (test "server returns a 'resource unavailable"
+  (test "server returns a 'resource unavailable if an exception is raised"
         "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello" (lambda (request)
@@ -56,20 +60,21 @@
   ;; TODO: Compare this with files being 'too big to read'
   ;; TODO: Perhaps these should be checked for their size before
   ;; TODO: attempting to read them
-  (test "server returns a 'resource too big to send' error menu if data to send is > max-file-size bytes"
-        "3resource is too big to send\t\tlocalhost\t7070\r\n.\r\n"
+  (test "server returns a 'resource unavailable' error menu if data to send is > max-response-size bytes"
+        "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
         (let ((port 7070)
-              (router (make-router (cons "hello" (lambda (request)
-                                                         (string-intersperse
-                                                           '("1234567890"
-                                                             "1234567890"
-                                                             "1234567890"
-                                                             "1234567890"
-                                                             "1234567890"
-                                                             "1234567890"
-                                                             "1234567890"
-                                                             "1234567890")))))))
-          (parameterize ((max-file-size 60))
+              (router (make-router (cons "hello"
+                                         (lambda (request)
+                                           (string-intersperse
+                                             '("1234567890"
+                                               "1234567890"
+                                               "1234567890"
+                                               "1234567890"
+                                               "1234567890"
+                                               "1234567890"
+                                               "1234567890"
+                                               "1234567890")))))))
+          (parameterize ((max-response-size 60))
             (let* ((thread (start-test-server port router))
                    (response (gopher-test-get port "hello")))
               (stop-server thread)
@@ -79,8 +84,9 @@
   (test "server removes whitespace at beginning and end of selectors before passing to handlers"
         '("test" "test" "test")
         (let* ((port 7070)
-               (router (make-router (cons "*" (lambda (request)
-                                                (request-selector request)))))
+               (router (make-router (cons "*"
+                                          (lambda (request)
+                                            (request-selector request)))))
                (thread (start-test-server port router))
                (selectors '("  test" "test  " "  test  ")))
           (let ((responses (map (lambda (selector)
@@ -93,8 +99,9 @@
   (test "server leaves leading and terminating '/' characters in selectors intact"
         '("/test" "test/" "/test/" "/  test" "test  /")
         (let* ((port 7070)
-               (router (make-router (cons "*" (lambda (request)
-                                                (request-selector request)))))
+               (router (make-router (cons "*"
+                                          (lambda (request)
+                                            (request-selector request)))))
                (thread (start-test-server port router))
                (selectors '("/test" "test/" "/test/" "/  test" "test  /")))
           (let ((responses (map (lambda (selector)
@@ -112,8 +119,9 @@
                          (log-port log-test-port)
                          (log-context (list (cons 'connection-id 3))))
             (let* ((port 7070)
-                   (router (make-router (cons "*" (lambda (request)
-                                                    (request-selector request)))))
+                   (router (make-router (cons "*"
+                                              (lambda (request)
+                                                (request-selector request)))))
                    (thread (start-test-server port router))
                    (test-timeout-limit (+ (current-process-milliseconds) 1000)))
               (let-values (((in out) (tcp-connect "localhost" port)))
@@ -138,8 +146,9 @@
                          (log-level 'warning)
                          (log-port log-test-port))
             (let* ((port 7070)
-                   (router (make-router (cons "*" (lambda (request)
-                                                    (request-selector request)))))
+                   (router (make-router (cons "*"
+                                              (lambda (request)
+                                                (request-selector request)))))
                    (thread (start-test-server port router)))
               (let-values (((in out) (tcp-connect "localhost" port)))
                 (close-input-port in)
@@ -155,8 +164,9 @@
                          (log-level 'info)
                          (log-port log-test-port))
             (let* ((port 7070)
-                   (router (make-router (cons "*" (lambda (request)
-                                                    (request-selector request)))))
+                   (router (make-router (cons "*"
+                                              (lambda (request)
+                                                (request-selector request)))))
                    (thread (start-server hostname: "localhost" port: port router: router)))
               (let-values (((in out) (tcp-connect "localhost" port)))
                 (close-input-port in)
