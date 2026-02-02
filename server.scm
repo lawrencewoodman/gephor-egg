@@ -71,7 +71,7 @@
              (cons 'num-connections (num-connections))
              (log-context) ) )
 
-    (define (try-handler handler request out)
+    (define (run-handler handler request out)
       (handle-exceptions exn
                          (begin
                            ;; TODO: Should this log-error list the handler
@@ -106,7 +106,7 @@
                 (let ((handler (router-match router selector))
                       (request (make-request selector client-address)))
                   (if handler
-                      (try-handler handler request out)
+                      (run-handler handler request out)
                       (begin
                         (apply log-warning "no handler for selector"
                                (cons 'num-connections (num-connections))

@@ -12,7 +12,6 @@
                   response) ) ) )
 
 
-  ;; TODO: Test the log error message output
   (test "send-response outputs an error menu to the given output port and returns #f if the response > max-response-size"
         '((#t #f) "1234563resource unavailable\t\tlocalhost\t70\r\n.\r\n")
         (let ((test-responses '("123456" "1234567"))
