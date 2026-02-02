@@ -11,7 +11,6 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; TODO: Add test
 ;; Trim beginning and end of selector to remove whitespace and
 ;; '/' characters
 (define (trim-path-selector selector)
