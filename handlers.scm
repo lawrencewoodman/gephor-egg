@@ -2,7 +2,8 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   selector->local-path serve-dir serve-file serve-path serve-url
+;;;   safe-read-file selector->local-path serve-dir serve-file serve-path
+;;;   serve-url
 ;;;
 ;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -81,7 +82,7 @@
     ;; is formed safely
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (regular-file? local-path)
-           (and-let* ((response (read-file local-path)))
+           (and-let* ((response (safe-read-file (max-response-size) root-dir local-path)))
              (apply log-info
                     "serve file"
                     (cons 'handler 'serve-file)
@@ -110,39 +111,29 @@
            (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
-;; Parameter: max-file-size controls the maximum size file
-;; that can be read, anything bigger than this will return #f
-;; and log an error  If the file isn't world readable #f will
-;; be returned and it will log an error.
-;; TODO: Now this is exported it should probably be renamed to reduce
-;; TODO: the chance of name clashes
+;; If the file is bigger than max-size it will return #f and log an error.
+;; If the file isn't world readable it will return #f and log an error.
+;; If the file path isn't safe it will return #f and log an error.
+;; Otherwise, it will return the contents of the file
 ;; TODO: Place this in another file?
-(: read-file (string -> (or string false)))
-(define (read-file path)
+(: safe-read-file (integer string string -> (or string false)))
+(define (safe-read-file max-size root-dir path)
+  (printf "path word readable? ~A, path: ~A~%" (world-readable? path) path)
   (if (world-readable? path)
-      (call-with-input-file path
-                            (lambda (port)
-                              (let* ((contents (read-string (max-file-size) port))
-                                     (more? (not (eof-object? (read-string 1 port)))))
-                                (if (eof-object? contents)
-                                    ""
-                                    (if more?
-                                        (begin
-                                          (apply log-error
-                                                 "file is too big to read"
-                                                 (cons 'file path)
-                                                 (cons 'max-file-size (max-file-size))
-                                                 (log-context))
-                                          #f)
-                                        contents))))
-                            #:binary)
+      (if (safe-path? root-dir path)
+          (unsafe-read-file max-size path)
+          (begin
+            (apply log-error
+                   "file path isn't safe"
+                   (cons 'file path)
+                   (log-context))
+            #f))
       (begin
         (apply log-error
                "file isn't world readable"
                (cons 'file path)
                (log-context))
         #f) ) )
-;; TODO: Document what a warning is as it may not be obvious
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -222,6 +213,28 @@
                (log-context))
         #f) ) )
 
+
+  ;; Used by safe-read-file.  This function reads a file without checking if
+  ;; the path is safe and world readable
+  (define (unsafe-read-file max-size path)
+    (call-with-input-file path
+                          (lambda (port)
+                            ; This checks the size while reading rather than
+                            ; before reading in case the file changes size
+                            (let* ((contents (read-string max-size port))
+                                   (more? (not (eof-object? (read-string 1 port)))))
+                              (if (eof-object? contents)
+                                  ""
+                                  (if more?
+                                      (begin
+                                        (apply log-error
+                                               "file is too big to read"
+                                               (cons 'file path)
+                                               (cons 'max-size max-size)
+                                               (log-context))
+                                        #f)
+                                      contents))))
+                          #:binary) )
 
 
 ;; The HTML template used by serve-url

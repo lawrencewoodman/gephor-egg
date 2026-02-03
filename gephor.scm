@@ -21,7 +21,6 @@
    serve-path
    serve-url
    max-connections
-   max-file-size
    max-response-size
    server-hostname
    server-port
@@ -29,7 +28,7 @@
    safe-path?
    send-response
    send-response/error-menu
-   read-file)
+   safe-read-file)
 
 
 (import scheme
@@ -73,13 +72,8 @@
 (define server-port     (make-parameter 70))
 
 
-;; The maximum size of a file that can be read and sent. Defaults to 50Mb.
-;; TODO: Is this name ok.  Should it be read/write as not just files sent
-;; TODO: Look at where this is used and reconsider, particularly if
-;; TODO: we create a send-response/file function
-(define max-file-size (make-parameter 50000000))
-
-;; The maximum size response that can be read and sent. Defaults to 50Mb.
+;; The maximum size response that can be sent to a client.
+;; Defaults to 50Mb.
 (define max-response-size (make-parameter 50000000))
 
 ;; The maximum number of simultaneously connections. Defaults to 50.
