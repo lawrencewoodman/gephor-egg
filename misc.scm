@@ -27,16 +27,22 @@
 ;; NOTE: any other checks.
 ;; NOTE: This does not check if the path is world readable
 ;; TODO: Should we test for nul in a string as per Spiffy?
-;; TODO: Add test
 (define (safe-path? root-dir path)
-  (let ((n-root-dir (normalize-pathname root-dir))
-        (n-path (normalize-pathname path)))
-    (and (absolute-pathname? root-dir)
-         (not (substring-index "./" path))
-         (not (substring-index ".." path))
-         (not (substring-index "\\" path))
-         (>= (string-length n-path) (string-length n-root-dir))
-         (substring=? n-root-dir n-path) ) ) )
+  (when (not (absolute-pathname? root-dir))
+        (error* 'safe-path? "root-dir must be an absolute directory: ~A" root-dir))
+  (let* ((n-root-dir (normalize-pathname root-dir))
+         (n-path (normalize-pathname path)))
+    (let-values (((_ n-root-base n-root-elements) (decompose-directory n-root-dir))
+                 ((_ n-path-base n-path-elements) (decompose-directory n-path)))
+      (let ((n-root-elements (or n-root-elements '()))
+            (n-path-elements (or n-path-elements '())))
+        (and (not (substring-index "./" path))
+             (not (substring-index ".." path))
+             (not (substring-index "\\" path))
+             (equal? n-root-base n-path-base)
+             (>= (length n-path-elements) (length n-root-elements))
+             (equal? n-root-elements
+                     (take n-path-elements (length n-root-elements) ) ) ) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -44,6 +50,7 @@
 ;; A char set for trimming selectors
 (define path-selector-trim-char-set
   (char-set-adjoin char-set:whitespace #\/) )
+
 
 ;; Similar to error but passes arguments after location to sprintf to form
 ;; error message

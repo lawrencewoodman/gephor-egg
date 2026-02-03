@@ -21,6 +21,8 @@
 ;; it should be by the server because the removal of a leading or terminating
 ;; '/' character might leave whitespace.
 ;;
+;; Logs a warning if the path isn't safe
+;;
 ;; Returns #f on failure.
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
@@ -48,7 +50,7 @@
        (list serve-file serve-dir) ) )
 
 
-;; If the path formed by root-dir and request is a diretory return a menu
+;; If the path formed by root-dir and request is a directory return a menu
 ;; listing the files and directories in the directory.
 ;; See selector->local-path for more information about selector requirements.
 ;; Returns #f if can't list a directory.

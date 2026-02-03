@@ -5,8 +5,6 @@
   (parameterize ((server-hostname "localhost")
                  (server-port 70))
 
-  ;; TODO: Add test for root-dir not existing in case specific incorrectly
-
   ;; TODO: Add Test for working through the three handlers in serve-path
 
   (test "selector->local-path returns false if selector contains '..'"
@@ -20,14 +18,6 @@
   (test "selector->local-path returns false if selector contains a '\\'"
         #f
         (selector->local-path fixtures-dir "dir-a\\fred") )
-
-  (test "selector->local-path returns false if root-dir is a relative dir"
-        #f
-        (selector->local-path "tests/fixtures" "dir-a") )
-
-  (test "selector->local-path returns false if root-dir is a relative dir of the form ./"
-        #f
-        (selector->local-path "./" "dir-a") )
 
   (test "selector->local-path returns false if root-dir contains ./"
         #f
