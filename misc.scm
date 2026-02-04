@@ -34,15 +34,17 @@
          (n-path (normalize-pathname path)))
     (let-values (((_ n-root-base n-root-elements) (decompose-directory n-root-dir))
                  ((_ n-path-base n-path-elements) (decompose-directory n-path)))
-      (let ((n-root-elements (or n-root-elements '()))
-            (n-path-elements (or n-path-elements '())))
-        (and (not (substring-index "./" path))
-             (not (substring-index ".." path))
-             (not (substring-index "\\" path))
-             (equal? n-root-base n-path-base)
-             (>= (length n-path-elements) (length n-root-elements))
-             (equal? n-root-elements
-                     (take n-path-elements (length n-root-elements) ) ) ) ) ) ) )
+      (and (not (substring-index "./" path))
+           (not (substring-index ".." path))
+           (not (substring-index "\\" path))
+           (equal? n-root-base n-path-base)
+           (or (not n-root-elements)
+               (and n-path-elements
+                    (>= (length n-path-elements) (length n-root-elements))
+                    (equal? n-root-elements
+                           (take n-path-elements
+                                 (length n-root-elements) ) ) ) ) ) ) ) )
+
 
 
 ;; Internal Definitions ------------------------------------------------------
