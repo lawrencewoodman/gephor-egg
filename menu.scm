@@ -23,7 +23,7 @@
 ;; descriptive itemtypes supported: ((text |0|) (menu |1|) (error |3|)
 ;;                                   (binhex |4|) (uue |6|) (telnet |8|)
 ;;                                   (binary |9|) (info i) (html h)
-;;                                   (gif g) (image I))
+;;                                   (tn3270 T) (gif g) (image I))
 ;; |5| Dos Binary itemtype not recommended as it is unclear what this
 ;;     is and it should be able to be replaced by |9| in every instance.
 ;;
@@ -47,6 +47,7 @@
             ((binary |9|) "9")
             ((info i)     "i")
             ((html h)     "h")
+            ((tn3270 T)   "T")
             ((gif g)      "g")
             ((image I)    "I")
             (else
