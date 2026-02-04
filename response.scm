@@ -35,10 +35,15 @@
 ;; Send an error menu as a response with 'msg' as the username.
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
-;; TODO: limit the write-string size instead of #f
+;; msg is truncated at 160 characters to prevent an attack on the
+;; client
 (: send-response/error-menu (string output-port -> undefined))
 (define (send-response/error-menu msg out)
-  (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
+  (let ((item (menu-item 'error
+                         (substring msg 0 (min 160 (string-length msg)))
+                         ""
+                         (server-hostname)
+                         (server-port))))
     (write-string (menu-render (list item)) #f out) ) )
 
 

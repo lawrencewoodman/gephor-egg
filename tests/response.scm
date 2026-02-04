@@ -44,4 +44,16 @@
             (close-output-port out)
             response) ) )
 
+
+  (test "send-response/error-menu truncates the error msg at 160 characters"
+        (list (sprintf "3~A\t\tlocalhost\t70\r\n.\r\n"
+                       (make-string 160 #\A))
+              (+ 160 20))
+        (let ((out (open-output-string)))
+          (send-response/error-menu (make-string 600 #\A) out)
+          (let ((response (get-output-string out)))
+            (close-output-port out)
+            (list response (string-length response) ) ) ) )
+
+
 )
