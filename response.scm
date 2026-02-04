@@ -18,7 +18,7 @@
 ;; menu.
 ;; TODO: is sending an error menu appropriate when sending a file?
 ;; Returns #f if response is too big, otherwise #t
-(: send-response (string output-port) -> bool)
+(: send-response (string output-port -> boolean))
 (define (send-response response out)
   (if (> (string-length response) (max-response-size))
       (begin
@@ -36,7 +36,7 @@
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
 ;; TODO: limit the write-string size instead of #f
-(: send-response/error-menu (string output-port) -> undefined)
+(: send-response/error-menu (string output-port -> undefined))
 (define (send-response/error-menu msg out)
   (let ((item (menu-item 'error msg "" (server-hostname) (server-port))))
     (write-string (menu-render (list item)) #f out) ) )
