@@ -46,7 +46,3 @@
                          (server-port))))
     (write-string (menu-render (list item)) #f out) ) )
 
-
-;; TODO: create a send-response/menu or send/menu
-;; TODO: create a send-response/file or send/file
-
