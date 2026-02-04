@@ -82,24 +82,26 @@
 (define (error* location . args)
   (error location (apply sprintf args) ) )
 
-  ;; Used by safe-read-file.  This function reads a file without checking if
-  ;; the path is safe and world readable
-  (define (unsafe-read-file max-size path)
-    (call-with-input-file path
-                          (lambda (port)
-                            ; This checks the size while reading rather than
-                            ; before reading in case the file changes size
-                            (let* ((contents (read-string max-size port))
-                                   (more? (not (eof-object? (read-string 1 port)))))
-                              (if (eof-object? contents)
-                                  ""
-                                  (if more?
-                                      (begin
-                                        (apply log-error
-                                               "file is too big to read"
-                                               (cons 'file path)
-                                               (cons 'max-size max-size)
-                                               (log-context))
-                                        #f)
-                                      contents))))
-                          #:binary) )
+
+;; Used by safe-read-file.  This function reads a file without checking if
+;; the path is safe and world readable
+(: unsafe-read-file (integer string -> (or string false)))
+(define (unsafe-read-file max-size path)
+  (call-with-input-file path
+                        (lambda (port)
+                          ; This checks the size while reading rather than
+                          ; before reading in case the file changes size
+                          (let* ((contents (read-string max-size port))
+                                 (more? (not (eof-object? (read-string 1 port)))))
+                            (if (eof-object? contents)
+                                ""
+                                (if more?
+                                    (begin
+                                      (apply log-error
+                                             "file is too big to read"
+                                             (cons 'file path)
+                                             (cons 'max-size max-size)
+                                             (log-context))
+                                      #f)
+                                    contents))))
+                        #:binary) )
