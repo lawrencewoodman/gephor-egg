@@ -1,0 +1,140 @@
+Received: with LISTAR (v1.0.0; list gopher); Tue, 12 Feb 2002 14:19:47 -0500 (EST)
+Return-Path: <jgoerzen@complete.org>
+Delivered-To: gopher@complete.org
+Received: from erwin.complete.org (pcp947166pcs.cstltn01.in.comcast.net [68.58.145.248])
+(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+(Client CN "erwin.complete.org", Issuer CN "John Goerzen -- Root CA" (verified OK))
+by pi.glockenspiel.complete.org (Postfix) with ESMTP
+id 4FE9F3B860; Tue, 12 Feb 2002 14:19:47 -0500 (EST)
+Received: by erwin.complete.org (Postfix, from userid 1000)
+id 6E73775836; Tue, 12 Feb 2002 14:19:46 -0500 (EST)
+To: gopher@complete.org
+Subject: [gopher] Links to URL
+References: <200202120132.RAA11190@stockholm.ptloma.edu>
+From: John Goerzen <jgoerzen@complete.org>
+Date: 12 Feb 2002 14:19:46 -0500
+In-Reply-To: <200202120132.RAA11190@stockholm.ptloma.edu>
+Message-ID: <878z9yik31.fsf@complete.org>
+Lines: 103
+User-Agent: Gnus/5.0808 (Gnus v5.8.8) XEmacs/21.4 (Common Lisp)
+MIME-Version: 1.0
+Content-type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8bit
+X-archive-position: 439
+X-listar-version: Listar v1.0.0
+Sender: gopher-bounce@complete.org
+Errors-to: gopher-bounce@complete.org
+X-original-sender: jgoerzen@complete.org
+Precedence: bulk
+Reply-to: gopher@complete.org
+List-help: <mailto:listar@complete.org?Subject=help>
+List-unsubscribe: <mailto:gopher-request@complete.org?Subject=unsubscribe>
+List-software: Listar version 1.0.0
+X-List-ID: Gopher <gopher.complete.org>
+List-subscribe: <mailto:gopher-request@complete.org?Subject=subscribe>
+List-owner: <mailto:jgoerzen@complete.org>
+List-post: <mailto:gopher@complete.org>
+List-archive: <http://www.complete.org/mailinglists/archives/>
+X-list: gopher
+
+I think it is best to start small with modifications to the protocol.
+Therefore, I propose the following:
+
+Method to link to URLs from Gopherspace
+---------------------------------------
+
+1. Protocol issues
+
+Links to URLs from a gopher directory shall be defined as follows:
+
+Type -- the appropriate character corresponding to the type of the
+document on the remote end; h if HTML.
+
+Path -- the full URL, preceeded by "URL:".  For instance:
+URL:http://www.complete.org/
+
+Host, Port -- pointing back to the gopher server that provided
+the directory for compatibility reasons.
+
+Name -- as usual for a Gopher directory entry.
+
+2. Conforming client requirements
+
+A client adhering to this specification will, when it sees a Gopher
+selector with a path starting with URL:, interpret the path as a URL.
+It will ignore the host and port components of the Gopher selector,
+using those components from the URL instead (if applicable).
+
+3. Conforming server requirements
+
+A server with Gopher URL support will not, in most cases, need to take
+extra steps to provide this support beyond those outlined in
+Compatibility below.  Servers not implementing those steps outlined in
+Compatibility will be deemed to be not in compliance.
+
+4. Authoring compliance
+
+The use of URL: selectors should be avoided wherever possible.  In
+particular, it should be avoided when pre-existing gopher facilities
+exist for the type of content linked.  The following URL types are
+explicitly prohibited by this specification:
+
+gopher
+telnet
+tn3270
+
+Authors should avoid links to any document not of HTML type whenever
+possible.  Linking to non-HTML documents will break compatibility with
+Gopher browsers that do not implement this specification.  The ranks
+of these browsers include most Web browsers, so that is a significant
+audience.
+
+5. Compatibility
+
+Links to HTML pages may be accomodated even for non-comforming
+browsers by providing additional capabilities in the server.
+
+When a non-conforming browser is instructed to follow a link to a URL,
+it will contact the Gopher server that provided the menu (since these
+are specified per section 1).
+
+When a conforming Gopher server receives a request whose path begins
+with URL:, it will write out a HTML document that will send the
+non-compliant browser to the appropriate place.  One such conforming
+document is:
+
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="refresh" content="2;URL=http://www.acm.org/classics/">
+</HEAD>
+<BODY>
+You are following a link from gopher to a web site.  You will be
+automatically taken to the web site shortly.  If you do not get sent
+there, please click
+<A HREF="http://www.acm.org/classics/">here</A> to go to the web site.
+<P>
+The URL linked is:
+<P>
+<A HREF="http://www.acm.org/classics/">http://www.acm.org/classics/</A>
+<P>
+Thanks for using gopher!
+</BODY>
+</HTML>
+
+This document may be any desired by the server authors, but must
+adhere to these requirements:
+* It must provide a refresh of a duration of 10 seconds or less
+* It must not use IMG tags, frames, or have any reference whatsoever
+to content outside that particular file -- other than the link
+to the real destination.
+* It must not use JavaScript.
+* It must adhere to the W3C HTML 3.2 standard.
+
+When a non-conforming Gopher client finds a reference to a HTML file
+(type h), it will open up the file via Gopher (getting the redirect
+document) but using a web browser.  The web browser will then be
+redirected to the actual link destination.  Conforming clients will
+follow the link directly.
+
+END
+

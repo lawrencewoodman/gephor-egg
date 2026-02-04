@@ -96,8 +96,9 @@
 ;; prefix so that they can be served a html page which points to the URL.
 ;; This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
+;; Also:
+;;   resources/h_type.txt
 ;; Returns #f if failure
-;; TODO: rename
 (: serve-url (* -> (or string false)))
 (define (serve-url request)
   (let ((selector (request-selector request)))
