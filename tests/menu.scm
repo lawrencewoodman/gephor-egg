@@ -38,6 +38,8 @@
           "3An error\terror 3\tlocalhost\t70"
           "4A bin hex file\tbinhex binhex\tlocalhost\t70"
           "4A bin hex file\tbinhex 4\tlocalhost\t70"
+          "6A uuencoded file\tuue uue\tlocalhost\t70"
+          "6A uuencoded file\tuue 6\tlocalhost\t70"
           "9A binary file\tbinary binary\tlocalhost\t70"
           "9A binary file\tbinary 9\tlocalhost\t70"
           "iSome info\tinfo info\tlocalhost\t70"
@@ -59,6 +61,8 @@
                  (|3| "An error" "error 3" "localhost" 70)
                  (binhex "A bin hex file" "binhex binhex" "localhost" 70)
                  (|4| "A bin hex file" "binhex 4" "localhost" 70)
+                 (uue "A uuencoded file" "uue uue" "localhost" 70)
+                 (|6| "A uuencoded file" "uue 6" "localhost" 70)
                  (binary "A binary file" "binary binary" "localhost" 70)
                  (|9| "A binary file" "binary 9" "localhost" 70)
                  (info "Some info" "info info" "localhost" 70)

@@ -51,7 +51,7 @@
 (include-relative "menu.scm")
 (include-relative "response.scm")
 (include-relative "handlers.scm")
-(include-relative "server.scm")
 (include-relative "misc.scm")
+(include-relative "server.scm")
 
 (test-exit)
