@@ -20,10 +20,10 @@
 ;; itemtype is a symbol and therefore numbers must be escaped.  It can use
 ;; the single letter from RFC 1436 or a descriptive symbol, i.e. for text
 ;; we can use 'text or '|0|
-;; descriptive itemtypes supported: ((text |0|) (menu |1|) (error |3|)
-;;                                   (binhex |4|) (uue |6|) (telnet |8|)
-;;                                   (binary |9|) (info i) (html h)
-;;                                   (tn3270 T) (gif g) (image I))
+;; descriptive itemtypes supported: ((text |0|) (menu |1|) (ccso |2|)
+;;                                   (error |3|) (binhex |4|) (uue |6|)
+;;                                   (telnet |8|) (binary |9|) (info i)
+;;                                   (html h) (tn3270 T) (gif g) (image I))
 ;; |5| Dos Binary itemtype not recommended as it is unclear what this
 ;;     is and it should be able to be replaced by |9| in every instance.
 ;;
@@ -40,6 +40,7 @@
           (case itemtype
             ((text |0|)   "0")
             ((menu |1|)   "1")
+            ((ccso |2|)   "2")
             ((error |3|)  "3")
             ((binhex |4|) "4")
             ((uue |6|)    "6")

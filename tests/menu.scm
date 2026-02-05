@@ -34,6 +34,8 @@
           "0Some text\ttext 0\tlocalhost\t70"
           "1A menu\tmenu menu\tlocalhost\t70"
           "1A menu\tmenu 1\tlocalhost\t70"
+          "2A CCSO phonebook server\tccso ccso\tlocalhost\t105"
+          "2A CCSO phonebook server\tccso 2\tlocalhost\t105"
           "3An error\terror error\tlocalhost\t70"
           "3An error\terror 3\tlocalhost\t70"
           "4A bin hex file\tbinhex binhex\tlocalhost\t70"
@@ -61,6 +63,8 @@
                  (|0| "Some text" "text 0" "localhost" 70)
                  (menu "A menu" "menu menu" "localhost" 70)
                  (|1| "A menu" "menu 1" "localhost" 70)
+                 (ccso "A CCSO phonebook server" "ccso ccso" "localhost" 105)
+                 (|2| "A CCSO phonebook server" "ccso 2" "localhost" 105)
                  (error "An error" "error error" "localhost" 70)
                  (|3| "An error" "error 3" "localhost" 70)
                  (binhex "A bin hex file" "binhex binhex" "localhost" 70)
