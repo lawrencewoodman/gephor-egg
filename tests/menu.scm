@@ -40,6 +40,8 @@
           "3An error\terror 3\tlocalhost\t70"
           "4A bin hex file\tbinhex binhex\tlocalhost\t70"
           "4A bin hex file\tbinhex 4\tlocalhost\t70"
+          "5A DOS binary archive\tdosbin dosbin\tlocalhost\t70"
+          "5A DOS binary archive\tdosbin 5\tlocalhost\t70"
           "6A uuencoded file\tuue uue\tlocalhost\t70"
           "6A uuencoded file\tuue 6\tlocalhost\t70"
           "8A telnet session\ttelnet telnet\tlocalhost\t23"
@@ -71,6 +73,8 @@
                  (|3| "An error" "error 3" "localhost" 70)
                  (binhex "A bin hex file" "binhex binhex" "localhost" 70)
                  (|4| "A bin hex file" "binhex 4" "localhost" 70)
+                 (dosbin "A DOS binary archive" "dosbin dosbin" "localhost" 70)
+                 (|5| "A DOS binary archive" "dosbin 5" "localhost" 70)
                  (uue "A uuencoded file" "uue uue" "localhost" 70)
                  (|6| "A uuencoded file" "uue 6" "localhost" 70)
                  (telnet "A telnet session" "telnet telnet" "localhost" 23)
