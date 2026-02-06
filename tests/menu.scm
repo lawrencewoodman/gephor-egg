@@ -27,7 +27,6 @@
           (menu-render (list item) ) ) )
 
 
-  ;; TODO: Will need to add more types as they become supported
   (test "menu-item handles a range of types and their human readable names"
         (string-intersperse '(
           "0Some text\ttext text\tlocalhost\t70"
@@ -44,6 +43,8 @@
           "5A DOS binary archive\tdosbin 5\tlocalhost\t70"
           "6A uuencoded file\tuue uue\tlocalhost\t70"
           "6A uuencoded file\tuue 6\tlocalhost\t70"
+          "7An index-search server\tsearch search\tlocalhost\t23"
+          "7An index-search server\tsearch 7\tlocalhost\t23"
           "8A telnet session\ttelnet telnet\tlocalhost\t23"
           "8A telnet session\ttelnet 8\tlocalhost\t23"
           "9A binary file\tbinary binary\tlocalhost\t70"
@@ -77,6 +78,8 @@
                  (|5| "A DOS binary archive" "dosbin 5" "localhost" 70)
                  (uue "A uuencoded file" "uue uue" "localhost" 70)
                  (|6| "A uuencoded file" "uue 6" "localhost" 70)
+                 (search "An index-search server" "search search" "localhost" 23)
+                 (|7| "An index-search server" "search 7" "localhost" 23)
                  (telnet "A telnet session" "telnet telnet" "localhost" 23)
                  (|8| "A telnet session" "telnet 8" "localhost" 23)
                  (binary "A binary file" "binary binary" "localhost" 70)
