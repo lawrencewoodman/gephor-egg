@@ -38,7 +38,6 @@
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace))
         (itemtype-char
-          ;; TODO: Add more items
           (case itemtype
             ((text |0|)    "0")
             ((menu |1|)    "1")
