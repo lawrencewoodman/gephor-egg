@@ -50,6 +50,8 @@
           "iSome info\tinfo i\tlocalhost\t70"
           "hSome html\thtml html\tlocalhost\t70"
           "hSome html\thtml h\tlocalhost\t70"
+          "+A redundant server\tredundant redundant\tlocalhost\t23"
+          "+A redundant server\tredundant +\tlocalhost\t23"
           "TA tn3270 session\ttn3270 tn3270\tlocalhost\t23"
           "TA tn3270 session\ttn3270 T\tlocalhost\t23"
           "gA Gif\tgif gif\tlocalhost\t70"
@@ -79,6 +81,8 @@
                  (i "Some info" "info i" "localhost" 70)
                  (html "Some html" "html html" "localhost" 70)
                  (h "Some html" "html h" "localhost" 70)
+                 (redundant "A redundant server" "redundant redundant" "localhost" 23)
+                 (+ "A redundant server" "redundant +" "localhost" 23)
                  (tn3270 "A tn3270 session" "tn3270 tn3270" "localhost" 23)
                  (T "A tn3270 session" "tn3270 T" "localhost" 23)
                  (gif "A Gif" "gif gif" "localhost" 70)
