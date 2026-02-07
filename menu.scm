@@ -138,9 +138,9 @@
 ;; otherwise a menu-item is returned
 (: menu-item-url (string string -> (or menu-item false)))
 (define (menu-item-url username url)
-  (let-values (((protocol host port path itemtype) (split-url url)))
-    (if protocol
-        (case (string->symbol protocol)
+  (let-values (((scheme host port path itemtype) (split-url url)))
+    (if scheme
+        (case (string->symbol scheme)
           ((gopher)
             ;; Gopher URLs should conform to RFC 4266
             (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
