@@ -25,6 +25,7 @@
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
   ;; connections-mutex is used to prevent simultaneous changing of connection count
+  ;; connection-id-mutex is used to prevent simultaneous changing of connection-id
   ;; number-of-connections is the current number of connections to the server
   ;; connection-id is a unique ID for each connection to make logs messages
   ;;               easier to follow and link together for each connection.
@@ -32,6 +33,7 @@
   ;;               connection-id.
   (let ((server-ready-mutex (make-mutex))
         (connections-mutex (make-mutex))
+        (connection-id-mutex (make-mutex))
         (number-of-connections 0)
         (connection-id 0))
 
@@ -57,12 +59,11 @@
       (mutex-unlock! connections-mutex)
       count) )
 
-  ;; TODO: Give this it's own mutex
   (define (next-connection-id)
-    (mutex-lock! connections-mutex)
+    (mutex-lock! connection-id-mutex)
     (set! connection-id (add1 connection-id))
     (let ((connection-id connection-id))
-      (mutex-unlock! connections-mutex)
+      (mutex-unlock! connection-id-mutex)
       connection-id) )
 
     (define (log-connection-handled)
@@ -74,7 +75,6 @@
     (define (run-handler handler request out)
       (handle-exceptions exn
                          (begin
-                           ;; TODO: Should this log-error list the handler
                            (apply log-error "exception raised by handler"
                                             (cons 'exception-msg
                                                   (get-condition-property exn
