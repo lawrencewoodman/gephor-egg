@@ -193,7 +193,7 @@
             (menu-render (list item) ) ) ) )
 
 
-(test "menu-item-url handles gopher protocol"
+(test "menu-item-url handles gopher URL scheme"
       (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "1A good gopher example\t/\texample.com\t70"
@@ -229,89 +229,72 @@
           (menu-render menu) ) ) )
 
 
-(test "menu-item-url handles http protocol"
+(test "menu-item-url handles telnet URL scheme"
+      (string-intersperse '(
+        "8some telnet bbs\t\texample.com\t23"
+        "8some telnet bbs\t\texample.com\t23"
+        "8some telnet bbs - my user\tURL:telnet://myuser@example.com\tlocalhost\t70"
+        "8some telnet bbs - my user\tURL:telnet://myuser@example.com/\tlocalhost\t70"
+
+        "8some telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com\tlocalhost\t70"
+        "8some telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com/\tlocalhost\t70"
+        "8some telnet bbs\t\texample.com\t2320"
+        "8some telnet bbs\t\texample.com\t2320"
+        "8some telnet bbs - my user\tURL:telnet://myuser@example.com:2320\tlocalhost\t70"
+        "8some telnet bbs - my user\tURL:telnet://myuser@example.com:2320/\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
+                 ("telnet://example.com" . "some telnet bbs")
+                 ("telnet://example.com/" . "some telnet bbs")
+                 ("telnet://myuser@example.com" . "some telnet bbs - my user")
+                 ("telnet://myuser@example.com/" . "some telnet bbs - my user")
+                 ("telnet://myuser:mypassword@example.com" . "some telnet bbs - my user")
+                 ("telnet://myuser:mypassword@example.com/" . "some telnet bbs - my user")
+                 ("telnet://example.com:2320" . "some telnet bbs")
+                 ("telnet://example.com:2320/" . "some telnet bbs")
+                 ("telnet://myuser@example.com:2320" . "some telnet bbs - my user")
+                 ("telnet://myuser@example.com:2320/" . "some telnet bbs - my user")))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
+          (menu-render menu) ) ) )
+
+
+(test "menu-item-url returns #f if telnet URL is invalid"
+      '(#f #f #f #f)
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
+                 ("telnet://example.com/user/bob" . "some telnet bbs")
+                 ("telnet://myuser@example.com/user/bob" . "some telnet bbs - my user")
+                 ("telnet://example.com:2320/user/bob" . "some telnet bbs")
+                 ("telnet://myuser@example.com:2320/user/bob" . "some telnet bbs - my user"))))
+          (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                           urls) ) ) )
+
+
+(test "menu-item-url handles ssh, http, etc URL schemes"
       (string-intersperse '(
         "hA good http example\tURL:http://example.com\tlocalhost\t70"
-        "hA good http example\tURL:http://example.com/\tlocalhost\t70"
-        "hMy phlog\tURL:http://example.com/~myuser/phlog\tlocalhost\t70"
-        "hPondering something really clever\tURL:http://example.com/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
-        "hA good http example\tURL:http://example.com:8080\tlocalhost\t70"
-        "hA good http example\tURL:http://example.com:8080/\tlocalhost\t70"
-        "hMy phlog\tURL:http://example.com:8080/~myuser/phlog\tlocalhost\t70"
-        "hPondering something really clever\tURL:http://example.com:8080/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
-        ".\r\n")
-        "\r\n")
-      (parameterize ((server-hostname "localhost") (server-port 70))
-        (let* (
-               (urls '(
-                 ("http://example.com" . "A good http example")
-                 ("http://example.com/" . "A good http example")
-                 ("http://example.com/~myuser/phlog" . "My phlog")
-                 ("http://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-                 ("http://example.com:8080" . "A good http example")
-                 ("http://example.com:8080/" . "A good http example")
-                 ("http://example.com:8080/~myuser/phlog" . "My phlog")
-                 ("http://example.com:8080/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
-               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
-                          urls)))
-          (menu-render menu) ) ) )
-
-
-(test "menu-item-url handles https protocol"
-      (string-intersperse '(
-        "hA good https example\tURL:https://example.com\tlocalhost\t70"
-        "hA good https example\tURL:https://example.com/\tlocalhost\t70"
         "hMy phlog\tURL:https://example.com/~myuser/phlog\tlocalhost\t70"
+        "hMy phlog\tURL:https://example.com:8080/~myuser/phlog\tlocalhost\t70"
         "hPondering something really clever\tURL:https://example.com/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
-        "hA good https example\tURL:https://example.com:8443\tlocalhost\t70"
-        "hA good https example\tURL:https://example.com:8443/\tlocalhost\t70"
-        "hMy phlog\tURL:https://example.com:8443/~myuser/phlog\tlocalhost\t70"
-        "hPondering something really clever\tURL:https://example.com:8443/~myuser/phlog/something-really-clever.txt\tlocalhost\t70"
+        "hA good ssh example\tURL:ssh://example.com\tlocalhost\t70"
         ".\r\n")
         "\r\n")
       (parameterize ((server-hostname "localhost") (server-port 70))
         (let* ((urls '(
-                 ("https://example.com" . "A good https example")
-                 ("https://example.com/" . "A good https example")
+                 ("http://example.com" . "A good http example")
                  ("https://example.com/~myuser/phlog" . "My phlog")
+                 ("https://example.com:8080/~myuser/phlog" . "My phlog")
                  ("https://example.com/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")
-                 ("https://example.com:8443" . "A good https example")
-                 ("https://example.com:8443/" . "A good https example")
-                 ("https://example.com:8443/~myuser/phlog" . "My phlog")
-                 ("https://example.com:8443/~myuser/phlog/something-really-clever.txt" . "Pondering something really clever")))
+                 ("ssh://example.com" . "A good ssh example")))
                (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
                           urls)))
           (menu-render menu) ) ) )
 
 
-(test "menu-item-url handles ssh protocol"
-      (string-intersperse '(
-        "hsome ssh bbs\tURL:ssh://example.com\tlocalhost\t70"
-        "hsome ssh bbs\tURL:ssh://example.com/user/bob\tlocalhost\t70"
-        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com\tlocalhost\t70"
-        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com/user/bob\tlocalhost\t70"
-        "hsome ssh bbs\tURL:ssh://example.com:2320\tlocalhost\t70"
-        "hsome ssh bbs\tURL:ssh://example.com:2320/user/bob\tlocalhost\t70"
-        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320\tlocalhost\t70"
-        "hsome ssh bbs - my user\tURL:ssh://myuser@example.com:2320/user/bob\tlocalhost\t70"
-        ".\r\n")
-        "\r\n")
-      (parameterize ((server-hostname "localhost") (server-port 70))
-        (let* ((urls '(
-                 ("ssh://example.com" . "some ssh bbs")
-                 ("ssh://example.com/user/bob" . "some ssh bbs")
-                 ("ssh://myuser@example.com" . "some ssh bbs - my user")
-                 ("ssh://myuser@example.com/user/bob" . "some ssh bbs - my user")
-                 ("ssh://example.com:2320" . "some ssh bbs")
-                 ("ssh://example.com:2320/user/bob" . "some ssh bbs")
-                 ("ssh://myuser@example.com:2320" . "some ssh bbs - my user")
-                 ("ssh://myuser@example.com:2320/user/bob" . "some ssh bbs - my user")))
-               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
-                          urls)))
-          (menu-render menu) ) ) )
-
-
-(test "menu-item-url handles non lower case protocol"
+(test "menu-item-url handles non lower case URL schemes"
       (string-intersperse '(
         "1A good gopher example\t\texample.com\t70"
         "hA good http example\tURL:htTP://example.com\tlocalhost\t70"
@@ -335,12 +318,6 @@
           (let ((username "Old Example")
                 (url "https://example.com/http://old.example.com/"))
             (menu-render (list (menu-item-url username url) ) ) ) ) )
-
-
-  (test "menu-item-url returns #f if protocol is unsupported"
-        #f
-        (parameterize ((server-hostname "localhost") (server-port 70))
-          (menu-item-url "Something interesting" "fred://example.com") ) )
 
 
   (test "menu-item-url returns #f if URL isn't valid"

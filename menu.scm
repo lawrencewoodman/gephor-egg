@@ -125,39 +125,45 @@
         #f) ) )
 
 
-;; Supporters protocols: gopher ssh http https
-;; TODO: Expand list of supported protocols
-;; Clients that don't support the URL: prefix selectors and 'h'
-;; itemtype should still work as they will go to the selector beginning
-;; with URL: on our server and be served an HTML page which points
-;; to the desired URL.
-;; This is currently used by ssh, http and https and conforms to:
+;; Turn a URL into a menu item
+;;
+;; A gopher URL will be interpreted and point directly to the menu
+;; indicated within the URL.  The URL must confirm to RFC 4266.
+;;
+;; A telnet URL will use the '8' itemtype unless it contains
+;; a user, in which case it will use the 'h' itemtype and
+;; URL: selector mentioned below.  Telnet URLs must conform to RFC 4248.
+;;
+;; All other URL schemes will create a menu item with the 'h' itemtype and
+;; the selector will begin with 'URL: ' followed by the URL.  This will still
+;; work with clients that don't support this as they can be served an HTML
+;; page which points to the desired URL.  This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Returns #f if URL is invalid or if the protcol is unknown (and log an error),
+;; Returns #f if URL is invalid and logs an error,
 ;; otherwise a menu-item is returned
 (: menu-item-url (string string -> (or menu-item false)))
 (define (menu-item-url username url)
-  (let-values (((scheme host port path itemtype) (split-url url)))
+  (let-values (((scheme userinfo host port path itemtype) (split-url url)))
     (if scheme
         (case (string->symbol scheme)
           ((gopher)
-            ;; Gopher URLs should conform to RFC 4266
             (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
               (menu-item itemtype username path host (or port 70))))
-          ((ssh http https)
+          ((telnet)
+            (if userinfo
+                (menu-item 'telnet
+                           username
+                           (sprintf "URL:~A" url)
+                           (server-hostname)
+                           (server-port))
+                (menu-item '|8| username path host (or port 23))))
+          (else
             (menu-item 'html
-                      username
+                       username
                        (sprintf "URL:~A" url)
                        (server-hostname)
-                      (server-port)))
-          (else
-            (apply log-error
-                   "unknown protocol"
-                   (cons 'username username)
-                   (cons 'url url)
-                   (log-context))
-            #f))
+                       (server-port))))
         (begin
             (apply log-error
                    "invalid URL"
@@ -186,18 +192,22 @@
 ;; Internal Definitions ------------------------------------------------------
 
 ;; Compiled Regular Expressions to split URLs
-(define url-split-regex (string->irregex "^(.+?):\/\/([^:/]+)(:([0-9]*))?(.*)$"))
+(define url-split-regex (string->irregex "^(.+?):\/\/(.*?@)?([^:/]+)(:([0-9]*))?(.*)$"))
 (define gopher-path-split-regex (string->irregex "^\/(.)(.*)$"))
 
 ;; Compiled Regular Expression to split magic file mime types
 (define mime-split-regex (string->irregex "^([^/]+)\/([^;]+); charset=.*$"))
 
-;; Split up a URL to return values for: protocol host port path itemtype
+
+;; Split up a URL to return values for: scheme userinfo host port path itemtype
 ;; port will be #f unless present
 ;; path will be "" if not present
-;; itemtype will be #f unless protocol is gopher or gophers and URL has a path
+;; itemtype will be #f unless scheme is gopher or gophers and URL has a path
+;; If a telnet URL, it conforms to RFC 4248 and will only allow a path of '/' or
+;; none.  If any other path is used it will return #f.
 (: split-url (string
               -->
+              (or string false)
               (or string false)
               (or string false)
               (or string false)
@@ -206,17 +216,24 @@
 (define (split-url url)
   (let ((url-match (irregex-search url-split-regex url)))
     (if (irregex-match-data? url-match)
-        (let ((protocol (string-downcase (irregex-match-substring url-match 1)))
-              (host (irregex-match-substring url-match 2))
-              (port (irregex-match-substring url-match 4))
-              (path (or (irregex-match-substring url-match 5) "")))
-          (if (member protocol '("gopher" "gophers"))
+        (let ((scheme (string-downcase (irregex-match-substring url-match 1)))
+              (userinfo (irregex-match-substring url-match 2))
+              (host (irregex-match-substring url-match 3))
+              (port (irregex-match-substring url-match 5))
+              (path (or (irregex-match-substring url-match 6) "")))
+          (case (string->symbol scheme)
+            ((gopher gophers)
               (let ((itemtype-path-match (irregex-search gopher-path-split-regex path)))
                 (if (irregex-match-data? itemtype-path-match)
                     (let ((itemtype (or (irregex-match-substring itemtype-path-match 1) ""))
                           (path (or (irregex-match-substring itemtype-path-match 2) "")))
-                      (values protocol host port path itemtype))
-                    (values protocol host port path #f)))
-              (values protocol host port path #f)))
-        (values #f #f #f #f #f) ) ) )
+                      (values scheme userinfo host port path itemtype))
+                    (values scheme userinfo host port path #f))))
+            ((telnet)
+              (if (or (string=? path "") (string=? path "/"))
+                  (values scheme userinfo host port "" #f)
+                  (values #f #f #f #f #f #f)))
+            (else
+              (values scheme userinfo host port path #f))))
+        (values #f #f #f #f #f #f) ) ) )
 
