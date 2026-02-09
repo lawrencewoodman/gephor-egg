@@ -57,9 +57,6 @@
             response) ) )
 
 
-  ;; TODO: Compare this with files being 'too big to read'
-  ;; TODO: Perhaps these should be checked for their size before
-  ;; TODO: attempting to read them
   (test "server returns a 'resource unavailable' error menu if data to send is > max-response-size bytes"
         "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
         (let ((port 7070)

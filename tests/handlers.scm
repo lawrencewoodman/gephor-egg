@@ -180,12 +180,12 @@
         (serve-file fixtures-dir (make-request "../dir-a" "127.0.0.1") ) )
 
 
-  (test "serve-file returns false if path isn't a regular file"
+  (test "serve-file returns #f if path isn't a regular file"
         #f
         (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1")))
 
 
-  (test "serve-file returns #f if can't read file"
+  (test "serve-file returns #f if file is bigger than max-response-size"
         (list "hello\n" #f)
         (let ((response1 (parameterize ((max-response-size 5000))
                            (serve-file fixtures-dir
