@@ -2,18 +2,6 @@
 
 (test-group "menu"
 
-  ;; The path of the fixtures directory
-  ;; TODO: This is repeated for handlers, put in one place
-  (define fixtures-dir
-    (let loop ((dirs (list (current-directory) (make-pathname (current-directory) "tests"))))
-      (if (null? dirs) (error "can't find fixtures directory"))
-      (let ((try-path (make-pathname (car dirs) "fixtures")))
-        (if (and (file-exists? try-path) (directory? try-path))
-            try-path
-            (loop (cdr dirs))))))
-
-
-
   (test "make-render adds correct .<cr><lf> to end of menu"
         (string-intersperse '(
           "1Somewhere interesting\t/interesting\tlocalhost\t70"
