@@ -2,7 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   safe-read-file selector->local-path serve-dir serve-file serve-path
+;;;   selector->local-path serve-dir serve-file serve-path
 ;;;   serve-url
 ;;;
 ;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>

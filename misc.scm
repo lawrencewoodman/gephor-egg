@@ -2,7 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   trim-path-selector safe-path?
+;;;   trim-path-selector safe-path? safe-read-file
 ;;;
 ;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
