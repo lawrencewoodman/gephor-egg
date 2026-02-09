@@ -14,9 +14,8 @@
 
 ;; Send a response back to the client.  The size of the response must be no
 ;; more than parameter: max-response-size
-;; If the response it too big, it logs an error and sends an error
-;; menu.
-;; TODO: is sending an error menu appropriate when sending a file?
+;; If the response it too big, it logs an error and sends an error menu.
+;;
 ;; Returns #f if response is too big, otherwise #t
 (: send-response (string output-port -> boolean))
 (define (send-response response out)
@@ -35,9 +34,8 @@
 ;; Send an error menu as a response with 'msg' as the username.
 ;; The selector isn't included in the error menu item in case that
 ;; could lead to an attack on the client.
-;; msg is truncated at 160 characters to prevent an attack on the
-;; client
-(: send-response/error-menu (string output-port -> undefined))
+;; msg is truncated at 160 characters to prevent an attack on the client.
+(: send-response/error-menu (string output-port --> undefined))
 (define (send-response/error-menu msg out)
   (let ((item (menu-item 'error
                          (substring msg 0 (min 160 (string-length msg)))
