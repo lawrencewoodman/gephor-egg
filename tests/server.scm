@@ -46,15 +46,20 @@
             response) ) )
 
 
-  (test "server returns a 'resource unavailable if an exception is raised"
-        "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
-        (let* ((port 7070)
-               (router (make-router (cons "hello" (lambda (request)
-                                                    (error "this is an error")))))
-               (thread (start-test-server port router)))
-          (let ((response (gopher-test-get port "hello")))
-            (stop-server thread)
-            response) ) )
+  (test "server returns a 'resource unavailable' menu and logs an error if an exception is raised"
+        (list "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
+              "ts=#t level=error msg=\"exception raised by handler\" exception-msg=\"this is an error\" num-connections=1 connection-id=1 client-address=127.0.0.1 selector=hello\n")
+        (let ((log-test-port (open-output-string))
+              (port 7070)
+              (router (make-router (cons "hello" (lambda (request)
+                                                    (error "this is an error"))))))
+          (parameterize ((log-level 'error)
+                         (log-port log-test-port))
+            (let* ((thread (start-test-server port router))
+                   (response (gopher-test-get port "hello")))
+              (stop-server thread)
+              (list response
+                    (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
 
 
   (test "server returns a 'resource unavailable' error menu if data to send is > max-response-size bytes"
