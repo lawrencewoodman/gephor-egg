@@ -81,7 +81,6 @@
 
 ;; Record types -------------------------------------------------------------
 
-;; TODO: Consider using parameters to pass this information around
 (define-record-type request
   (make-request selector client-address)
   request?
