@@ -47,17 +47,36 @@
     (set! number-of-connections (sub1 number-of-connections))
     (mutex-unlock! connections-mutex) )
 
-  (define (max-connections-reached?)
-    (mutex-lock! connections-mutex)
-    (let ((count number-of-connections))
-      (mutex-unlock! connections-mutex)
-      (>= count (max-connections) ) ) )
-
   (define (num-connections)
     (mutex-lock! connections-mutex)
     (let ((count number-of-connections))
       (mutex-unlock! connections-mutex)
       count) )
+
+  (define (wait-for-connections-to-finish)
+    (let loop ()
+      (mutex-lock! connections-mutex)
+      (let ((count number-of-connections))
+        (mutex-unlock! connections-mutex)
+        (unless (= count 0)
+                (loop) ) ) ) )
+
+  ;; Wait until the number of simultaneous connections is less than
+  ;; max-connections.
+  (define (wait-for-free-connections)
+    (let loop ((first-run #t))
+      (mutex-lock! connections-mutex)
+      (let ((count number-of-connections))
+        (mutex-unlock! connections-mutex)
+        (when (>= count (max-connections))
+              (begin
+                (when first-run
+                      (log-warning "maximum connections limit reached"
+                                   (cons 'number-of-connections
+                                         number-of-connections)
+                                   (cons 'max-connections
+                                         (max-connections))))
+                (loop #f) ) ) ) ) )
 
   (define (next-connection-id)
     (mutex-lock! connection-id-mutex)
@@ -131,34 +150,22 @@
                              (handle-connect in out))
           (dec-connection-count)))))
 
-  (define (wait-for-connections-to-finish)
-    (let loop ()
-      (mutex-lock! connections-mutex)
-      (let ((count number-of-connections))
-        (mutex-unlock! connections-mutex)
-        (unless (= count 0)
-                (loop) ) ) ) )
 
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
   ;; thread which is stopped by stop-sever.
+  ;; If max connections reached then it will stop accepting connections
+  ;; until the number of simultaneous connections drops.
   (define (listen)
+    ;; TODO: Add an exception handler to this to cover the whole lot
     (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
       (let ((listener (tcp-listen port)))
         (mutex-unlock! server-ready-mutex)
         (let loop ()
-          ;; TODO: Look at how spiffy and other servers handle this
-          ;; TODO: Maybe just output an error saying unavailable
-          ;; TODO: Which is worse returning an error menu before
-          ;; TODO: a selector has been sent or just dropping connection
-          ;; TODO: compare how different browsers handle this and document
-          ;; TODO: could also potentially wait for a connection to become free
-          (if (max-connections-reached?)
-              (log-warning "maximum connections limit reached"
-                           (cons 'number-of-connections number-of-connections))
-              (let-values (((in out) (tcp-accept/handle-timeout listener)))
-                (when (and in out)
-                      (start-connect-thread in out))))
+          (wait-for-free-connections)
+          (let-values (((in out) (tcp-accept/handle-timeout listener)))
+            (when (and in out)
+                  (start-connect-thread in out)))
             (unless (stop-requested?)
                     (loop)))
         (wait-for-connections-to-finish)
