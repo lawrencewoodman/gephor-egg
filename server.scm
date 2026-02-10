@@ -98,7 +98,6 @@
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
-        ;; TODO: What happens if selector is #f?
         (when selector
               (parameterize ((log-context (list (cons 'connection-id (next-connection-id))
                                                 (cons 'client-address client-address)
@@ -204,8 +203,6 @@
              (log-context))
       #f)
     (ex (exn)
-      ;; TODO: Should this be a warning or error log level?
-      ;; TODO: Add log-context ?
       (log-warning "exception when reading selector"
                    (cons 'client-address client-address)
                    (cons 'exception-msg (get-condition-property ex 'exn 'message)))
