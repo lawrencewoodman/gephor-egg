@@ -109,7 +109,6 @@
                   (string<? a-filename b-filename))))))))
 
 
-;; TODO: Move this, export? and rename?
 ;; TODO: Make sure paths and selectors are safe
 ;; Returns #f if not world readable, otherwise a list of menu
 ;; items representing the files in the directory
