@@ -114,18 +114,21 @@
         (close-input-port in)
         (close-output-port out) ) ) )
 
+  (define (log-exception-in-handle-thread in exn)
+    (let-values ([(_ client-address) (tcp-addresses in)])
+      (log-error "exception in handler thread"
+                 (cons 'exception-msg (get-condition-property exn 'exn 'message))
+                 (cons 'client-address client-address) ) ) )
+
 
   (define (start-connect-thread in out)
     (thread-start!
       (make-thread
         (lambda ()
           (inc-connection-count)
-          (handle-exceptions ex
-            ;; TODO: Improve error message
-            ;; TODO: Add connection-id - would it always be updated?`
-            (log-error "exception in handler thread"
-                       (cons 'exception-msg (get-condition-property ex 'exn 'message)))
-            (handle-connect in out))
+          (handle-exceptions exn
+                             (log-exception-in-handle-thread in exn)
+                             (handle-connect in out))
           (dec-connection-count)))))
 
   (define (wait-for-connections-to-finish)
