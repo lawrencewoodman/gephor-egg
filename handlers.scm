@@ -2,8 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   selector->local-path serve-dir serve-file serve-path
-;;;   serve-url
+;;;   serve-dir serve-file serve-path serve-url
 ;;;
 ;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -12,34 +11,6 @@
 
 
 ;; Exported Definitions ------------------------------------------------------
-
-;; Converts a selector string into a local-path string by prepending root-dir.
-;; It also confirms that the path is safe.
-;;
-;; The selector must be a valid file path.  Whitespace and '/' characters
-;; will be trimmed from both ends of the selector to ensure safe and
-;; predicatable local path creation.  Whitespace is trimmed even though
-;; it should be by the server because the removal of a leading or terminating
-;; '/' character might leave whitespace.
-;;
-;; Logs a warning if the path isn't safe
-;;
-;; Returns #f on failure.
-(define (selector->local-path root-dir selector)
-  (let* ((root-dir (if (> (string-length root-dir) 1)
-                       (string-chomp root-dir "/")
-                       root-dir))
-         (selector (trim-path-selector selector))
-         (local-path (make-pathname root-dir selector)))
-    (if (safe-path? root-dir local-path)
-        local-path
-        (begin
-          (apply log-warning
-                 "path isn't safe"
-                 (cons 'path local-path)
-                 (log-context))
-          #f) ) ) )
-
 
 ;; Tries the following handlers in turn until one returns non-false or the
 ;; last one fails:

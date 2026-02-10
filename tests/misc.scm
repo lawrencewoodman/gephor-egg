@@ -3,6 +3,79 @@
 
 (test-group "misc"
 
+  (test "selector->local-path returns false if selector contains '..'"
+        #f
+        (selector->local-path fixtures-dir "../dir-a") )
+
+  (test "selector->local-path returns false if selector contains './'"
+        #f
+        (selector->local-path fixtures-dir "./dir-a") )
+
+  (test "selector->local-path returns false if selector contains a '\\'"
+        #f
+        (selector->local-path fixtures-dir "dir-a\\fred") )
+
+  (test "selector->local-path returns false if root-dir contains ./"
+        #f
+        (selector->local-path "/tmp/./this" "dir-a") )
+
+  (test "selector->local-path false if root-dir contains .."
+        #f
+        (selector->local-path "/.." "dir-a") )
+
+  (test "selector->local-path returns false if root-dir contains \\"
+        #f
+        (selector->local-path "/\\" "dir-a") )
+
+  (test "selector->local-path doesn't allow percent decoding to turn %2E%2E into .."
+        (make-pathname fixtures-dir "dir-a/%2E%2E")
+        (selector->local-path fixtures-dir "dir-a/%2E%2E") )
+
+  (test "selector->local-path forms a local-path from root-dir and selector"
+        (make-pathname fixtures-dir "dir-a")
+        (selector->local-path fixtures-dir "dir-a") )
+
+  (test "selector->local-path allows root-dir to end with a '/'"
+        (make-pathname fixtures-dir "dir-a")
+        (let ((root-dir (sprintf "~A/" fixtures-dir)))
+          (selector->local-path root-dir "dir-a") ) )
+
+  (test "selector->local-path allows root-dir to not end with a '/'"
+        (make-pathname fixtures-dir "dir-a")
+        (let ((root-dir (string-chomp fixtures-dir "/")))
+          (selector->local-path root-dir "dir-a") ) )
+
+
+  ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
+  (test "selector->local-path allows root-dir to be '/'"
+        "/"
+        (selector->local-path "/" "") )
+
+
+  (test "selector->local-path trims whitespace and '/' characters from both ends of a selector"
+        '(#t #t #t #t #t #t #t #t #t)
+        (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
+                           "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
+            (map (lambda (selector)
+                         (equal? (make-pathname fixtures-dir "dir-a")
+                                 (selector->local-path fixtures-dir selector)))
+                 selectors) ) )
+
+
+  (test "selector->local-path returns #f and logs a warning if local-path isn't safe"
+        (list #f
+              "ts=#t level=warning msg=\"path isn't safe\" path=#t connection-id=3\n")
+        (let ((log-test-port (open-output-string))
+              (selector "../bin"))
+          (parameterize ((log-level 30)
+                         (log-port log-test-port)
+                         (log-context (list (cons 'connection-id 3))))
+            (list (selector->local-path fixtures-dir selector)
+                  (irregex-replace/all "path=.*?../bin"
+                    (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
+                    "path=#t") ) ) ) )
+
+
   (test "trim-path-selector removes whitespace and '/' characters at beginning and end of selectors"
         '("hello" "hello" "h ello" "hello" "he  e/llo" "hello" "hello" "hello")
         (let ((test-selectors '("  /hello"

@@ -7,7 +7,6 @@
 ;;;
 
 
-;; TODO: rename  exported functions to make consistent and more predictable?
 (module gephor
   (log-context
    start-server stop-server
@@ -15,7 +14,6 @@
    make-router router-add router-match
    menu-item menu-item-file menu-item-url
    menu-render
-   selector->local-path
    serve-dir
    serve-file
    serve-path
@@ -24,6 +22,7 @@
    max-response-size
    server-hostname
    server-port
+   selector->local-path
    trim-path-selector
    safe-path?
    send-response
