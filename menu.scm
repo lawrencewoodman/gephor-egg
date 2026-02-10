@@ -5,7 +5,7 @@
 ;;;   menu-item menu-item-info-wrap menu-item-file menu-item-url
 ;;;   menu-render
 ;;;
-;;; Copyright (C) 2024 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;

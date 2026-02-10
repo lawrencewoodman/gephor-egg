@@ -1,7 +1,7 @@
 ;;; A Gopher server module for Chicken Scheme
 ;;;
 ;;;
-;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;

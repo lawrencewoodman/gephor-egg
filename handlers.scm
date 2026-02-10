@@ -4,7 +4,7 @@
 ;;; From this file the following are exported:
 ;;;   serve-dir serve-file serve-path serve-url
 ;;;
-;;; Copyright (C) 2024-2025 Lawrence Woodman <https://lawrencewoodman.github.io/>
+;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
 ;;; Licensed under an MIT licence.  Please see LICENCE.md for details.
 ;;;
