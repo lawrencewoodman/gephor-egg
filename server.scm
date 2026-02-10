@@ -92,7 +92,7 @@
                                  (apply log-warning "error in handler"
                                         (cons 'num-connections (num-connections))
                                         (log-context))
-                                 (send-response/error-menu "resource not available"
+                                 (send-response/error-menu "resource unavailable"
                                                             out) ) ) ) ) )
 
   (define (handle-connect in out)
