@@ -145,11 +145,17 @@
       (make-thread
         (lambda ()
           (inc-connection-count)
+          ; We need an exception handler here and in listen so that
+          ; the connection-count gets decreased if an exception is raised
           (handle-exceptions exn
                              (log-exception-in-handle-thread in exn)
                              (handle-connect in out))
           (dec-connection-count)))))
 
+  (define (log-exception-in-listen exn)
+    (log-error "exception in listen"
+                 (cons 'exception-msg
+                       (get-condition-property exn 'exn 'message) ) ) )
 
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
@@ -157,19 +163,20 @@
   ;; If max connections reached then it will stop accepting connections
   ;; until the number of simultaneous connections drops.
   (define (listen)
-    ;; TODO: Add an exception handler to this to cover the whole lot
-    (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
-      (let ((listener (tcp-listen port)))
-        (mutex-unlock! server-ready-mutex)
-        (let loop ()
-          (wait-for-free-connections)
-          (let-values (((in out) (tcp-accept/handle-timeout listener)))
-            (when (and in out)
-                  (start-connect-thread in out)))
-            (unless (stop-requested?)
-                    (loop)))
-        (wait-for-connections-to-finish)
-        (tcp-close listener) ) ) )
+    (handle-exceptions exn
+                       (log-exception-in-listen exn)
+      (parameterize ((tcp-accept-timeout (or (tcp-accept-timeout) 5000)))
+        (let ((listener (tcp-listen port)))
+          (mutex-unlock! server-ready-mutex)
+          (let loop ()
+            (wait-for-free-connections)
+            (let-values (((in out) (tcp-accept/handle-timeout listener)))
+              (when (and in out)
+                    (start-connect-thread in out)))
+              (unless (stop-requested?)
+                      (loop)))
+          (wait-for-connections-to-finish)
+          (tcp-close listener) ) ) ) )
 
   (define (stop-requested?)
     (thread-specific (current-thread) ) )
