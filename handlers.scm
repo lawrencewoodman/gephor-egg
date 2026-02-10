@@ -85,6 +85,9 @@
 
 ;; Internal Definitions ------------------------------------------------------
 
+;; A directory entry used by list-dir
+(define-type dir-entry (list string boolean string))
+
 ;; Does the file have word readable permissions?
 (define (world-readable? filename)
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
@@ -125,26 +128,12 @@
               (list filename #f selector))
             (else #f) ) ) )
 
-  ;; TODO: Truncate usernames for filenames that are > 69 characters
-  (define (entry->menu-item entry)
-    (let ((filename (first entry))
-           (is-dir? (second entry))
-           (selector (third entry)))
-      (if is-dir?
-          (menu-item 'menu
-                     filename
-                     selector
-                     (server-hostname)
-                     (server-port))
-          (menu-item-file (make-pathname local-path filename)
-                          filename
-                          selector) ) ) )
-
   (if (world-readable? local-path)
       (let* ((filenames (directory local-path))
              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
              (menu (do ((entries entries (cdr entries))
-                        (result '() (let ((item (entry->menu-item (car entries))))
+                        (result '() (let ((item (dir-entry->menu-item local-path
+                                                                      (car entries))))
                                       (if item
                                           (cons item result)
                                            result))))
@@ -159,6 +148,21 @@
         #f) ) )
 
 
+;; Return a menu item from a directory entry in list-dir
+(: dir-entry->menu-item (string dir-entry --> menu-item))
+(define (dir-entry->menu-item local-path entry)
+  (let ((filename (first entry))
+         (is-dir? (second entry))
+         (selector (third entry)))
+    (if is-dir?
+        (menu-item 'menu
+                   filename
+                   selector
+                   (server-hostname)
+                   (server-port))
+        (menu-item-file (make-pathname local-path filename)
+                        filename
+                        selector) ) ) )
 
 
 ;; The HTML template used by serve-url
