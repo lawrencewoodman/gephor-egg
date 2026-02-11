@@ -123,38 +123,29 @@
 ;; page which points to the desired URL.  This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Returns #f if URL is invalid and logs an error,
-;; otherwise a menu-item is returned
-(: menu-item-url (string string -> (or menu-item false)))
+;; Returns #f if URL is invalid otherwise a menu-item is returned
+(: menu-item-url (string string --> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((scheme userinfo host port path itemtype) (split-url url)))
-    (if scheme
-        (case (string->symbol scheme)
-          ((gopher)
-            (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
-              (menu-item itemtype username path host (or port 70))))
-          ((telnet)
-            (if userinfo
-                (menu-item 'telnet
-                           username
-                           (sprintf "URL:~A" url)
-                           (server-hostname)
-                           (server-port))
-                (menu-item '|8| username path host (or port 23))))
-          (else
-            (menu-item 'html
-                       username
-                       (sprintf "URL:~A" url)
-                       (server-hostname)
-                       (server-port))))
-        (begin
-            (apply log-error
-                   "invalid URL"
-                   (cons 'username username)
-                   (cons 'url url)
-                   (log-context))
-            #f) ) ) )
-
+    (and scheme
+         (case (string->symbol scheme)
+           ((gopher)
+             (let ((itemtype (if itemtype (string->symbol itemtype) '|1|)))
+               (menu-item itemtype username path host (or port 70))))
+           ((telnet)
+             (if userinfo
+                 (menu-item 'telnet
+                            username
+                            (sprintf "URL:~A" url)
+                            (server-hostname)
+                            (server-port))
+                 (menu-item '|8| username path host (or port 23))))
+           (else
+             (menu-item 'html
+                        username
+                        (sprintf "URL:~A" url)
+                        (server-hostname)
+                        (server-port) ) ) ) ) ) )
 
 
 ;; Render the menu as text ready for sending
