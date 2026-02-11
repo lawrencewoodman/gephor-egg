@@ -109,7 +109,7 @@
 
 
 
-  (test "menu-item allows username > 69"
+  (test "menu-item allows username > 69 despite RFC 1436 recommended limit"
         (string-intersperse (list
           (sprintf "i~A\t\tlocalhost\t70" (make-string 68 #\a))
           (sprintf "i~A\t\tlocalhost\t70" (make-string 69 #\a))
@@ -125,21 +125,6 @@
                                                  70))
                           lengths)))
           (menu-render menu) ) )
-
-
-  (test "menu-item logs a warning a message if username > 69 characters"
-        (string-intersperse (list
-          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A connection-id=3" (make-string 70 #\a))
-          (sprintf "ts=#t level=warning msg=\"menu item username > 69 characters\" username=~A connection-id=3\n" (make-string 71 #\a)))
-          "\n")
-        (let ((log-test-port (open-output-string))
-              (lengths '(68 69 70 71)))
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (for-each (lambda (l) (menu-item 'info (make-string l #\a) "" "localhost" 70))
-                      lengths)
-            (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) )
 
 
   (test "menu-item-file handles a selector with no file extension"

@@ -31,7 +31,6 @@
 ;;
 ;; Returns #f if an error otherwise a menu-item is returned
 ;;
-;; Logs a warning if the username > 69 characters (as per RFC 1436)
 ;; Logs an error if am unknown itemtype if > 1 character
 (: menu-item (symbol string string string fixnum -> (or menu-item false)))
 (define (menu-item itemtype username selector hostname port)
@@ -60,16 +59,7 @@
                 (and (= (string-length maybe-itemtype) 1)
                      maybe-itemtype))))))
     (if itemtype-char
-        (begin
-          ;; TODO: measure in UTF-8 characters/codepoints so that characters that
-          ;; TODO: are described using more than a single byte still only count as
-          ;; TODO: a single character.  Test.
-          (when (> (string-length username) 69)
-                (apply log-warning
-                       "menu item username > 69 characters"
-                       (cons 'username username)
-                       (log-context)))
-          (list itemtype-char username selector hostname port))
+        (list itemtype-char username selector hostname port)
         (begin
           (apply log-error
                  "invalid itemtype"
@@ -99,11 +89,11 @@
                   (let ((itemtype (cond
                                     ((string=? media-type "image")
                                       (if (string=? media-subtype "gif")
-                                           'gif
-                                         'image))
+                                          'gif
+                                          'image))
                                     ((string=? media-type "text")
                                       (if (string=? media-subtype "html")
-                                           'html)
+                                          'html)
                                           'text)
                                     (else 'binary))))
                      (menu-item itemtype
