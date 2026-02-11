@@ -151,12 +151,9 @@
 ;; Render the menu as text ready for sending
 (: menu-render ((list-of menu-item) --> string))
 (define (menu-render menu-items)
-  (define (item-render item)
-    (apply sprintf "~A~A\t~A\t~A\t~A\r\n" item))
-
   (let ((menu-str
           (foldl (lambda (out-str item)
-                   (string-append out-str (item-render item)))
+                   (string-append out-str (render-menu-item item)))
                  ""
                  menu-items)))
     ;; Properly constructed menus should end with ".\r\n"
@@ -171,6 +168,10 @@
 
 ;; Compiled Regular Expression to split magic file mime types
 (define mime-split-regex (string->irregex "^([^/]+)\/([^;]+); charset=.*$"))
+
+;; Render a menu item
+(define (render-menu-item item)
+  (apply sprintf "~A~A\t~A\t~A\t~A\r\n" item))
 
 
 ;; Split up a URL to return values for: scheme userinfo host port path itemtype
