@@ -98,15 +98,9 @@
           (menu-render (list item) ) ) )
 
 
-  (test "menu-item returns #f and logs an error if unknown itemtype is longer than a single letter"
-        (list #f "ts=#t level=error msg=\"invalid itemtype\" itemtype=uu connection-id=3\n")
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (list (menu-item 'uu "something" "/fred/hi" "localhost" 70)
-                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
-
+  (test "menu-item returns #f if unknown itemtype is longer than a single letter"
+        #f
+        (menu-item 'uu "something" "/fred/hi" "localhost" 70) )
 
 
   (test "menu-item allows username > 69 despite RFC 1436 recommended limit"

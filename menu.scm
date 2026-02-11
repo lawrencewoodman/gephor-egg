@@ -29,10 +29,9 @@
 ;; |5| Dos binary archive itemtype is not recommended as it is unclear what
 ;;     this is and it should be able to be replaced by |9| in every instance.
 ;;
-;; Returns #f if an error otherwise a menu-item is returned
-;;
-;; Logs an error if am unknown itemtype if > 1 character
-(: menu-item (symbol string string string fixnum -> (or menu-item false)))
+;; Returns #f if itemtype > 1 character and unknown,
+;; otherwise a menu-item is returned
+(: menu-item (symbol string string string fixnum --> (or menu-item false)))
 (define (menu-item itemtype username selector hostname port)
   (let ((username (string-trim-right username char-set:whitespace))
         (selector (string-trim-both selector char-set:whitespace))
@@ -58,14 +57,8 @@
               (let ((maybe-itemtype (symbol->string itemtype)))
                 (and (= (string-length maybe-itemtype) 1)
                      maybe-itemtype))))))
-    (if itemtype-char
-        (list itemtype-char username selector hostname port)
-        (begin
-          (apply log-error
-                 "invalid itemtype"
-                 (cons 'itemtype itemtype)
-                 (log-context))
-          #f) ) ) )
+    (and itemtype-char
+        (list itemtype-char username selector hostname port) ) ) )
 
 
 ;; Creates a menu item for a file.
