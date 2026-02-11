@@ -133,19 +133,11 @@
             (menu-render (list item) ) ) ) )
 
 
-  (test "menu-item-file returns #f and logs an error if the file doesn't exist"
-        (list #f
-              (sprintf "ts=#t level=error msg=\"file doesn't exist\" local-path=~A connection-id=3\n"
-                        (make-pathname fixtures-dir "nonexistent.txt")))
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((server-hostname "localhost") (server-port 70)
-                         (log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (list (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
-                                  "A file that doesn't exist"
-                                  "nonexistent.txt")
-                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
+  (test "menu-item-file returns #f if the file doesn't exist"
+        #f
+        (menu-item-file (make-pathname fixtures-dir "nonexistent.txt")
+                        "A file that doesn't exist"
+                        "nonexistent.txt") )
 
 
   (test "menu-item-file detects directories properly"

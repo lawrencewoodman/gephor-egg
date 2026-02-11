@@ -113,6 +113,8 @@
 ;; Returns #f if not world readable, otherwise a list of menu
 ;; items representing the files in the directory
 ;; If not world readable it logs an error message
+;; TODO: throws exception when not u x attribute on a dir and isn't owned
+;; TODO: by or in group of user running program
 (: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
@@ -135,7 +137,7 @@
                                                                       (car entries))))
                                       (if item
                                           (cons item result)
-                                           result))))
+                                          result))))
                         ((null? entries) result))))
         ;; TODO: If resulting menu is empty should return #f and log an error
         (reverse menu))

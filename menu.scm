@@ -67,45 +67,31 @@
 ;;
 ;; Returns #f if the file doesn't exist or the type can't be determined,
 ;; otherwise a menu-item is returned
-;;
-;; Logs error messgaes for file doesn't exist or type can't be determined
 (: menu-item-file (string string string -> (or menu-item false)))
 (define (menu-item-file local-path username selector)
-  (if (file-exists? local-path)
-      (if (directory? local-path)
-          (menu-item 'menu username selector (server-hostname) (server-port))
-          (let* ((mime-type (identify local-path 'mime))
-                 (mime-match (irregex-search mime-split-regex mime-type)))
-            (if (irregex-match-data? mime-match)
-                (let ((media-type (irregex-match-substring mime-match 1))
-                      (media-subtype (irregex-match-substring mime-match 2)))
-                  (let ((itemtype (cond
-                                    ((string=? media-type "image")
-                                      (if (string=? media-subtype "gif")
-                                          'gif
-                                          'image))
-                                    ((string=? media-type "text")
-                                      (if (string=? media-subtype "html")
-                                          'html)
-                                          'text)
-                                    (else 'binary))))
-                     (menu-item itemtype
-                                username
-                                selector
-                                (server-hostname)
-                                (server-port))))
-                (begin
-                  (apply log-error
-                         "unknown file type"
-                         (cons 'local-path local-path)
-                         (log-context))
-                  #f))))
-      (begin
-        (apply log-error
-               "file doesn't exist"
-               (cons 'local-path local-path)
-               (log-context))
-        #f) ) )
+  (and (file-exists? local-path)
+       (if (directory? local-path)
+           (menu-item 'menu username selector (server-hostname) (server-port))
+           (let* ((mime-type (identify local-path 'mime))
+                  (mime-match (irregex-search mime-split-regex mime-type)))
+             (and (irregex-match-data? mime-match)
+                  (let ((media-type (irregex-match-substring mime-match 1))
+                        (media-subtype (irregex-match-substring mime-match 2)))
+                    (let ((itemtype (cond
+                                      ((string=? media-type "image")
+                                        (if (string=? media-subtype "gif")
+                                            'gif
+                                            'image))
+                                      ((string=? media-type "text")
+                                        (if (string=? media-subtype "html")
+                                            'html)
+                                            'text)
+                                      (else 'binary))))
+                       (menu-item itemtype
+                                  username
+                                  selector
+                                  (server-hostname)
+                                  (server-port) ) ) ) ) ) ) ) )
 
 
 ;; Turn a URL into a menu item
