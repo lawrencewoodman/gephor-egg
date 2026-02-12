@@ -85,23 +85,35 @@
       (mutex-unlock! connection-id-mutex)
       connection-id) )
 
-    (define (log-connection-handled)
-      (apply log-info
-             "connection handled"
-             (cons 'num-connections (num-connections))
-             (log-context) ) )
+  (define (log-connection-handled)
+    (apply log-info
+           "connection handled"
+           (cons 'num-connections (num-connections))
+           (log-context) ) )
+
+  (define (log-exception-in-listen exn)
+    (log-error "exception in listen"
+                 (cons 'exception-msg
+                       (get-condition-property exn 'exn 'message) ) ) )
+
+  (define (log-exception-in-handle-thread in exn)
+    (let-values ([(_ client-address) (tcp-addresses in)])
+      (log-error "exception in handler thread"
+                 (cons 'exception-msg (get-condition-property exn 'exn 'message))
+                 (cons 'client-address client-address) ) ) )
+
+  (define (log-exception-in-run-handler exn)
+    (apply log-error "exception raised in run handler"
+                     (cons 'exception-msg
+                           (get-condition-property exn 'exn 'message))
+                     (cons 'num-connections
+                           (num-connections))
+                     (log-context) ) )
 
     (define (run-handler handler request out)
       (handle-exceptions exn
                          (begin
-                           (apply log-error "exception raised by handler"
-                                            (cons 'exception-msg
-                                                  (get-condition-property exn
-                                                                          'exn
-                                                                          'message))
-                                            (cons 'num-connections
-                                                  (num-connections))
-                                            (log-context))
+                           (log-exception-in-run-handler exn)
                            (send-response/error-menu "resource unavailable" out))
                          (let ((response (handler request)))
                            (if response
@@ -133,12 +145,6 @@
         (close-input-port in)
         (close-output-port out) ) ) )
 
-  (define (log-exception-in-handle-thread in exn)
-    (let-values ([(_ client-address) (tcp-addresses in)])
-      (log-error "exception in handler thread"
-                 (cons 'exception-msg (get-condition-property exn 'exn 'message))
-                 (cons 'client-address client-address) ) ) )
-
 
   (define (start-connect-thread in out)
     (thread-start!
@@ -151,11 +157,6 @@
                              (log-exception-in-handle-thread in exn)
                              (handle-connect in out))
           (dec-connection-count)))))
-
-  (define (log-exception-in-listen exn)
-    (log-error "exception in listen"
-                 (cons 'exception-msg
-                       (get-condition-property exn 'exn 'message) ) ) )
 
   ;; Continuously listens to connections to the port and arranges
   ;; for the connections to be handled.  This is designed to run as a
