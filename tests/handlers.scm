@@ -7,21 +7,22 @@
 
   ;; TODO: Add Test for working through the three handlers in serve-path
 
-  ;; TODO: Need to test log messages for this as well
-  (test "serve-dir returns #f if listing a directory that isn't world readable"
+  (test "serve-dir raises and exception if listing a directory that isn't world readable"
         (list (string-intersperse '(
                 "1dir-a\tdir-a\tlocalhost\t70"
                 "1dir-b\tdir-b\tlocalhost\t70"
                 ".\r\n")
                 "\r\n")
-              #f)
+              '(list-dir "can't list dir, path isn't word readable"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
           (create-directory (make-pathname tmpdir "dir-b"))
           (let ((response1 (serve-dir tmpdir request))
                 (response2
-                  (begin
+                  (handle-exceptions ex
+                                     (list (get-condition-property ex 'exn 'location)
+                                           (get-condition-property ex 'exn 'message))
                     ;; Make tmpdir non world readable
                     (set-file-permissions! tmpdir
                                            (bitwise-and (file-permissions tmpdir)

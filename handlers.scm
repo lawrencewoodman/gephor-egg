@@ -110,11 +110,9 @@
 
 
 ;; TODO: Make sure paths and selectors are safe
-;; Returns #f if not world readable, otherwise a list of menu
+;; Returns the directory as a list of menu items
 ;; items representing the files in the directory
 ;; If not world readable it logs an error message
-;; TODO: throws exception when not u x attribute on a dir and isn't owned
-;; TODO: by or in group of user running program
 (: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
@@ -129,24 +127,22 @@
               (list filename #f selector))
             (else #f) ) ) )
 
+  (define (make-menu entries)
+    (do ((entries entries (cdr entries))
+         (result '() (let ((item (dir-entry->menu-item local-path
+                                                       (car entries))))
+                       (if item
+                           (cons item result)
+                           result))))
+        ((null? entries) result) ) )
+
   (if (world-readable? local-path)
       (let* ((filenames (directory local-path))
              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-             (menu (do ((entries entries (cdr entries))
-                        (result '() (let ((item (dir-entry->menu-item local-path
-                                                                      (car entries))))
-                                      (if item
-                                          (cons item result)
-                                          result))))
-                        ((null? entries) result))))
+             (menu (make-menu entries)))
         ;; TODO: If resulting menu is empty should return #f and log an error
         (reverse menu))
-      (begin
-        (apply log-error
-               "can't list dir, path isn't world readable"
-               (cons 'local-path local-path)
-               (log-context))
-        #f) ) )
+      (error* 'list-dir "can't list dir, path isn't word readable") ) )
 
 
 ;; Return a menu item from a directory entry in list-dir
