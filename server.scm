@@ -112,21 +112,22 @@
                            (num-connections))
                      (log-context) ) )
 
-    (define (run-handler handler request out)
-      (handle-exceptions exn
-                         (begin
-                           (log-exception-in-run-handler exn)
-                           (send-response/error-menu "resource unavailable" out))
-                         (let ((response (handler request)))
-                           (if response
-                               (when (send-response response out)
-                                     (log-connection-handled))
-                               (begin
-                                 (apply log-warning "error in handler"
-                                        (cons 'num-connections (num-connections))
-                                        (log-context))
-                                 (send-response/error-menu "resource unavailable"
-                                                            out) ) ) ) ) )
+  (define (run-handler handler request out)
+    (handle-exceptions exn
+                       (begin
+                         (log-exception-in-run-handler exn)
+                         (send-response/error-menu "resource unavailable" out))
+                       (let ((response (handler request)))
+                         (if response
+                             (when (send-response response out)
+                                   (log-connection-handled))
+                             (begin
+                               ;; TODO: is this still appropriate?
+                               (apply log-warning "error in handler"
+                                      (cons 'num-connections (num-connections))
+                                      (log-context))
+                               (send-response/error-menu "resource unavailable"
+                                                          out) ) ) ) ) )
 
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])

@@ -21,6 +21,7 @@
 (define (send-response response out)
   (if (> (string-length response) (max-response-size))
       (begin
+        ; TODO: Replace this with an error
         (apply log-error
                "response is too big to send"
                (log-context))

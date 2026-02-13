@@ -20,9 +20,7 @@
 ;; it should be by the server because the removal of a leading or terminating
 ;; '/' character might leave whitespace.
 ;;
-;; Logs a warning if the path isn't safe
-;;
-;; Returns #f on failure.
+;; If the path isn't safe an error is raised
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
@@ -31,12 +29,7 @@
          (local-path (make-pathname root-dir selector)))
     (if (safe-path? root-dir local-path)
         local-path
-        (begin
-          (apply log-warning
-                 "path isn't safe"
-                 (cons 'path local-path)
-                 (log-context))
-          #f) ) ) )
+        (error* 'selector->local-path "path isn't safe: ~A" local-path) ) ) )
 
 
 ;; Trim beginning and end of selector to remove whitespace and

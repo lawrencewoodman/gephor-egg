@@ -4,28 +4,52 @@
 (test-group "misc"
 
   (test "selector->local-path returns false if selector contains '..'"
-        #f
-        (selector->local-path fixtures-dir "../dir-a") )
+        (list 'selector->local-path
+              (sprintf "path isn't safe: ~A"
+                       (make-pathname fixtures-dir "../dir-a") ) )
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path fixtures-dir "../dir-a") ) )
 
-  (test "selector->local-path returns false if selector contains './'"
-        #f
-        (selector->local-path fixtures-dir "./dir-a") )
+  (test "selector->local-path raises an error if selector contains './'"
+        (list 'selector->local-path
+              (sprintf "path isn't safe: ~A"
+                       (make-pathname fixtures-dir "./dir-a") ) )
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path fixtures-dir "./dir-a") ) )
 
-  (test "selector->local-path returns false if selector contains a '\\'"
-        #f
-        (selector->local-path fixtures-dir "dir-a\\fred") )
+  (test "selector->local-path raises an error if selector contains a '\\'"
+        (list 'selector->local-path
+              (sprintf "path isn't safe: ~A"
+                       (make-pathname fixtures-dir "dir-a\\fred") ) )
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path fixtures-dir "dir-a\\fred") ) )
 
-  (test "selector->local-path returns false if root-dir contains ./"
-        #f
-        (selector->local-path "/tmp/./this" "dir-a") )
+  (test "selector->local-path raises an error if root-dir contains ./"
+        '(selector->local-path "path isn't safe: /tmp/./this/dir-a")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path "/tmp/./this" "dir-a") ) )
 
-  (test "selector->local-path false if root-dir contains .."
-        #f
-        (selector->local-path "/.." "dir-a") )
+  (test "selector->local-path raises an eror if root-dir contains .."
+        '(selector->local-path "path isn't safe: /../dir-a")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path "/.." "dir-a") ) )
 
-  (test "selector->local-path returns false if root-dir contains \\"
-        #f
-        (selector->local-path "/\\" "dir-a") )
+  (test "selector->local-path raises an error if root-dir contains \\"
+        '(selector->local-path "path isn't safe: /\\/dir-a")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (selector->local-path "/\\" "dir-a") ) )
 
   (test "selector->local-path doesn't allow percent decoding to turn %2E%2E into .."
         (make-pathname fixtures-dir "dir-a/%2E%2E")
@@ -60,20 +84,6 @@
                          (equal? (make-pathname fixtures-dir "dir-a")
                                  (selector->local-path fixtures-dir selector)))
                  selectors) ) )
-
-
-  (test "selector->local-path returns #f and logs a warning if local-path isn't safe"
-        (list #f
-              "ts=#t level=warning msg=\"path isn't safe\" path=#t connection-id=3\n")
-        (let ((log-test-port (open-output-string))
-              (selector "../bin"))
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (list (selector->local-path fixtures-dir selector)
-                  (irregex-replace/all "path=.*?../bin"
-                    (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
-                    "path=#t") ) ) ) )
 
 
   (test "trim-path-selector removes whitespace and '/' characters at beginning and end of selectors"

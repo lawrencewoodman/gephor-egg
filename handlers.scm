@@ -142,7 +142,7 @@
              (menu (make-menu entries)))
         ;; TODO: If resulting menu is empty should return #f and log an error
         (reverse menu))
-      (error* 'list-dir "can't list dir, path isn't word readable") ) )
+      (error* 'list-dir "can't list dir, path isn't word readable: ~A" local-path) ) )
 
 
 ;; Return a menu item from a directory entry in list-dir

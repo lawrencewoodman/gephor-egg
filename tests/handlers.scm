@@ -13,7 +13,7 @@
                 "1dir-b\tdir-b\tlocalhost\t70"
                 ".\r\n")
                 "\r\n")
-              '(list-dir "can't list dir, path isn't word readable"))
+              '(list-dir "can't list dir, path isn't word readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
@@ -21,8 +21,12 @@
           (let ((response1 (serve-dir tmpdir request))
                 (response2
                   (handle-exceptions ex
-                                     (list (get-condition-property ex 'exn 'location)
-                                           (get-condition-property ex 'exn 'message))
+                    (list (get-condition-property ex 'exn 'location)
+                          (irregex-replace/all "\/tmp\/.*"
+                                               (get-condition-property ex
+                                                                       'exn
+                                                                       'message)
+                                               "\/tmp/#t"))
                     ;; Make tmpdir non world readable
                     (set-file-permissions! tmpdir
                                            (bitwise-and (file-permissions tmpdir)
@@ -110,10 +114,16 @@
 
 
   (test "serve-file returns #f if selector isn't safe"
-        #f
-        (serve-file fixtures-dir (make-request "../dir-a" "127.0.0.1") ) )
+        (list 'selector->local-path
+              (sprintf "path isn't safe: ~A"
+                       (make-pathname fixtures-dir "../dir-a")))
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (serve-file fixtures-dir (make-request "../dir-a" "127.0.0.1") ) ) )
 
 
+  ;; TODO: Should this raise an error?
   (test "serve-file returns #f if path isn't a regular file"
         #f
         (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1")))
