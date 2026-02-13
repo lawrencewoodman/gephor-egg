@@ -12,24 +12,15 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; Send a response back to the client.  The size of the response must be no
-;; more than parameter: max-response-size
-;; If the response it too big, it logs an error and sends an error menu.
+;; Send a response back to the client.
 ;;
-;; Returns #f if response is too big, otherwise #t
-(: send-response (string output-port -> boolean))
+;; If the response is bigger than the parameter, max-response-size,
+;; it raises an error
+(: send-response (string output-port --> undefined))
 (define (send-response response out)
   (if (> (string-length response) (max-response-size))
-      (begin
-        ; TODO: Replace this with an error
-        (apply log-error
-               "response is too big to send"
-               (log-context))
-        (send-response/error-menu "resource unavailable" out)
-        #f)
-      (begin
-        (write-string response #f out)
-        #t) ) )
+      (error* 'send-response "response is too big to send")
+      (write-string response #f out) ) )
 
 
 ;; Send an error menu as a response with 'msg' as the username.
