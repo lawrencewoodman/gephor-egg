@@ -33,7 +33,7 @@
     ;; is formed safely
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (directory? local-path)
-           (and-let* ((response (list-dir selector local-path)))
+           (let ((response (list-dir selector local-path)))
              (apply log-info
                     "serve directory listing"
                     (cons 'handler 'serve-dir)
@@ -53,7 +53,7 @@
     ;; is formed safely
     (and-let* ((local-path (selector->local-path root-dir selector)))
       (and (regular-file? local-path)
-           (and-let* ((response (safe-read-file (max-response-size) root-dir local-path)))
+           (let ((response (safe-read-file (max-response-size) root-dir local-path)))
              (apply log-info
                     "serve file"
                     (cons 'handler 'serve-file)
