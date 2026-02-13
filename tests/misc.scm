@@ -150,61 +150,54 @@
                test-paths) ) )
 
 
-  (test "safe-read-file returns #f and logs an error if trying to serve a file that isn't world readable"
+  (test "safe-read-file raises an error if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
-              #f
-              "ts=#t level=error msg=\"file isn't world readable\" file=#t connection-id=3\n")
-        (let* ((log-test-port (open-output-string))
-               (tmpdir (create-temporary-directory))
+              (list 'safe-read-file
+                    "can't read file, path isn't word readable: /tmp#t"))
+        (let* ((tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
-          (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
+          (copy-file (make-pathname (list fixtures-dir "dir-world_readable")
+                                    "hello.txt")
                      tmpfile)
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (let ((response1 (safe-read-file 1000 tmpdir tmpfile))
-                  (response2
-                    (begin
-                      ;; Make tmpfile non world readable
-                      (set-file-permissions! tmpfile
-                                             (bitwise-and (file-permissions tmpfile)
-                                                          (bitwise-not perm/iroth)))
-                      (safe-read-file 1000 tmpdir tmpfile))))
-              (list response1
-                    response2
-                    (irregex-replace/all "file=.*?hello.txt"
-                      (confirm-log-entries-valid-timestamp (get-output-string log-test-port))
-                      "file=#t") ) ) ) ) )
+          (let ((response1 (safe-read-file 1000 tmpdir tmpfile))
+                (exn
+                  (handle-exceptions ex
+                    (list (get-condition-property ex 'exn 'location)
+                          (irregex-replace/all "\/tmp\/.*?hello.txt"
+                                               (get-condition-property ex 'exn 'message)
+                                               "\/tmp#t"))
+                    ;; Make tmpfile non world readable
+                    (set-file-permissions! tmpfile
+                                           (bitwise-and (file-permissions tmpfile)
+                                                        (bitwise-not perm/iroth)))
+                    (safe-read-file 1000 tmpdir tmpfile))))
+            (list response1 exn) ) ) )
 
 
-  (test "safe-read-file returns #f and logs an error if file path isn't safe"
-        (list #f
-             (sprintf "ts=#t level=error msg=\"file path isn't safe\" file=~A connection-id=3\n"
+  (test "safe-read-file raises an error if file path isn't safe"
+        (list 'safe-read-file
+             (sprintf "can't read file, path isn't safe: ~A"
                       (make-pathname fixtures-dir "a.txt")))
-        (let ((log-test-port (open-output-string))
-              (max-size 5))
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (list (safe-read-file max-size
-                                  (make-pathname fixtures-dir "dir-a")
-                                  (make-pathname fixtures-dir "a.txt"))
-                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
+        (let ((max-size 5))
+          (handle-exceptions ex
+                             (list (get-condition-property ex 'exn 'location)
+                                   (get-condition-property ex 'exn 'message))
+            (safe-read-file max-size
+                            (make-pathname fixtures-dir "dir-a")
+                            (make-pathname fixtures-dir "a.txt") ) ) ) )
 
 
-  (test "safe-read-file returns #f and logs an error if file is greater than max-size"
-        (list #f
-             (sprintf "ts=#t level=error msg=\"file is too big to read\" file=~A max-size=5 connection-id=3\n"
+  (test "safe-read-file raises an error if file is bigger than max-size"
+        (list 'unsafe-read-file
+             (sprintf "can't read file, file is too big: ~A"
                       (make-pathname fixtures-dir "a.txt")))
-        (let ((log-test-port (open-output-string))
-              (max-size 5))
-          (parameterize ((log-level 30)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
-            (list (safe-read-file max-size
-                                  fixtures-dir
-                                  (make-pathname fixtures-dir "a.txt"))
-                  (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) )
+        (let ((max-size 5))
+          (handle-exceptions ex
+                             (list (get-condition-property ex 'exn 'location)
+                                   (get-condition-property ex 'exn 'message))
+            (safe-read-file max-size
+                            fixtures-dir
+                            (make-pathname fixtures-dir "a.txt") ) ) ) )
 
 
   (test "safe-read-file can read a file whose size is equal to max-size"

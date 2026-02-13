@@ -96,12 +96,14 @@
                  (cons 'exception-msg
                        (get-condition-property exn 'exn 'message) ) ) )
 
+  ;; TODO: maybe shouldn't mention exception in this
   (define (log-exception-in-handle-thread in exn)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (log-error "exception in handler thread"
                  (cons 'exception-msg (get-condition-property exn 'exn 'message))
                  (cons 'client-address client-address) ) ) )
 
+  ;; TODO: probably should mention exception in this
   (define (log-exception-in-run-handler exn)
     (apply log-error "exception raised in run handler"
                      (cons 'exception-msg

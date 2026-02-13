@@ -7,7 +7,7 @@
 
   ;; TODO: Add Test for working through the three handlers in serve-path
 
-  (test "serve-dir raises and exception if listing a directory that isn't world readable"
+  (test "serve-dir raises an exception if listing a directory that isn't world readable"
         (list (string-intersperse '(
                 "1dir-a\tdir-a\tlocalhost\t70"
                 "1dir-b\tdir-b\tlocalhost\t70"
@@ -61,20 +61,26 @@
 
   (test "serve-file returns false if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
-              #f)
+              (list 'safe-read-file "can't read file, path isn't word readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")
                      (make-pathname tmpdir "hello.txt"))
           (let ((response1 (serve-file tmpdir request))
-                (response2
-                  (begin
+                (exn
+                  (handle-exceptions ex
+                    (list (get-condition-property ex 'exn 'location)
+                          (irregex-replace/all "\/tmp\/.*?hello.txt"
+                                               (get-condition-property ex
+                                                                       'exn
+                                                                       'message)
+                                               "\/tmp\/#t"))
                     ;; Make tmpdir non world readable
                     (set-file-permissions! (make-pathname tmpdir "hello.txt")
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
                     (serve-file tmpdir request))))
-            (list response1 response2) ) ) )
+            (list response1 exn) ) ) )
 
 
   (test "serve-file returns the contents of a binary file"
@@ -113,15 +119,20 @@
         (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1")))
 
 
-  (test "serve-file returns #f if file is bigger than max-response-size"
-        (list "hello\n" #f)
+  (test "serve-file raises an error if file is bigger than max-response-size"
+        (list "hello\n"
+              (list 'unsafe-read-file (sprintf "can't read file, file is too big: ~A"
+                                               (make-pathname fixtures-dir "a.txt"))))
         (let ((response1 (parameterize ((max-response-size 5000))
                            (serve-file fixtures-dir
                                        (make-request "a.txt" "127.0.0.1"))))
-              (response2 (parameterize ((max-response-size 5))
+              (exn (parameterize ((max-response-size 5))
+                (handle-exceptions ex
+                                   (list (get-condition-property ex 'exn 'location)
+                                         (get-condition-property ex 'exn 'message))
                            (serve-file fixtures-dir
-                                       (make-request "a.txt" "127.0.0.1")))))
-          (list response1 response2) ) )
+                                       (make-request "a.txt" "127.0.0.1"))))))
+          (list response1 exn) ) )
 
 
   (test "serve-path returns false if path doesn't exist"

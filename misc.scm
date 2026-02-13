@@ -74,28 +74,17 @@
                                  (length n-root-elements) ) ) ) ) ) ) ) )
 
 
-;; If the file is bigger than max-size it will return #f and log an error.
-;; If the file isn't world readable it will return #f and log an error.
-;; If the file path isn't safe it will return #f and log an error.
+;; If the file is bigger than max-size it will raise an error
+;; If the file isn't world readable it will raise an error
+;; If the file path isn't safe it will raise an error
 ;; Otherwise, it will return the contents of the file
-(: safe-read-file (integer string string -> (or string false)))
+(: safe-read-file (integer string string --> string))
 (define (safe-read-file max-size root-dir path)
-  (printf "path word readable? ~A, path: ~A~%" (world-readable? path) path)
   (if (world-readable? path)
       (if (safe-path? root-dir path)
           (unsafe-read-file max-size path)
-          (begin
-            (apply log-error
-                   "file path isn't safe"
-                   (cons 'file path)
-                   (log-context))
-            #f))
-      (begin
-        (apply log-error
-               "file isn't world readable"
-               (cons 'file path)
-               (log-context))
-        #f) ) )
+          (error* 'safe-read-file "can't read file, path isn't safe: ~A" path))
+      (error* 'safe-read-file "can't read file, path isn't word readable: ~A" path)))
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -112,8 +101,9 @@
 
 
 ;; Used by safe-read-file.  This function reads a file without checking if
-;; the path is safe and world readable
-(: unsafe-read-file (integer string -> (or string false)))
+;; the path is safe and world readable.  If the file is too big it raises
+;; an error.
+(: unsafe-read-file (integer string --> string))
 (define (unsafe-read-file max-size path)
   (call-with-input-file path
                         (lambda (port)
@@ -124,12 +114,8 @@
                             (if (eof-object? contents)
                                 ""
                                 (if more?
-                                    (begin
-                                      (apply log-error
-                                             "file is too big to read"
-                                             (cons 'file path)
-                                             (cons 'max-size max-size)
-                                             (log-context))
-                                      #f)
+                                    (error* 'unsafe-read-file
+                                            "can't read file, file is too big: ~A"
+                                            path)
                                     contents))))
                         #:binary) )

@@ -112,7 +112,7 @@
 ;; TODO: Make sure paths and selectors are safe
 ;; Returns the directory as a list of menu items
 ;; items representing the files in the directory
-;; If not world readable it logs an error message
+;; If not world readable it raises an error
 (: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
