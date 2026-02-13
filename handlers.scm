@@ -88,7 +88,7 @@
 ;; A directory entry used by list-dir
 (define-type dir-entry (list string boolean string))
 
-;; Does the file have word readable permissions?
+;; Does the file have world readable permissions?
 (define (world-readable? filename)
   (= perm/iroth (bitwise-and (file-permissions filename) perm/iroth)))
 
@@ -142,7 +142,7 @@
              (menu (make-menu entries)))
         ;; TODO: If resulting menu is empty should return #f and log an error
         (reverse menu))
-      (error* 'list-dir "can't list dir, path isn't word readable: ~A" local-path) ) )
+      (error* 'list-dir "can't list dir, path isn't world readable: ~A" local-path) ) )
 
 
 ;; Return a menu item from a directory entry in list-dir

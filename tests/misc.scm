@@ -163,7 +163,7 @@
   (test "safe-read-file raises an error if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
               (list 'safe-read-file
-                    "can't read file, path isn't word readable: /tmp#t"))
+                    "can't read file, path isn't world readable: /tmp#t"))
         (let* ((tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable")

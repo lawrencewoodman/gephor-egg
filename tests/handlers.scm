@@ -13,7 +13,7 @@
                 "1dir-b\tdir-b\tlocalhost\t70"
                 ".\r\n")
                 "\r\n")
-              '(list-dir "can't list dir, path isn't word readable: /tmp/#t"))
+              '(list-dir "can't list dir, path isn't world readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
@@ -65,7 +65,7 @@
 
   (test "serve-file returns false if trying to serve a file that isn't world readable"
         (list "Hello, this is used to test serving a non world readable file.\n"
-              (list 'safe-read-file "can't read file, path isn't word readable: /tmp/#t"))
+              (list 'safe-read-file "can't read file, path isn't world readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable") "hello.txt")

@@ -77,7 +77,7 @@
       (if (safe-path? root-dir path)
           (unsafe-read-file max-size path)
           (error* 'safe-read-file "can't read file, path isn't safe: ~A" path))
-      (error* 'safe-read-file "can't read file, path isn't word readable: ~A" path)))
+      (error* 'safe-read-file "can't read file, path isn't world readable: ~A" path)))
 
 
 ;; Internal Definitions ------------------------------------------------------
