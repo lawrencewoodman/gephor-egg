@@ -3,76 +3,69 @@
 
 (test-group "misc"
 
-  (test "selector->local-path returns false if selector contains '..'"
-        (list 'selector->local-path
-              (sprintf "path isn't safe: ~A"
-                       (make-pathname fixtures-dir "../dir-a") ) )
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path fixtures-dir "../dir-a") ) )
+  (test "selector->local-path returns Error if selector contains '..'"
+        (Error "path isn't safe"
+               (list (cons 'local-path (make-pathname fixtures-dir "../dir-a"))))
+        (selector->local-path fixtures-dir "../dir-a") )
 
-  (test "selector->local-path raises an error if selector contains './'"
-        (list 'selector->local-path
-              (sprintf "path isn't safe: ~A"
-                       (make-pathname fixtures-dir "./dir-a") ) )
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path fixtures-dir "./dir-a") ) )
 
-  (test "selector->local-path raises an error if selector contains a '\\'"
-        (list 'selector->local-path
-              (sprintf "path isn't safe: ~A"
-                       (make-pathname fixtures-dir "dir-a\\fred") ) )
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path fixtures-dir "dir-a\\fred") ) )
+  (test "selector->local-path returns Error if selector contains './'"
+        (Error "path isn't safe"
+               (list (cons 'local-path (make-pathname fixtures-dir "./dir-a"))))
+        (selector->local-path fixtures-dir "./dir-a") )
 
-  (test "selector->local-path raises an error if root-dir contains ./"
-        '(selector->local-path "path isn't safe: /tmp/./this/dir-a")
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path "/tmp/./this" "dir-a") ) )
 
-  (test "selector->local-path raises an eror if root-dir contains .."
-        '(selector->local-path "path isn't safe: /../dir-a")
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path "/.." "dir-a") ) )
+  (test "selector->local-path returns Error if selector contains a '\\'"
+        (Error "path isn't safe"
+               (list (cons 'local-path (make-pathname fixtures-dir "dir-a\\fred"))))
+        (selector->local-path fixtures-dir "dir-a\\fred") )
 
-  (test "selector->local-path raises an error if root-dir contains \\"
-        '(selector->local-path "path isn't safe: /\\/dir-a")
-        (handle-exceptions ex
-          (list (get-condition-property ex 'exn 'location)
-                (get-condition-property ex 'exn 'message))
-          (selector->local-path "/\\" "dir-a") ) )
+
+  (test "selector->local-path returns Error if root-dir contains ./"
+        (Error "path isn't safe"
+               (list (cons 'local-path "/tmp/./this/dir-a")))
+        (selector->local-path "/tmp/./this" "dir-a") )
+
+
+  (test "selector->local-path returns Error if root-dir contains .."
+        (Error "path isn't safe"
+              (list (cons 'local-path "/../dir-a")))
+        (selector->local-path "/.." "dir-a") )
+
+
+  (test "selector->local-path returns Error if root-dir contains \\"
+        (Error "path isn't safe"
+               (list (cons 'local-path "/\\/dir-a")))
+        (selector->local-path "/\\" "dir-a") )
+
 
   (test "selector->local-path doesn't allow percent decoding to turn %2E%2E into .."
-        (make-pathname fixtures-dir "dir-a/%2E%2E")
+        (Ok (make-pathname fixtures-dir "dir-a/%2E%2E"))
         (selector->local-path fixtures-dir "dir-a/%2E%2E") )
 
-  (test "selector->local-path forms a local-path from root-dir and selector"
-        (make-pathname fixtures-dir "dir-a")
+
+  (test "selector->local-path forms a local-path from root-dir and selector as Ok"
+        (Ok (make-pathname fixtures-dir "dir-a"))
         (selector->local-path fixtures-dir "dir-a") )
+
 
   (test "selector->local-path allows root-dir to end with a '/'"
         (make-pathname fixtures-dir "dir-a")
         (let ((root-dir (sprintf "~A/" fixtures-dir)))
-          (selector->local-path root-dir "dir-a") ) )
+          (cases Result (selector->local-path root-dir "dir-a")
+            (Ok (v) v)
+            (Error () #f) ) ) )
+
 
   (test "selector->local-path allows root-dir to not end with a '/'"
-        (make-pathname fixtures-dir "dir-a")
+        (Ok (make-pathname fixtures-dir "dir-a"))
         (let ((root-dir (string-chomp fixtures-dir "/")))
           (selector->local-path root-dir "dir-a") ) )
 
 
-  ;; This isn't a good idea but the test ensures that '/' isn't turned into ''
+  ;; It isn't a good idea to use this as the root-dir but the test ensures that '/' isn't turned into ''
   (test "selector->local-path allows root-dir to be '/'"
-        "/"
+        (Ok "/")
         (selector->local-path "/" "") )
 
 
@@ -81,8 +74,9 @@
         (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
                            "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
             (map (lambda (selector)
-                         (equal? (make-pathname fixtures-dir "dir-a")
-                                 (selector->local-path fixtures-dir selector)))
+                         (cases Result (selector->local-path fixtures-dir selector)
+                           (Ok (v) (equal? v (make-pathname fixtures-dir "dir-a")))
+                           (Error () #f)))
                  selectors) ) )
 
 
@@ -160,76 +154,64 @@
                test-paths) ) )
 
 
-  (test "safe-read-file raises an error if trying to serve a file that isn't world readable"
-        (list "Hello, this is used to test serving a non world readable file.\n"
-              (list 'safe-read-file
-                    "can't read file, path isn't world readable: /tmp/#t"))
+  (test "safe-read-file returns Error if trying to serve a file that isn't world readable"
+        '("Hello, this is used to test serving a non world readable file.\n"
+          ("can't read file, file path isn't world readable" ((file . #t))))
         (let* ((tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable")
                                     "hello.txt")
                      tmpfile)
           (let ((response1 (safe-read-file 1000 tmpdir tmpfile))
-                (exn
-                  (handle-exceptions ex
-                    (list (get-condition-property ex 'exn 'location)
-                          (irregex-replace/all "\/tmp\/.*?hello.txt"
-                                               (get-condition-property ex 'exn 'message)
-                                               "\/tmp/#t"))
+                (response2
+                  (begin
                     ;; Make tmpfile non world readable
                     (set-file-permissions! tmpfile
                                            (bitwise-and (file-permissions tmpfile)
                                                         (bitwise-not perm/iroth)))
                     (safe-read-file 1000 tmpdir tmpfile))))
-            (list response1 exn) ) ) )
+            (list (cases Result response1 (Ok (v) v) (Error () #f))
+                  (cases Result response2
+                    (Ok () #f)
+                    (Error (msg log-entries)
+                      (list msg (confirm-field-matches 'file
+                                                      ".*?hello.txt$"
+                                                      log-entries) ) ) ) ) ) ) )
 
 
-  (test "safe-read-file raises an error if file path isn't safe"
-        (list 'safe-read-file
-             (sprintf "can't read file, path isn't safe: ~A"
-                      (make-pathname fixtures-dir "a.txt")))
-        (let ((max-size 5))
-          (handle-exceptions ex
-                             (list (get-condition-property ex 'exn 'location)
-                                   (get-condition-property ex 'exn 'message))
-            (safe-read-file max-size
-                            (make-pathname fixtures-dir "dir-a")
-                            (make-pathname fixtures-dir "a.txt") ) ) ) )
+  (test "safe-read-file returns Error if file path isn't safe"
+    (Error "can't read file, file path isn't safe"
+           (list (cons 'file (make-pathname fixtures-dir "a.txt"))))
+        (let* ((max-size 5))
+          (safe-read-file max-size (make-pathname fixtures-dir "dir-a")
+                                   (make-pathname fixtures-dir "a.txt") ) ) )
 
 
-  (test "safe-read-file raises an error if file is bigger than max-size"
-        (list 'unsafe-read-file
-             (sprintf "can't read file, file is too big: ~A"
-                      (make-pathname fixtures-dir "a.txt")))
-        (let ((max-size 5))
-          (handle-exceptions ex
-                             (list (get-condition-property ex 'exn 'location)
-                                   (get-condition-property ex 'exn 'message))
-            (safe-read-file max-size
-                            fixtures-dir
-                            (make-pathname fixtures-dir "a.txt") ) ) ) )
+  (test "safe-read-file returns Error if file is bigger than max-size"
+    (Error "can't read file, file is too big"
+           (list (cons 'file (make-pathname fixtures-dir "a.txt"))))
+          (let* ((max-size 5))
+            (safe-read-file max-size fixtures-dir
+                                     (make-pathname fixtures-dir "a.txt") ) ) )
 
 
   (test "safe-read-file can read a file whose size is equal to max-size"
-        "hello\n"
+        (Ok "hello\n")
         (let ((max-size 6))
-          (safe-read-file max-size
-                          fixtures-dir
-                          (make-pathname fixtures-dir "a.txt") ) ) )
+          (safe-read-file max-size fixtures-dir
+                                   (make-pathname fixtures-dir "a.txt") ) ) )
 
 
-  (test "safe-read-file returns the contents of a binary file"
-        "This is text followed by a null (00)\x00 now some more text."
-        (safe-read-file 1000
-                        fixtures-dir
-                        (make-pathname fixtures-dir "dir-a/ac.bin") ) )
+  (test "safe-read-file returns the contents of a binary file as Ok"
+        (Ok "This is text followed by a null (00)\x00 now some more text.")
+        (safe-read-file 1000 fixtures-dir
+                             (make-pathname fixtures-dir "dir-a/ac.bin") ) )
 
 
-  (test "safe-read-file returns the contents of an empty file"
-        ""
-        (safe-read-file 1000
-                        fixtures-dir
-                        (make-pathname fixtures-dir "dir-a/empty.txt") ) )
+  (test "safe-read-file returns the contents of an empty file as Ok"
+        (Ok "")
+        (safe-read-file 1000 fixtures-dir
+                             (make-pathname fixtures-dir "dir-a/empty.txt") ) )
 
 
 )

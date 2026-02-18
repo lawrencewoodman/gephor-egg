@@ -16,50 +16,60 @@
 ;; last one fails:
 ;;   serve-file serve-dir
 ;; See the documentation for each handler for more information.
-;; Returns the value of the last handler tried.
+;; Returns the value of the last handler tried, this will be:
+;;   Ok if everything was ok
+;;   Not-Applicable if neither of the handlers can handle the request
+;;   Error if there was a problem
+(: serve-path (string * -> *))
 (define (serve-path root-dir request)
-  (any (lambda (h) (h root-dir request))
-       (list serve-file serve-dir) ) )
+  (let ((response (serve-dir root-dir request)))
+    (cases Result response
+      (Ok () response)
+      (Not-Applicable () (serve-file root-dir request))
+      (Error () response) ) ) )
 
 
 ;; If the path formed by root-dir and request is a directory return a menu
 ;; listing the files and directories in the directory.
 ;; See selector->local-path for more information about selector requirements.
-;; Returns #f if can't list a directory.
-(: serve-dir (string * -> (or string false)))
+;; Returns the value of the last handler tried, this will be:
+;;   Ok if everything was ok this will contain a listing of the directory
+;;   Not-Applicable if the path isn't a directory
+;;   Error if there was a problem
+(: serve-dir (string * -> *))
 (define (serve-dir root-dir request)
-  (let ((selector (request-selector request)))
+  (let* ((selector (request-selector request))
+         (rlocal-path (selector->local-path root-dir selector)))
     ;; local-path is formed here rather than being passed in to ensure that it
     ;; is formed safely
-    (and-let* ((local-path (selector->local-path root-dir selector)))
-      (and (directory? local-path)
-           (let ((response (list-dir selector local-path)))
-             (apply log-info
-                    "serve directory listing"
-                    (cons 'handler 'serve-dir)
-                    (cons 'directory local-path)
-                    (log-context))
-             (menu-render response) ) ) ) ) )
+    (cases Result rlocal-path
+      (Ok (local-path) (if (directory? local-path)
+                           (let ((response (list-dir selector local-path)))
+                             (cases Result response
+                               (Ok (v) (Ok (menu-render v)))
+                               (Error () response)))
+                           (Not-Applicable #t)))
+      (Error (msg log-entries) rlocal-path) ) ) )
 
 
 ;; If the path formed by root-dir and request is a regular file and readable
 ;; return the file.
 ;; See selector->local-path for more information about selector requirements.
-;; Returns #f if can't return a file.
-(: serve-file (string * -> (or string false)))
+;; Returns the value of the last handler tried, this will be:
+;;   Ok if everything was ok this will contain the contents of the file
+;;   Not-Applicable if the path isn't a regular file
+;;   Error if there was a problem
+(: serve-file (string * -> *))
 (define (serve-file root-dir request)
-  (let ((selector (request-selector request)))
+  (let* ((selector (request-selector request))
+         (rlocal-path (selector->local-path root-dir selector)))
     ;; local-path is formed here rather than being passed in to ensure that it
     ;; is formed safely
-    (and-let* ((local-path (selector->local-path root-dir selector)))
-      (and (regular-file? local-path)
-           (let ((response (safe-read-file (max-response-size) root-dir local-path)))
-             (apply log-info
-                    "serve file"
-                    (cons 'handler 'serve-file)
-                    (cons 'file local-path)
-                    (log-context))
-             response) ) ) ) )
+    (cases Result rlocal-path
+      (Ok (local-path) (if (regular-file? local-path)
+                           (safe-read-file (max-response-size) root-dir local-path)
+                           (Not-Applicable #t)))
+      (Error (msg log-entries) rlocal-path) ) ) )
 
 
 ;; Serve an html page for cases when the selector begins with 'URL:' followed
@@ -70,17 +80,13 @@
 ;; Also:
 ;;   resources/h_type.txt
 ;; Returns #f if failure
-(: serve-url (* -> (or string false)))
+(: serve-url (* -> *))
 (define (serve-url request)
   (let ((selector (request-selector request)))
-    (and (substring=? (request-selector request) "URL:")
-         (let* ((url (substring (request-selector request) 4)))
-           (apply log-info
-                  "serve URL as HTML page"
-                  (cons 'handler 'serve-url)
-                  (cons 'url url)
-                  (log-context))
-           (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
+    (if (substring=? (request-selector request) "URL:")
+        (let* ((url (substring (request-selector request) 4)))
+          (Ok (string-translate* url-html-template (list (cons "@URL" url)))))
+        (Not-Applicable #t) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -141,8 +147,9 @@
              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
              (menu (make-menu entries)))
         ;; TODO: If resulting menu is empty should return #f and log an error
-        (reverse menu))
-      (error* 'list-dir "can't list dir, path isn't world readable: ~A" local-path) ) )
+        (Ok (reverse menu)))
+      (Error "can't list dir, path isn't world readable"
+             (list (cons 'local-path local-path) ) ) ) )
 
 
 ;; Return a menu item from a directory entry in list-dir

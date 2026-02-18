@@ -117,17 +117,18 @@
                        (begin
                          (log-exception-in-run-handler exn)
                          (send-response/error-menu "resource unavailable" out))
-                       (let ((response (handler request)))
-                         (if response
-                             (when (send-response response out)
-                                   (log-connection-handled))
-                             (begin
-                               ;; TODO: is this still appropriate?
-                               (apply log-warning "error in handler"
-                                      (cons 'num-connections (num-connections))
-                                      (log-context))
-                               (send-response/error-menu "resource unavailable"
-                                                          out) ) ) ) ) )
+                       ;; TODO: Add Not-Applicable
+                       (cases Result (handler request)
+                                 ;; TODO: Add a log if response couldn't be sent
+                         (Ok (v) (when (send-response v out)
+                                       (log-connection-handled)))
+                         (Error (msg log-entries)
+                                (apply log-warning "error in handler"
+                                       (cons 'handler-error msg)
+                                       (append (list (cons 'num-connections (num-connections)))
+                                       (log-context)))
+                                (send-response/error-menu "resource unavailable"
+                                                           out) ) ) ) )
 
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])

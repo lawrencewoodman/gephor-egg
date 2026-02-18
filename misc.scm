@@ -20,7 +20,10 @@
 ;; it should be by the server because the removal of a leading or terminating
 ;; '/' character might leave whitespace.
 ;;
-;; If the path isn't safe an error is raised
+;; Returns:
+;;   Ok if everything was ok
+;;   Error if the path isn't safe
+(: selector->local-path (string string --> *))
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
@@ -28,8 +31,8 @@
          (selector (trim-path-selector selector))
          (local-path (make-pathname root-dir selector)))
     (if (safe-path? root-dir local-path)
-        local-path
-        (error* 'selector->local-path "path isn't safe: ~A" local-path) ) ) )
+        (Ok local-path)
+        (Error "path isn't safe" (list (cons 'local-path local-path) ) ) ) ) )
 
 
 ;; Trim beginning and end of selector to remove whitespace and
@@ -48,6 +51,7 @@
 ;; NOTE: any other checks.
 ;; NOTE: This does not check if the path is world readable
 ;; TODO: Should we test for nul in a string as per Spiffy?
+(: safe-path? (string string --> boolean))
 (define (safe-path? root-dir path)
   (when (not (absolute-pathname? root-dir))
         (error* 'safe-path? "root-dir must be an absolute directory: ~A" root-dir))
@@ -67,17 +71,23 @@
                                  (length n-root-elements) ) ) ) ) ) ) ) )
 
 
-;; If the file is bigger than max-size it will raise an error
-;; If the file isn't world readable it will raise an error
-;; If the file path isn't safe it will raise an error
-;; Otherwise, it will return the contents of the file
-(: safe-read-file (integer string string --> string))
+;; Read the contents of a file
+;;
+;; Returns:
+;;   Ok with the contents of the file
+;;   Error if:
+;;     The file is bigger than max-size
+;;     The file isn't world readable
+;;     The file path isn't safe
+(: safe-read-file (integer string string --> *))
 (define (safe-read-file max-size root-dir path)
   (if (world-readable? path)
       (if (safe-path? root-dir path)
           (unsafe-read-file max-size path)
-          (error* 'safe-read-file "can't read file, path isn't safe: ~A" path))
-      (error* 'safe-read-file "can't read file, path isn't world readable: ~A" path)))
+          (Error "can't read file, file path isn't safe"
+                 (list (cons 'file path))))
+      (Error "can't read file, file path isn't world readable"
+             (list (cons 'file path) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -94,9 +104,13 @@
 
 
 ;; Used by safe-read-file.  This function reads a file without checking if
-;; the path is safe and world readable.  If the file is too big it raises
-;; an error.
-(: unsafe-read-file (integer string --> string))
+;; the path is safe and world readable.
+;;
+;; Returns:
+;;   Ok with the contents of the file
+;;   Error if:
+;;     The file is bigger than max-size
+(: unsafe-read-file (integer string --> *))
 (define (unsafe-read-file max-size path)
   (call-with-input-file path
                         (lambda (port)
@@ -105,10 +119,9 @@
                           (let* ((contents (read-string max-size port))
                                  (more? (not (eof-object? (read-string 1 port)))))
                             (if (eof-object? contents)
-                                ""
+                                (Ok "")
                                 (if more?
-                                    (error* 'unsafe-read-file
-                                            "can't read file, file is too big: ~A"
-                                            path)
-                                    contents))))
+                                    (Error "can't read file, file is too big"
+                                           (list (cons 'file path)))
+                                    (Ok contents)))))
                         #:binary) )

@@ -24,9 +24,9 @@
         '("hello friend" "bye friend")
         (let* ((port 7070)
                (router (make-router (cons "hello"
-                                          (lambda (request) "hello friend"))
+                                          (lambda (request) (Ok "hello friend")))
                                     (cons "bye"
-                                          (lambda (request) "bye friend"))))
+                                          (lambda (request) (Ok "bye friend")))))
                (thread (start-test-server port router)))
           (let ((responses (map (lambda (selector)
                                   (gopher-test-get port selector))
@@ -39,7 +39,7 @@
         "3path not found\t\tlocalhost\t7070\r\n.\r\n"
         (let* ((port 7070)
                (router (make-router (cons "hello"
-                                          (lambda (request) "hello friend"))))
+                                          (lambda (request) (Ok "hello friend")))))
                (thread (start-test-server port router)))
           (let ((response (gopher-test-get port "bye")))
             (stop-server thread)
@@ -67,15 +67,15 @@
         (let ((port 7070)
               (router (make-router (cons "hello"
                                          (lambda (request)
-                                           (string-intersperse
-                                             '("1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890")))))))
+                                           (Ok (string-intersperse
+                                                 '("1234567890"
+                                                   "1234567890"
+                                                   "1234567890"
+                                                   "1234567890"
+                                                   "1234567890"
+                                                   "1234567890"
+                                                   "1234567890"
+                                                   "1234567890"))))))))
           (parameterize ((max-response-size 60))
             (let* ((thread (start-test-server port router))
                    (response (gopher-test-get port "hello")))
@@ -88,7 +88,7 @@
         (let* ((port 7070)
                (router (make-router (cons "*"
                                           (lambda (request)
-                                            (request-selector request)))))
+                                            (Ok (request-selector request))))))
                (thread (start-test-server port router))
                (selectors '("  test" "test  " "  test  ")))
           (let ((responses (map (lambda (selector)
@@ -103,7 +103,7 @@
         (let* ((port 7070)
                (router (make-router (cons "*"
                                           (lambda (request)
-                                            (request-selector request)))))
+                                            (Ok (request-selector request))))))
                (thread (start-test-server port router))
                (selectors '("/test" "test/" "/test/" "/  test" "test  /")))
           (let ((responses (map (lambda (selector)
@@ -123,7 +123,7 @@
             (let* ((port 7070)
                    (router (make-router (cons "*"
                                               (lambda (request)
-                                                (request-selector request)))))
+                                                (Ok (request-selector request))))))
                    (thread (start-test-server port router))
                    (test-timeout-limit (+ (current-process-milliseconds) 1000)))
               (let-values (((in out) (tcp-connect "localhost" port)))
@@ -150,7 +150,7 @@
             (let* ((port 7070)
                    (router (make-router (cons "*"
                                               (lambda (request)
-                                                (request-selector request)))))
+                                                (Ok (request-selector request))))))
                    (thread (start-test-server port router)))
               (let-values (((in out) (tcp-connect "localhost" port)))
                 (close-input-port in)
@@ -168,7 +168,7 @@
             (let* ((port 7070)
                    (router (make-router (cons "*"
                                               (lambda (request)
-                                                (request-selector request)))))
+                                                (Ok (request-selector request))))))
                    (thread (start-server hostname: "localhost" port: port router: router)))
               (let-values (((in out) (tcp-connect "localhost" port)))
                 (close-input-port in)

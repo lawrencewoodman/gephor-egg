@@ -14,9 +14,13 @@
         (chicken string)
         (chicken tcp)
         (chicken time)
-        logfmt-logger)
+        datatype
+        logfmt-logger
+        srfi-1)
 
 ;; Import notes -------------------------------------------------------------
+;; srfi-1         - List procedures
+;; datatype       - Variant records
 ;; logfmt-logger  - Logger using logfmt
 
 
@@ -45,8 +49,16 @@
                        entry
                        "ts=#t ") )
 
+;; Check that the symbol in log-entries matches the regex.  If it does it changes
+;; the value to #t
+(define (confirm-field-matches symbol regex log-entries)
+  (alist-update symbol
+               (irregex-match? regex (alist-ref symbol log-entries))
+               log-entries) )
+
 
 ;; Test each exported component
+(include-relative "result.scm")
 (include-relative "router.scm")
 (include-relative "menu.scm")
 (include-relative "response.scm")
