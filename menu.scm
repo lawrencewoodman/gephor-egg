@@ -2,8 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   menu-item menu-item-info-wrap menu-item-file menu-item-url
-;;;   menu-render
+;;;   menu-item menu-item-file menu-item-url menu-render
 ;;;
 ;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;

@@ -12,10 +12,12 @@
 
 ;; Exported Definitions ------------------------------------------------------
 
-;; Tries the following handlers in turn until one returns non-false or the
-;; last one fails:
+;; Tries the following handlers in turn until one returns
+;; Ok, Error or the last one returns Not-Applicable
 ;;   serve-file serve-dir
+;;
 ;; See the documentation for each handler for more information.
+;;
 ;; Returns the value of the last handler tried, this will be:
 ;;   Ok if everything was ok
 ;;   Not-Applicable if neither of the handlers can handle the request
@@ -32,7 +34,8 @@
 ;; If the path formed by root-dir and request is a directory return a menu
 ;; listing the files and directories in the directory.
 ;; See selector->local-path for more information about selector requirements.
-;; Returns the value of the last handler tried, this will be:
+;;
+;; Returns:
 ;;   Ok if everything was ok this will contain a listing of the directory
 ;;   Not-Applicable if the path isn't a directory
 ;;   Error if there was a problem
@@ -55,7 +58,8 @@
 ;; If the path formed by root-dir and request is a regular file and readable
 ;; return the file.
 ;; See selector->local-path for more information about selector requirements.
-;; Returns the value of the last handler tried, this will be:
+;;
+;; Returns:
 ;;   Ok if everything was ok this will contain the contents of the file
 ;;   Not-Applicable if the path isn't a regular file
 ;;   Error if there was a problem
@@ -79,7 +83,10 @@
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;; Also:
 ;;   resources/h_type.txt
-;; Returns #f if failure
+;;
+;; Returns:
+;;   Ok if everything was
+;;   Not-Applicable if the selector doesn't begin with 'URL:'
 (: serve-url (* -> *))
 (define (serve-url request)
   (let ((selector (request-selector request)))

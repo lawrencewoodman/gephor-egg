@@ -117,7 +117,6 @@
                        (begin
                          (log-exception-in-run-handler exn)
                          (send-response/error-menu "resource unavailable" out))
-                       ;; TODO: Add Not-Applicable
                        (cases Result (handler request)
                                  ;; TODO: Add a log if response couldn't be sent
                          (Ok (v) (when (send-response v out)
@@ -128,12 +127,17 @@
                                        (append (list (cons 'num-connections (num-connections)))
                                        (log-context)))
                                 (send-response/error-menu "resource unavailable"
-                                                           out) ) ) ) )
+                                                           out))
+                         (else (apply log-warning "no handler for selector"
+                               (cons 'num-connections (num-connections))
+                               (log-context))
+                               (send-response/error-menu "path not found" out) ) ) ) )
 
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
         (when selector
+              ;; TODO: Remove connection-id as it serves little purpose now?
               (parameterize ((log-context (list (cons 'connection-id (next-connection-id))
                                                 (cons 'client-address client-address)
                                                 (cons 'selector selector))))
