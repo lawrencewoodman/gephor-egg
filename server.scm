@@ -2,7 +2,7 @@
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
-;;;   connection-id start-server stop-server
+;;;   start-server stop-server
 ;;;
 ;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -25,17 +25,10 @@
   ;; server-ready-mutex is used to check that server is ready to accept
   ;; connections before returning from procedure.
   ;; connections-mutex is used to prevent simultaneous changing of connection count
-  ;; connection-id-mutex is used to prevent simultaneous changing of connection-id
   ;; number-of-connections is the current number of connections to the server
-  ;; connection-id is a unique ID for each connection to make logs messages
-  ;;               easier to follow and link together for each connection.
-  ;;               This is used to store the value used by the parameter
-  ;;               connection-id.
   (let ((server-ready-mutex (make-mutex))
         (connections-mutex (make-mutex))
-        (connection-id-mutex (make-mutex))
-        (number-of-connections 0)
-        (connection-id 0))
+        (number-of-connections 0))
 
   (define (inc-connection-count)
     (mutex-lock! connections-mutex)
@@ -77,13 +70,6 @@
                                    (cons 'max-connections
                                          (max-connections))))
                 (loop #f) ) ) ) ) )
-
-  (define (next-connection-id)
-    (mutex-lock! connection-id-mutex)
-    (set! connection-id (add1 connection-id))
-    (let ((connection-id connection-id))
-      (mutex-unlock! connection-id-mutex)
-      connection-id) )
 
   (define (log-connection-handled)
     (apply log-info
@@ -137,9 +123,7 @@
     (let-values ([(_ client-address) (tcp-addresses in)])
       (let ((selector (read-selector client-address in)))
         (when selector
-              ;; TODO: Remove connection-id as it serves little purpose now?
-              (parameterize ((log-context (list (cons 'connection-id (next-connection-id))
-                                                (cons 'client-address client-address)
+              (parameterize ((log-context (list (cons 'client-address client-address)
                                                 (cons 'selector selector))))
                 (let ((handler (router-match router selector))
                       (request (make-request selector client-address)))
@@ -223,10 +207,7 @@
 (define (read-selector client-address in)
   (condition-case (string-trim-both (read-line in 255) char-set:whitespace)
     ((exn i/o net timeout)
-      (apply log-warning
-             "read selector timeout"
-             (cons 'client-address client-address)
-             (log-context))
+      (log-warning "read selector timeout" (cons 'client-address client-address))
       #f)
     (ex (exn)
       (log-warning "exception when reading selector"

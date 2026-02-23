@@ -48,7 +48,7 @@
 
   (test "server returns a 'resource unavailable' menu and logs an error if an exception is raised"
         (list "3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
-              "ts=#t level=error msg=\"exception raised in run handler\" exception-msg=\"this is an error\" num-connections=1 connection-id=1 client-address=127.0.0.1 selector=hello\n")
+              "ts=#t level=error msg=\"exception raised in run handler\" exception-msg=\"this is an error\" num-connections=1 client-address=127.0.0.1 selector=hello\n")
         (let ((log-test-port (open-output-string))
               (port 7070)
               (router (make-router (cons "hello" (lambda (request)
@@ -114,12 +114,11 @@
 
 
   (test "server logs a warning message if there is a timeout while waiting for the selector"
-        "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1 connection-id=3\n"
+        "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1\n"
         (let ((log-test-port (open-output-string)))
           (parameterize ((tcp-read-timeout 0)
                          (log-level 'warning)
-                         (log-port log-test-port)
-                         (log-context (list (cons 'connection-id 3))))
+                         (log-port log-test-port))
             (let* ((port 7070)
                    (router (make-router (cons "*"
                                               (lambda (request)
