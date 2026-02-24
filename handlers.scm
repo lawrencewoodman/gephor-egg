@@ -23,8 +23,8 @@
 ;;   #f if the the request can't be handled
 (: serve-path (string * -> (or string false)))
 (define (serve-path root-dir request)
-  (and (serve-dir root-dir request)
-       (serve-file root-dir request) ) )
+  (or (serve-dir root-dir request)
+      (serve-file root-dir request) ) )
 
 
 ;; If the path formed by root-dir and request is a directory return a menu
