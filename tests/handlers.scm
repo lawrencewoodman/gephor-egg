@@ -7,87 +7,80 @@
 
   ;; TODO: Add Test for working through the three handlers in serve-path
 
-  (test "serve-dir Returns Error if listing a directory that isn't world readable"
+  (test "serve-dir raises an error if listing a directory that isn't world readable"
         (list (string-intersperse '(
                 "1dir-a\tdir-a\tlocalhost\t70"
                 "1dir-b\tdir-b\tlocalhost\t70"
                 ".\r\n")
                 "\r\n")
-              '("can't list dir, path isn't world readable"
-                ((local-path . #t))))
+              (list 'list-dir "can't list dir, path isn't world readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
           (create-directory (make-pathname tmpdir "dir-b"))
           (let ((response1 (serve-dir tmpdir request))
                 (response2
-                  (begin
+                  (handle-exceptions ex
+                    (list (get-condition-property ex 'exn 'location)
+                          (confirm-exn-msg-regex ex "\/tmp\/.*?$" "/tmp\/#t"))
                     ;; Make tmpdir non world readable
                     (set-file-permissions! tmpdir
                                            (bitwise-and (file-permissions tmpdir)
                                                         (bitwise-not perm/iroth)))
                     (serve-dir tmpdir request))))
-            (list (cases Result response1
-                    (Ok (v) v)
-                    (Error () #f))
-                  (cases Result response2
-                    (Ok () #f)
-                    (Error (msg log-entries)
-                      (list msg
-                            (confirm-field-matches 'local-path "\/tmp\/.*$" log-entries) ) ) ) ) ) ) )
+            (list response1 response2) ) ) )
 
 
   (test "serve-dir supportes empty selector"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
-              "1dir-a\tdir-a\tlocalhost\t70"
-              "1dir-b\tdir-b\tlocalhost\t70"
-              "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
-              "0a.txt\ta.txt\tlocalhost\t70"
-              "0b.txt\tb.txt\tlocalhost\t70"
-              "9noext\tnoext\tlocalhost\t70"
-              ".\r\n")
-              "\r\n"))
+        (string-intersperse '(
+          "1dir-a\tdir-a\tlocalhost\t70"
+          "1dir-b\tdir-b\tlocalhost\t70"
+          "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
+          "0a.txt\ta.txt\tlocalhost\t70"
+          "0b.txt\tb.txt\tlocalhost\t70"
+          "9noext\tnoext\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
         (serve-dir fixtures-dir (make-request "" "127.0.0.1") ) )
 
 
   ;; TODO: test against serve-file as well
-  (test "serve-dir supportes subpath ('dir-a') selector"
+  (test "serve-dir supports subpath ('dir-a') selector"
         ;; Directories come before regular files and each in alphabetical order
-        (Ok (string-intersperse '(
-              "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
-              "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
-              "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
-              "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
-              ".\r\n")
-              "\r\n"))
+        (string-intersperse '(
+          "0aa.txt\tdir-a/aa.txt\tlocalhost\t70"
+          "0ab.txt\tdir-a/ab.txt\tlocalhost\t70"
+          "9ac.bin\tdir-a/ac.bin\tlocalhost\t70"
+          "9empty.txt\tdir-a/empty.txt\tlocalhost\t70"
+          ".\r\n")
+          "\r\n")
         (serve-dir fixtures-dir (make-request "dir-a" "127.0.0.1") ) )
 
 
-  (test "serve-dir returns Not-Applicable if path isn't a directory"
-        (Not-Applicable #t)
+  (test "serve-dir returns #f if path isn't a directory"
+        #f
         (serve-dir fixtures-dir (make-request "a.txt" "127.0.0.1") ) )
 
 
   (test "serve-file raises an error if trying to serve a file that isn't world readable"
         '("Hello, this is used to test serving a non world readable file.\n"
-          (safe-read-file "can't read file, file path isn't world readable: /tmp/#t"))
+          (safe-read-file "can't read file, file isn't world readable: /tmp/#t"))
         (let ((tmpdir (create-temporary-directory))
               (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable")
                                     "hello.txt")
                      (make-pathname tmpdir "hello.txt"))
-          (let ((response1 (cases Result (serve-file tmpdir request) (Ok (v) v)))
+          (let ((response1 (serve-file tmpdir request))
                 (response2
                   (handle-exceptions ex
                     (list (get-condition-property ex 'exn 'location)
-                          (confirm-exn-msg-regex ex "\/tmp\/.*?hello.txt" "\/tmp\/#t"))
-                    (begin
-                      ;; Make tmpdir non world readable
-                      (set-file-permissions! (make-pathname tmpdir "hello.txt")
-                                             (bitwise-and (file-permissions tmpdir)
-                                                          (bitwise-not perm/iroth)))
-                      (serve-file tmpdir request)))))
+                          (confirm-exn-msg-regex ex "\/tmp\/.*?$" "/tmp\/#t"))
+                    ;; Make tmpdir non world readable
+                    (set-file-permissions! (make-pathname tmpdir "hello.txt")
+                                           (bitwise-and (file-permissions tmpdir)
+                                                        (bitwise-not perm/iroth)))
+                    (serve-file tmpdir request))))
           (list response1 response2) ) ) )
 
 
@@ -97,10 +90,8 @@
                     (sprintf "can't read file, file is too big: ~A"
                              (make-pathname fixtures-dir "a.txt"))))
         (let ((response1 (parameterize ((max-response-size 5000))
-                           (cases Result (serve-file fixtures-dir
-                                                     (make-request "a.txt" "127.0.0.1"))
-                             (Ok (v) v)
-                             (else #f))))
+                           (serve-file fixtures-dir
+                                       (make-request "a.txt" "127.0.0.1"))))
               (response2 (parameterize ((max-response-size 5))
                            (handle-exceptions ex
                              (list (get-condition-property ex 'exn 'location)
@@ -110,51 +101,51 @@
           (list response1 response2) ) )
 
 
-  (test "serve-file returns the contents of a binary file as Ok"
-        (Ok "This is text followed by a null (00)\x00 now some more text.")
+  (test "serve-file returns the contents of a binary file"
+        "This is text followed by a null (00)\x00 now some more text."
         (serve-file fixtures-dir (make-request "dir-a/ac.bin" "127.0.0.1") ) )
 
 
-  (test "serve-file returns the contents of an empty file as Ok"
-        (Ok "")
+  (test "serve-file returns the contents of an empty file"
+        ""
         (serve-file fixtures-dir (make-request "dir-a/empty.txt" "127.0.0.1") ) )
 
 
-  (test "serve-file returns contents of 'index' file if index file requested by selector as Ok"
-        (Ok (string-intersperse '(
-              "A simple index file to check it can be served without being"
-              "processed."
-              "=> http://example.com This link line should show the processind =>"
-              "")
-              "\n"))
+  (test "serve-file returns contents of 'index' file if index file requested by selector"
+        (string-intersperse '(
+          "A simple index file to check it can be served without being"
+          "processed."
+          "=> http://example.com This link line should show the processind =>"
+          "")
+          "\n")
         (serve-file fixtures-dir (make-request "dir-b/index" "127.0.0.1") ) )
 
 
   (test "serve-file can serve a file that is equal to the number of bytes set by max-response-size"
-        (Ok "hello\n")
+        "hello\n"
         (parameterize ((max-response-size 6))
           (serve-file fixtures-dir (make-request "a.txt" "127.0.0.1") ) ) )
 
 
-  (test "serve-file returns Error if selector isn't safe"
-        (Not-Applicable #t)
+  (test "serve-file returns #f if selector isn't safe"
+        #f
         (serve-file fixtures-dir (make-request "../dir-a" "127.0.0.1") ) )
 
 
-  (test "serve-file returns Not-Applicable if path isn't a regular file"
-        (Not-Applicable #t)
+  (test "serve-file returns #f if path isn't a regular file"
+        #f
         (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1") ) )
 
 
-  (test "serve-path returns Not-Applicable if path doesn't exist"
-        (Not-Applicable #t)
+  (test "serve-path returns #f if path doesn't exist"
+        #f
         (serve-path fixtures-dir (make-request "unknown" "127.0.0.1") ) )
 
 
   ;; TODO: Add tests to test serve-path going to dir or file
 
-  (test "serve-url returns a HTML document populated with the supplied URL as Ok"
-        (Ok (string-intersperse '(
+  (test "serve-url returns a HTML document populated with the supplied URL"
+        (string-intersperse '(
           "<HTML>"
           "  <HEAD>"
           "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog\">"
@@ -172,12 +163,12 @@
           "    Thanks for using gopher!"
           "  </BODY>"
           "</HTML>")
-          "\n"))
-          (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1")))
+          "\n")
+          (serve-url (make-request "URL:https://example.com/blog" "127.0.0.1") ) )
 
 
-  (test "serve-url returns a HTML document populated with the supplied URL including trailing '/' as Ok"
-        (Ok (string-intersperse '(
+  (test "serve-url returns a HTML document populated with the supplied URL including trailing '/'"
+        (string-intersperse '(
           "<HTML>"
           "  <HEAD>"
           "    <META HTTP-EQUIV=\"refresh\" content=\"2;URL=https://example.com/blog/\">"
@@ -195,13 +186,13 @@
           "    Thanks for using gopher!"
           "  </BODY>"
           "</HTML>")
-          "\n"))
-        (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1")))
+          "\n")
+        (serve-url (make-request "URL:https://example.com/blog/" "127.0.0.1") ) )
 
 
-  (test "serve-url returns Not-Applicable if selector isn't valid"
-        (Not-Applicable #t)
-        (serve-url (make-request "FURL:https://example.com/blog" "127.0.0.1")))
+  (test "serve-url returns #f if selector isn't valid"
+        #f
+        (serve-url (make-request "FURL:https://example.com/blog" "127.0.0.1") ) )
 
 
 ) )

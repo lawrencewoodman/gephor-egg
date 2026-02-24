@@ -18,17 +18,13 @@
 ;;
 ;; See the documentation for each handler for more information.
 ;;
-;; Returns the value of the last handler tried, this will be:
-;;   Ok if everything was ok
-;;   Not-Applicable if neither of the handlers can handle the request
-;;   Error if there was a problem
-(: serve-path (string * -> *))
+;; Returns:
+;;   The value of the last successful handler
+;;   #f if the the request can't be handled
+(: serve-path (string * -> (or string false)))
 (define (serve-path root-dir request)
-  (let ((response (serve-dir root-dir request)))
-    (cases Result response
-      (Ok () response)
-      (Not-Applicable () (serve-file root-dir request))
-      (Error () response) ) ) )
+  (and (serve-dir root-dir request)
+       (serve-file root-dir request) ) )
 
 
 ;; If the path formed by root-dir and request is a directory return a menu
@@ -36,21 +32,17 @@
 ;; See selector->local-path for more information about selector requirements.
 ;;
 ;; Returns:
-;;   Ok if everything was ok this will contain a listing of the directory
-;;   Not-Applicable if the path isn't a directory
-;;   Error if there was a problem
-(: serve-dir (string * -> *))
+;;   A listing of the directory
+;;   #f if the request can't be handled
+(: serve-dir (string * -> (or string false)))
 (define (serve-dir root-dir request)
   (let* ((selector (request-selector request))
          ;; local-path is formed here rather than being passed
          ;; in, to ensure that it is formed safely
          (local-path (selector->local-path root-dir selector)))
-    (if (and local-path (directory? local-path))
-        (let ((response (list-dir selector local-path)))
-          (cases Result response
-            (Ok (v) (Ok (menu-render v)))
-            (Error () response)))
-        (Not-Applicable #t) ) ) )
+    (and local-path
+         (directory? local-path)
+         (menu-render (list-dir selector local-path) ) ) ) )
 
 
 ;; If the path formed by root-dir and request is a regular file and readable
@@ -58,21 +50,20 @@
 ;; See selector->local-path for more information about selector requirements.
 ;;
 ;; Returns:
-;;   Ok if everything was ok this will contain the contents of the file
-;;   Not-Applicable if the path isn't a regular file
-;;   Error if there was a problem
-(: serve-file (string * -> *))
+;;   The contents of the file
+;;   #f if the request can't be handled
+(: serve-file (string * -> (or string false)))
 (define (serve-file root-dir request)
   (let* ((selector (request-selector request))
          ;; local-path is formed here rather than being passed
          ;; in, to ensure that it is formed safely
          (local-path (selector->local-path root-dir selector)))
-    (if (and local-path (regular-file? local-path))
-        (Ok (safe-read-file (max-response-size) root-dir local-path))
-        (Not-Applicable #t) ) ) )
+    (and local-path
+         (regular-file? local-path)
+         (safe-read-file (max-response-size) root-dir local-path) ) ) )
 
 
-;; Serve an html page for cases when the selector begins with 'URL:' followed
+;; Serve an html page when the selector begins with 'URL:' followed
 ;; by a URL.  This is for clients that don't support the 'URL:' selector
 ;; prefix so that they can be served a html page which points to the URL.
 ;; This conforms to:
@@ -81,15 +72,14 @@
 ;;   resources/h_type.txt
 ;;
 ;; Returns:
-;;   Ok if everything was
-;;   Not-Applicable if the selector doesn't begin with 'URL:'
-(: serve-url (* -> *))
+;;   An html page containing a link to the URL
+;;   #f if the request can't be handled
+(: serve-url (* --> (or string false)))
 (define (serve-url request)
   (let ((selector (request-selector request)))
-    (if (substring=? (request-selector request) "URL:")
-        (let* ((url (substring (request-selector request) 4)))
-          (Ok (string-translate* url-html-template (list (cons "@URL" url)))))
-        (Not-Applicable #t) ) ) )
+    (and (substring=? (request-selector request) "URL:")
+         (let* ((url (substring (request-selector request) 4)))
+           (string-translate* url-html-template (list (cons "@URL" url) ) ) ) ) ) )
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -119,9 +109,10 @@
 
 
 ;; TODO: Make sure paths and selectors are safe
-;; Returns the directory as a list of menu items
-;; items representing the files in the directory
-;; If not world readable it raises an error
+;; Returns:
+;;   The directory as a list of menu items representing the files in the directory
+;; Raises an error:
+;;   If not world readable
 (: list-dir (string string --> (list-of menu-item)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
@@ -150,9 +141,8 @@
              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
              (menu (make-menu entries)))
         ;; TODO: If resulting menu is empty should return #f and log an error
-        (Ok (reverse menu)))
-      (Error "can't list dir, path isn't world readable"
-             (list (cons 'local-path local-path) ) ) ) )
+        (reverse menu))
+      (error* 'list-dir "can't list dir, path isn't world readable: ~A" local-path) ) )
 
 
 ;; Return a menu item from a directory entry in list-dir

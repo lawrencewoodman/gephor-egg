@@ -104,20 +104,15 @@
                        (begin
                          (log-exception-in-run-handler exn)
                          (send-response/error-menu "resource unavailable" out))
-                       (cases Result (handler request)
-                         (Ok (v) (when (send-response v out)
-                                       (log-connection-handled)))
-                         (Error (msg log-entries)
-                                (apply log-warning "error in handler"
-                                       (cons 'handler-error msg)
-                                       (append (list (cons 'num-connections (num-connections)))
-                                       (log-context)))
-                                (send-response/error-menu "resource unavailable"
-                                                           out))
-                         (else (apply log-warning "no handler for selector"
+                       (let ((response (handler request)))
+                         (if response
+                             (when (send-response response out)
+                                   (log-connection-handled))
+                             (begin
+                               (apply log-warning "no handler for selector"
                                (cons 'num-connections (num-connections))
                                (log-context))
-                               (send-response/error-menu "path not found" out) ) ) ) )
+                               (send-response/error-menu "path not found" out) ) ) ) ) )
 
   (define (handle-connect in out)
     (let-values ([(_ client-address) (tcp-addresses in)])

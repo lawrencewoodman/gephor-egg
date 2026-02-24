@@ -20,7 +20,6 @@
    serve-url
    max-connections
    max-response-size
-   Result Result? Ok Not-Applicable Error
    server-hostname
    server-port
    selector->local-path
@@ -46,7 +45,6 @@
         (chicken string)
         (chicken tcp)
         (chicken type)
-        datatype
         magic
         logfmt-logger
         srfi-1
@@ -59,7 +57,6 @@
 ;; srfi-13        - String library
 ;; srfi-14        - Character set library
 ;; srfi-18        - Multithreading support
-;; datatype       - Variant records
 ;; magic          - Magic file type recognition
 ;; logfmt-logger  - Logger using logfmt
 
@@ -94,9 +91,6 @@
 
 
 ;; Include rest of the code -------------------------------------------------
-
-;; Definitions for Result variant type
-(include-relative "result.scm")
 
 ;; Procedures for creating and matching routes
 (include-relative "router.scm")
