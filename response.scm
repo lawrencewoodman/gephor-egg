@@ -1,4 +1,4 @@
-;;; Procedures for sendng a response to the client
+;;; Procedures for sending a response to the client
 ;;;
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:

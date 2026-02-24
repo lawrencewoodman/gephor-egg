@@ -82,14 +82,12 @@
                  (cons 'exception-msg
                        (get-condition-property exn 'exn 'message) ) ) )
 
-  ;; TODO: maybe shouldn't mention exception in this
   (define (log-exception-in-handle-thread in exn)
     (let-values ([(_ client-address) (tcp-addresses in)])
-      (log-error "exception in handler thread"
+      (log-error "exception in handle thread"
                  (cons 'exception-msg (get-condition-property exn 'exn 'message))
                  (cons 'client-address client-address) ) ) )
 
-  ;; TODO: probably should mention exception in this
   (define (log-exception-in-run-handler exn)
     (apply log-error "exception raised in run handler"
                      (cons 'exception-msg
@@ -104,7 +102,6 @@
                          (log-exception-in-run-handler exn)
                          (send-response/error-menu "resource unavailable" out))
                        (cases Result (handler request)
-                                 ;; TODO: Add a log if response couldn't be sent
                          (Ok (v) (when (send-response v out)
                                        (log-connection-handled)))
                          (Error (msg log-entries)
