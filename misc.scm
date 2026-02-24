@@ -21,18 +21,18 @@
 ;; '/' character might leave whitespace.
 ;;
 ;; Returns:
-;;   Ok if everything was ok
-;;   Error if the path isn't safe
-(: selector->local-path (string string --> *))
+;;   The path created from the selector and root-dir
+;;   #f if the path isn't safe
+;; TODO: As we move away from Result ensure this makes use of and and let-and
+(: selector->local-path (string string --> (or string false)))
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
                        (string-chomp root-dir "/")
                        root-dir))
          (selector (trim-path-selector selector))
          (local-path (make-pathname root-dir selector)))
-    (if (safe-path? root-dir local-path)
-        (Ok local-path)
-        (Error "path isn't safe" (list (cons 'local-path local-path) ) ) ) ) )
+    (and (safe-path? root-dir local-path)
+         local-path) ) )
 
 
 ;; Trim beginning and end of selector to remove whitespace and

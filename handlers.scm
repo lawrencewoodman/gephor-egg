@@ -42,17 +42,15 @@
 (: serve-dir (string * -> *))
 (define (serve-dir root-dir request)
   (let* ((selector (request-selector request))
-         (rlocal-path (selector->local-path root-dir selector)))
-    ;; local-path is formed here rather than being passed in to ensure that it
-    ;; is formed safely
-    (cases Result rlocal-path
-      (Ok (local-path) (if (directory? local-path)
-                           (let ((response (list-dir selector local-path)))
-                             (cases Result response
-                               (Ok (v) (Ok (menu-render v)))
-                               (Error () response)))
-                           (Not-Applicable #t)))
-      (Error (msg log-entries) rlocal-path) ) ) )
+         ;; local-path is formed here rather than being passed
+         ;; in, to ensure that it is formed safely
+         (local-path (selector->local-path root-dir selector)))
+    (if (and local-path (directory? local-path))
+        (let ((response (list-dir selector local-path)))
+          (cases Result response
+            (Ok (v) (Ok (menu-render v)))
+            (Error () response)))
+        (Not-Applicable #t) ) ) )
 
 
 ;; If the path formed by root-dir and request is a regular file and readable
@@ -66,14 +64,12 @@
 (: serve-file (string * -> *))
 (define (serve-file root-dir request)
   (let* ((selector (request-selector request))
-         (rlocal-path (selector->local-path root-dir selector)))
-    ;; local-path is formed here rather than being passed in to ensure that it
-    ;; is formed safely
-    (cases Result rlocal-path
-      (Ok (local-path) (if (regular-file? local-path)
-                           (Ok (safe-read-file (max-response-size) root-dir local-path))
-                           (Not-Applicable #t)))
-      (Error (msg log-entries) rlocal-path) ) ) )
+         ;; local-path is formed here rather than being passed
+         ;; in, to ensure that it is formed safely
+         (local-path (selector->local-path root-dir selector)))
+    (if (and local-path (regular-file? local-path))
+        (Ok (safe-read-file (max-response-size) root-dir local-path))
+        (Not-Applicable #t) ) ) )
 
 
 ;; Serve an html page for cases when the selector begins with 'URL:' followed

@@ -3,69 +3,61 @@
 
 (test-group "misc"
 
-  (test "selector->local-path returns Error if selector contains '..'"
-        (Error "path isn't safe"
-               (list (cons 'local-path (make-pathname fixtures-dir "../dir-a"))))
+  (test "selector->local-path returns #f if selector contains '..'"
+        #f
         (selector->local-path fixtures-dir "../dir-a") )
 
 
-  (test "selector->local-path returns Error if selector contains './'"
-        (Error "path isn't safe"
-               (list (cons 'local-path (make-pathname fixtures-dir "./dir-a"))))
+  (test "selector->local-path returns #f if selector contains './'"
+        #f
         (selector->local-path fixtures-dir "./dir-a") )
 
 
-  (test "selector->local-path returns Error if selector contains a '\\'"
-        (Error "path isn't safe"
-               (list (cons 'local-path (make-pathname fixtures-dir "dir-a\\fred"))))
+  (test "selector->local-path returns #f if selector contains a '\\'"
+        #f
         (selector->local-path fixtures-dir "dir-a\\fred") )
 
 
-  (test "selector->local-path returns Error if root-dir contains ./"
-        (Error "path isn't safe"
-               (list (cons 'local-path "/tmp/./this/dir-a")))
+  (test "selector->local-path returns #f if root-dir contains ./"
+        #f
         (selector->local-path "/tmp/./this" "dir-a") )
 
 
-  (test "selector->local-path returns Error if root-dir contains .."
-        (Error "path isn't safe"
-              (list (cons 'local-path "/../dir-a")))
+  (test "selector->local-path returns #f if root-dir contains .."
+        #f
         (selector->local-path "/.." "dir-a") )
 
 
-  (test "selector->local-path returns Error if root-dir contains \\"
-        (Error "path isn't safe"
-               (list (cons 'local-path "/\\/dir-a")))
+  (test "selector->local-path returns #f if root-dir contains \\"
+        #f
         (selector->local-path "/\\" "dir-a") )
 
 
   (test "selector->local-path doesn't allow percent decoding to turn %2E%2E into .."
-        (Ok (make-pathname fixtures-dir "dir-a/%2E%2E"))
+        (make-pathname fixtures-dir "dir-a/%2E%2E")
         (selector->local-path fixtures-dir "dir-a/%2E%2E") )
 
 
-  (test "selector->local-path forms a local-path from root-dir and selector as Ok"
-        (Ok (make-pathname fixtures-dir "dir-a"))
+  (test "selector->local-path forms a local-path from root-dir and selector"
+        (make-pathname fixtures-dir "dir-a")
         (selector->local-path fixtures-dir "dir-a") )
 
 
   (test "selector->local-path allows root-dir to end with a '/'"
         (make-pathname fixtures-dir "dir-a")
         (let ((root-dir (sprintf "~A/" fixtures-dir)))
-          (cases Result (selector->local-path root-dir "dir-a")
-            (Ok (v) v)
-            (Error () #f) ) ) )
+          (selector->local-path root-dir "dir-a") ) )
 
 
   (test "selector->local-path allows root-dir to not end with a '/'"
-        (Ok (make-pathname fixtures-dir "dir-a"))
+        (make-pathname fixtures-dir "dir-a")
         (let ((root-dir (string-chomp fixtures-dir "/")))
           (selector->local-path root-dir "dir-a") ) )
 
 
   ;; It isn't a good idea to use this as the root-dir but the test ensures that '/' isn't turned into ''
   (test "selector->local-path allows root-dir to be '/'"
-        (Ok "/")
+        "/"
         (selector->local-path "/" "") )
 
 
@@ -74,9 +66,8 @@
         (let ((selectors '("/dir-a" " /dir-a" " / dir-a" "/ dir-a" " dir-a"
                            "dir-a/" "dir-a//" "dir-a / /" " dir-a ")))
             (map (lambda (selector)
-                         (cases Result (selector->local-path fixtures-dir selector)
-                           (Ok (v) (equal? v (make-pathname fixtures-dir "dir-a")))
-                           (Error () #f)))
+                         (equal? (selector->local-path fixtures-dir selector)
+                                 (make-pathname fixtures-dir "dir-a")))
                  selectors) ) )
 
 
