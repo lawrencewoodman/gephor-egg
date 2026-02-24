@@ -79,6 +79,7 @@
 ;;     The file is bigger than max-size
 ;;     The file isn't world readable
 ;;     The file path isn't safe
+;; TODO: Test if path doesn't exist
 (: safe-read-file (integer string string --> string))
 (define (safe-read-file max-size root-dir path)
   (if (world-readable? path)

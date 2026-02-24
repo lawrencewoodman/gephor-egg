@@ -79,17 +79,20 @@
 
   (define (log-exception-in-listen exn)
     (log-error "exception in listen"
-                 (cons 'exception-msg
-                       (get-condition-property exn 'exn 'message) ) ) )
+               (cons 'exception-location (get-condition-property exn 'exn 'location))
+               (cons 'exception-msg (get-condition-property exn 'exn 'message) ) ) )
 
   (define (log-exception-in-handle-thread in exn)
     (let-values ([(_ client-address) (tcp-addresses in)])
       (log-error "exception in handle thread"
+                 (cons 'exception-location (get-condition-property exn 'exn 'location))
                  (cons 'exception-msg (get-condition-property exn 'exn 'message))
                  (cons 'client-address client-address) ) ) )
 
   (define (log-exception-in-run-handler exn)
     (apply log-error "exception raised in run handler"
+                     (cons 'exception-location
+                           (get-condition-property exn 'exn 'location))
                      (cons 'exception-msg
                            (get-condition-property exn 'exn 'message))
                      (cons 'num-connections
