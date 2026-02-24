@@ -74,20 +74,18 @@
 ;; Read the contents of a file
 ;;
 ;; Returns:
-;;   Ok with the contents of the file
-;;   Error if:
+;;   Contents of the file
+;; Raises an error if:
 ;;     The file is bigger than max-size
 ;;     The file isn't world readable
 ;;     The file path isn't safe
-(: safe-read-file (integer string string --> *))
+(: safe-read-file (integer string string --> string))
 (define (safe-read-file max-size root-dir path)
   (if (world-readable? path)
       (if (safe-path? root-dir path)
           (unsafe-read-file max-size path)
-          (Error "can't read file, file path isn't safe"
-                 (list (cons 'file path))))
-      (Error "can't read file, file path isn't world readable"
-             (list (cons 'file path) ) ) ) )
+          (error* 'safe-read-file "can't read file, file path isn't safe: ~A" path))
+      (error* 'safe-read-file "can't read file, file path isn't world readable: ~A" path)) )
 
 
 ;; Internal Definitions ------------------------------------------------------
@@ -107,10 +105,10 @@
 ;; the path is safe and world readable.
 ;;
 ;; Returns:
-;;   Ok with the contents of the file
-;;   Error if:
-;;     The file is bigger than max-size
-(: unsafe-read-file (integer string --> *))
+;;   Contents of the file
+;; Raises an error if:
+;;   The file is bigger than max-size
+(: unsafe-read-file (integer string --> string))
 (define (unsafe-read-file max-size path)
   (call-with-input-file path
                         (lambda (port)
@@ -119,9 +117,10 @@
                           (let* ((contents (read-string max-size port))
                                  (more? (not (eof-object? (read-string 1 port)))))
                             (if (eof-object? contents)
-                                (Ok "")
+                                ""
                                 (if more?
-                                    (Error "can't read file, file is too big"
-                                           (list (cons 'file path)))
-                                    (Ok contents)))))
+                                    (error* 'safe-read-file
+                                            "can't read file, file is too big: ~A"
+                                            path)
+                                    contents))))
                         #:binary) )

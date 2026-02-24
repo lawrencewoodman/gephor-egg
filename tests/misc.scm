@@ -154,9 +154,9 @@
                test-paths) ) )
 
 
-  (test "safe-read-file returns Error if trying to serve a file that isn't world readable"
+  (test "safe-read-file raises error if trying to serve a file that isn't world readable"
         '("Hello, this is used to test serving a non world readable file.\n"
-          ("can't read file, file path isn't world readable" ((file . #t))))
+          (safe-read-file "can't read file, file path isn't world readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
                (tmpfile (make-pathname tmpdir "hello.txt")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable")
@@ -164,52 +164,58 @@
                      tmpfile)
           (let ((response1 (safe-read-file 1000 tmpdir tmpfile))
                 (response2
-                  (begin
-                    ;; Make tmpfile non world readable
-                    (set-file-permissions! tmpfile
-                                           (bitwise-and (file-permissions tmpfile)
-                                                        (bitwise-not perm/iroth)))
-                    (safe-read-file 1000 tmpdir tmpfile))))
-            (list (cases Result response1 (Ok (v) v) (Error () #f))
-                  (cases Result response2
-                    (Ok () #f)
-                    (Error (msg log-entries)
-                      (list msg (confirm-field-matches 'file
-                                                      ".*?hello.txt$"
-                                                      log-entries) ) ) ) ) ) ) )
+                 (handle-exceptions ex
+                   (list (get-condition-property ex 'exn 'location)
+                         (confirm-exn-msg-regex ex "\/tmp\/.*?hello.txt" "\/tmp\/#t"))
+                   (begin
+                     ;; Make tmpfile non world readable
+                     (set-file-permissions! tmpfile
+                                            (bitwise-and (file-permissions tmpfile)
+                                                         (bitwise-not perm/iroth)))
+                     (safe-read-file 1000 tmpdir tmpfile)))))
+            (list response1 response2) ) ) )
 
 
-  (test "safe-read-file returns Error if file path isn't safe"
-    (Error "can't read file, file path isn't safe"
-           (list (cons 'file (make-pathname fixtures-dir "a.txt"))))
+  (test "safe-read-file raises error if file path isn't safe"
+    (list 'safe-read-file
+          (sprintf "can't read file, file path isn't safe: ~A"
+                   (make-pathname fixtures-dir "a.txt")))
         (let* ((max-size 5))
-          (safe-read-file max-size (make-pathname fixtures-dir "dir-a")
-                                   (make-pathname fixtures-dir "a.txt") ) ) )
+           (handle-exceptions ex
+             (list (get-condition-property ex 'exn 'location)
+                   (get-condition-property ex 'exn 'message))
+              (safe-read-file max-size (make-pathname fixtures-dir "dir-a")
+                                       (make-pathname fixtures-dir "a.txt") ) ) ) )
 
 
-  (test "safe-read-file returns Error if file is bigger than max-size"
-    (Error "can't read file, file is too big"
-           (list (cons 'file (make-pathname fixtures-dir "a.txt"))))
+
+  (test "safe-read-file raises error if file is bigger than max-size"
+    (list 'safe-read-file
+          (sprintf "can't read file, file is too big: ~A"
+                   (make-pathname fixtures-dir "a.txt")))
           (let* ((max-size 5))
-            (safe-read-file max-size fixtures-dir
-                                     (make-pathname fixtures-dir "a.txt") ) ) )
+           (handle-exceptions ex
+             (list (get-condition-property ex 'exn 'location)
+                   (get-condition-property ex 'exn 'message))
+             (safe-read-file max-size fixtures-dir
+                                      (make-pathname fixtures-dir "a.txt") ) ) ) )
 
 
   (test "safe-read-file can read a file whose size is equal to max-size"
-        (Ok "hello\n")
+        "hello\n"
         (let ((max-size 6))
           (safe-read-file max-size fixtures-dir
                                    (make-pathname fixtures-dir "a.txt") ) ) )
 
 
-  (test "safe-read-file returns the contents of a binary file as Ok"
-        (Ok "This is text followed by a null (00)\x00 now some more text.")
+  (test "safe-read-file returns the contents of a binary file"
+        "This is text followed by a null (00)\x00 now some more text."
         (safe-read-file 1000 fixtures-dir
                              (make-pathname fixtures-dir "dir-a/ac.bin") ) )
 
 
-  (test "safe-read-file returns the contents of an empty file as Ok"
-        (Ok "")
+  (test "safe-read-file returns the contents of an empty file"
+        ""
         (safe-read-file 1000 fixtures-dir
                              (make-pathname fixtures-dir "dir-a/empty.txt") ) )
 

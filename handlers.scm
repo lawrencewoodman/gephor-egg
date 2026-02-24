@@ -71,7 +71,7 @@
     ;; is formed safely
     (cases Result rlocal-path
       (Ok (local-path) (if (regular-file? local-path)
-                           (safe-read-file (max-response-size) root-dir local-path)
+                           (Ok (safe-read-file (max-response-size) root-dir local-path))
                            (Not-Applicable #t)))
       (Error (msg log-entries) rlocal-path) ) ) )
 

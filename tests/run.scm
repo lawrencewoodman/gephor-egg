@@ -49,6 +49,14 @@
                        entry
                        "ts=#t ") )
 
+
+;; Replace exception message using regex and replace-string
+(define (confirm-exn-msg-regex exn regex replace-string)
+  (irregex-replace/all regex
+                       (get-condition-property exn 'exn 'message)
+                       replace-string) )
+
+;; TODO: remove this if no longer used
 ;; Check that the symbol in log-entries matches the regex.  If it does it changes
 ;; the value to #t
 (define (confirm-field-matches symbol regex log-entries)
