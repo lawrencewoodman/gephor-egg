@@ -3,6 +3,7 @@
 ;;; Definitions are exported in gephor.scm
 ;;; From this file the following are exported:
 ;;;   selector->local-path trim-path-selector safe-path? safe-read-file
+;;;   error*
 ;;;
 ;;; Copyright (C) 2024-2026 Lawrence Woodman <https://lawrencewoodman.github.io/>
 ;;;
@@ -89,17 +90,18 @@
       (error* 'safe-read-file "can't read file, file isn't world readable: ~A" path)) )
 
 
+;; Similar to error but passes arguments after location to sprintf to form
+;; error message
+;; TODO: test
+(define (error* location . args)
+  (error location (apply sprintf args) ) )
+
+
 ;; Internal Definitions ------------------------------------------------------
 
 ;; A char set for trimming selectors
 (define path-selector-trim-char-set
   (char-set-adjoin char-set:whitespace #\/) )
-
-
-;; Similar to error but passes arguments after location to sprintf to form
-;; error message
-(define (error* location . args)
-  (error location (apply sprintf args) ) )
 
 
 ;; Used by safe-read-file.  This function reads a file without checking if

@@ -13,7 +13,7 @@
 ;; Exported Definitions ------------------------------------------------------
 
 ;; Tries the following handlers in turn until one returns
-;; Ok, Error or the last one returns Not-Applicable
+;; successfully or the last one fails:
 ;;   serve-file serve-dir
 ;;
 ;; See the documentation for each handler for more information.

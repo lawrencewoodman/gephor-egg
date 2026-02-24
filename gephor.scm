@@ -24,6 +24,7 @@
    server-port
    selector->local-path
    trim-path-selector
+   error*
    safe-path?
    send-response
    send-response/error-menu
