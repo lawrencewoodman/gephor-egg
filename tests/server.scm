@@ -49,18 +49,15 @@
   (test "server returns a 'resource unavailable' error menu and logs an error if an exception is raised"
         '("3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
           "ts=#t level=error msg=\"exception raised in run handler\" exception-location=#f exception-msg=\"this is an error\" num-connections=1 client-address=127.0.0.1 selector=hello\n")
-        (let ((log-test-port (open-output-string))
-              (port 7070)
+        (let ((port 7070)
               (router (make-router (cons "hello" (lambda (request)
                                                     (error "this is an error"))))))
-          (parameterize ((log-level 'error)
-                         (log-port log-test-port))
-            (let* ((thread (start-test-server port router))
-                   (response (gopher-test-get port "hello")))
-              (stop-server thread)
-              (list response
-                    (confirm-log-entries-valid-timestamp
-                      (get-output-string log-test-port) ) ) ) ) ) )
+          (run/get-log 'error
+                       confirm-log-entries-valid-timestamp
+                       (let* ((thread (start-test-server port router))
+                              (response (gopher-test-get port "hello")))
+                         (stop-server thread)
+                         response) ) ) )
 
 
   (test "server returns a 'resource unavailable' error menu and logs an error if data to send is > max-response-size bytes"
@@ -70,24 +67,14 @@
               (port 7070)
               (router (make-router (cons "hello"
                                          (lambda (request)
-                                           (string-intersperse
-                                             '("1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890"
-                                               "1234567890")))))))
-          (parameterize ((log-level 'error)
-                         (log-port log-test-port)
-                         (max-response-size 60))
-            (let* ((thread (start-test-server port router))
-                   (response (gopher-test-get port "hello")))
-              (stop-server thread)
-              (list response
-                    (confirm-log-entries-valid-timestamp
-                      (get-output-string log-test-port) ) ) ) ) ) )
+                                           (make-string 61 #\A))))))
+          (parameterize ((max-response-size 60))
+            (run/get-log 'error
+                         confirm-log-entries-valid-timestamp
+                         (let* ((thread (start-test-server port router))
+                                (response (gopher-test-get port "hello")))
+                           (stop-server thread)
+                           response) ) ) ) )
 
 
   (test "server removes whitespace at beginning and end of selectors before passing to handlers"
@@ -149,38 +136,37 @@
 
   (test "server logs a warning message if the connection is broken while waiting for the selector"
         "ts=#t level=warning msg=\"exception when reading selector\" client-address=127.0.0.1 exception-msg=\"bad argument type\"\n"
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((tcp-read-timeout 2)
-                         (log-level 'warning)
-                         (log-port log-test-port))
-            (let* ((port 7070)
-                   (router (make-router (cons "*"
-                                              (lambda (request)
-                                                (request-selector request)))))
-                   (thread (start-test-server port router)))
-              (let-values (((in out) (tcp-connect "localhost" port)))
-                (close-input-port in)
-                (close-output-port out)
-                (stop-server thread)
-                (confirm-log-entries-valid-timestamp (get-output-string log-test-port) ) ) ) ) ) )
+        (let* ((port 7070)
+               (router (make-router (cons "*"
+                                          (lambda (request)
+                                            (request-selector request))))))
+          (parameterize ((tcp-read-timeout 2))
+            (second (run/get-log 'warning
+                                 confirm-log-entries-valid-timestamp
+                      (let ((thread (start-test-server port router)))
+                        (let-values (((in out) (tcp-connect "localhost" port)))
+                          (close-input-port in)
+                          (close-output-port out)
+                          (stop-server thread)) ) ) ) ) ) )
 
 
   (test "start-server logs an info message to say the server has started"
         "ts=#t level=info msg=\"server started\" hostname=localhost port=7070"
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((tcp-read-timeout 2)
-                         (log-level 'info)
-                         (log-port log-test-port))
-            (let* ((port 7070)
-                   (router (make-router (cons "*"
-                                              (lambda (request)
-                                                (request-selector request)))))
-                   (thread (start-server hostname: "localhost" port: port router: router)))
-              (let-values (((in out) (tcp-connect "localhost" port)))
-                (close-input-port in)
-                (close-output-port out)
-                (stop-server thread)
-                (confirm-log-entries-valid-timestamp (car (string-split (get-output-string log-test-port) "\n" #f) ) ) ) ) ) ) )
+        (let* ((port 7070)
+               (router (make-router (cons "*"
+                                          (lambda (request)
+                                            (request-selector request))))))
+          (car (string-split
+            (second (run/get-log 'info
+                                 confirm-log-entries-valid-timestamp
+              (let ((thread (start-server hostname: "localhost"
+                                          port: port
+                                          router: router)))
+                (let-values (((in out) (tcp-connect "localhost" port)))
+                  (close-input-port in)
+                  (close-output-port out)
+                  (stop-server thread)))))
+            "\n" #t) ) ) )
 
 )
 
