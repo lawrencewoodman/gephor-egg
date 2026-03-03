@@ -145,7 +145,7 @@
                test-paths) ) )
 
 
-  (test "safe-read-file raises error if trying to serve a file that isn't world readable"
+  (test "safe-read-file raises an exception if trying to serve a file that isn't world readable"
         '("Hello, this is used to test serving a non world readable file.\n"
           (safe-read-file "can't read file, file isn't world readable: /tmp/#t"))
         (let* ((tmpdir (create-temporary-directory))
@@ -167,7 +167,7 @@
             (list response1 response2) ) ) )
 
 
-  (test "safe-read-file raises error if file path isn't safe"
+  (test "safe-read-file raises an exception if file path isn't safe"
     (list 'safe-read-file
           (sprintf "can't read file, file path isn't safe: ~A"
                    (make-pathname fixtures-dir "a.txt")))
@@ -180,7 +180,7 @@
 
 
 
-  (test "safe-read-file raises error if file is bigger than max-size"
+  (test "safe-read-file raises an exception if file is bigger than max-size"
     (list 'safe-read-file
           (sprintf "can't read file, file is too big: ~A"
                    (make-pathname fixtures-dir "a.txt")))
@@ -190,6 +190,18 @@
                    (get-condition-property ex 'exn 'message))
              (safe-read-file max-size fixtures-dir
                                       (make-pathname fixtures-dir "a.txt") ) ) ) )
+
+
+  (test "safe-read-file raises an exception if file doesn't exist"
+    (list 'safe-read-file
+          (sprintf "can't read file, file doesn't exist: ~A"
+                   (make-pathname fixtures-dir "notexist.txt")))
+        (let* ((max-size 5))
+           (handle-exceptions ex
+             (list (get-condition-property ex 'exn 'location)
+                   (get-condition-property ex 'exn 'message))
+              (safe-read-file max-size (make-pathname fixtures-dir "dir-a")
+                                       (make-pathname fixtures-dir "notexist.txt") ) ) ) )
 
 
   (test "safe-read-file can read a file whose size is equal to max-size"
