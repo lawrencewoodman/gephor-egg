@@ -36,6 +36,7 @@
         (string-intersperse '(
           "1dir-a\tdir-a\tlocalhost\t70"
           "1dir-b\tdir-b\tlocalhost\t70"
+          "1dir-empty\tdir-empty\tlocalhost\t70"
           "1dir-world_readable\tdir-world_readable\tlocalhost\t70"
           "0a.txt\ta.txt\tlocalhost\t70"
           "0b.txt\tb.txt\tlocalhost\t70"
@@ -66,6 +67,11 @@
   (test "serve-dir returns #f if path doesn't exist"
         #f
         (serve-dir fixtures-dir (make-request "notexist.txt" "127.0.0.1") ) )
+
+
+  (test "serve-dir returns #f if director is empty"
+        #f
+        (serve-dir fixtures-dir (make-request "dir-empty" "127.0.0.1") ) )
 
 
   (test "serve-file raises an error if trying to serve a file that isn't world readable"

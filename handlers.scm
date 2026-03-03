@@ -42,7 +42,9 @@
          (local-path (selector->local-path root-dir selector)))
     (and local-path
          (directory? local-path)
-         (menu-render (list-dir selector local-path) ) ) ) )
+         (let ((menu (list-dir selector local-path)))
+           (and (not (null? menu))
+                (menu-render menu) ) ) ) ) )
 
 
 ;; If the path formed by root-dir and request is a regular file and readable
@@ -140,7 +142,6 @@
       (let* ((filenames (directory local-path))
              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
              (menu (make-menu entries)))
-        ;; TODO: If resulting menu is empty should return #f and log an error
         (reverse menu))
       (error* 'list-dir "can't list dir, path isn't world readable: ~A" local-path) ) )
 
