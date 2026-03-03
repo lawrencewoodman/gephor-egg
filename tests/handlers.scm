@@ -152,7 +152,19 @@
         (serve-path fixtures-dir (make-request "unknown" "127.0.0.1") ) )
 
 
-  ;; TODO: Add tests to test serve-path going to dir or file
+  (test "serve-path returns the contents of a file if path is to a regular file"
+        "hello\n"
+        (serve-path fixtures-dir (make-request "a.txt" "127.0.0.1") ) )
+
+
+  (test "serve-path returns a menu representing a directory listing if path is to a directory"
+        (conc "0aa.txt\tdir-a/aa.txt\tlocalhost\t70\r\n"
+              "0ab.txt\tdir-a/ab.txt\tlocalhost\t70\r\n"
+              "9ac.bin\tdir-a/ac.bin\tlocalhost\t70\r\n"
+              "9empty.txt\tdir-a/empty.txt\tlocalhost\t70\r\n"
+              ".\r\n")
+        (serve-path fixtures-dir (make-request "dir-a" "127.0.0.1") ) )
+
 
   (test "serve-url returns a HTML document populated with the supplied URL"
         (string-intersperse '(
