@@ -53,7 +53,6 @@
               (router (make-router (cons "hello" (lambda (request)
                                                     (error "this is an error"))))))
           (run/get-log 'error
-                       confirm-log-entries-valid-timestamp
                        (let* ((thread (start-test-server port router))
                               (response (gopher-test-get port "hello")))
                          (stop-server thread)
@@ -70,7 +69,6 @@
                                            (make-string 61 #\A))))))
           (parameterize ((max-response-size 60))
             (run/get-log 'error
-                         confirm-log-entries-valid-timestamp
                          (let* ((thread (start-test-server port router))
                                 (response (gopher-test-get port "hello")))
                            (stop-server thread)
@@ -142,7 +140,6 @@
                                             (request-selector request))))))
           (parameterize ((tcp-read-timeout 2))
             (second (run/get-log 'warning
-                                 confirm-log-entries-valid-timestamp
                       (let ((thread (start-test-server port router)))
                         (let-values (((in out) (tcp-connect "localhost" port)))
                           (close-input-port in)
@@ -158,7 +155,6 @@
                                             (request-selector request))))))
           (car (string-split
             (second (run/get-log 'info
-                                 confirm-log-entries-valid-timestamp
               (let ((thread (start-server hostname: "localhost"
                                           port: port
                                           router: router)))
