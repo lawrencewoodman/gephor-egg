@@ -110,7 +110,7 @@
                   (string<? a-filename b-filename))))))))
 
 
-;; TODO: Make sure paths and selectors are safe
+;; Use selector->local-path to create local-path safely.
 ;; Returns:
 ;;   The directory as a list of menu items representing the files in the directory
 ;; Raises an error:
