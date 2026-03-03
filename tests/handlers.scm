@@ -63,6 +63,11 @@
         (serve-dir fixtures-dir (make-request "a.txt" "127.0.0.1") ) )
 
 
+  (test "serve-dir returns #f if path doesn't exist"
+        #f
+        (serve-dir fixtures-dir (make-request "notexist.txt" "127.0.0.1") ) )
+
+
   (test "serve-file raises an error if trying to serve a file that isn't world readable"
         '("Hello, this is used to test serving a non world readable file.\n"
           (safe-read-file "can't read file, file isn't world readable: /tmp/#t"))
@@ -135,6 +140,11 @@
   (test "serve-file returns #f if path isn't a regular file"
         #f
         (serve-file fixtures-dir (make-request "dir-b" "127.0.0.1") ) )
+
+
+  (test "serve-file returns #f if path doesn't exist"
+        #f
+        (serve-file fixtures-dir (make-request "notexist.txt" "127.0.0.1") ) )
 
 
   (test "serve-path returns #f if path doesn't exist"
