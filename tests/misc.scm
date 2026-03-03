@@ -211,5 +211,12 @@
                              (make-pathname fixtures-dir "dir-a/empty.txt") ) )
 
 
+  (test "error* raises an exception and passes arguments into message format string"
+        '(mysymbol "A message on line 5, near token: for")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (error* 'mysymbol "A message on line ~A, near token: ~A" 5 "for") ) )
+
 )
 

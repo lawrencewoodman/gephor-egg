@@ -91,7 +91,7 @@
 
 ;; Similar to error but passes arguments after location to sprintf to form
 ;; error message
-;; TODO: test
+(: error* (symbol #!rest * ... -> noreturn))
 (define (error* location . args)
   (error location (apply sprintf args) ) )
 
