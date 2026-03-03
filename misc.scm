@@ -24,7 +24,6 @@
 ;; Returns:
 ;;   The path created from the selector and root-dir
 ;;   #f if the path isn't safe
-;; TODO: As we move away from Result ensure this makes use of and and let-and
 (: selector->local-path (string string --> (or string false)))
 (define (selector->local-path root-dir selector)
   (let* ((root-dir (if (> (string-length root-dir) 1)
