@@ -45,12 +45,13 @@
 ;; can't reach the parent directory of root-dir  We include '\' in the
 ;; list of invalid characters because of an apparent bug according to
 ;; the Spiffy web server source code which says that this can be turned
-;; into a '/' sometimes by Chicken. root-dir must be an absolute path.
-;; NOTE: If chicken scheme starts supporting UTF-8 properly then we will
+;; into a '/' sometimes by Chicken.  If NUL is present in the string
+;; it will also be rejected as this could lead to a traversal attack.
+;; root-dir must be an absolute path.
+;; NOTE: When chicken scheme starts supporting UTF-8 properly then we will
 ;; NOTE: need to worry about percent decoding which should be done before
 ;; NOTE: any other checks.
 ;; NOTE: This does not check if the path is world readable
-;; TODO: Should we test for nul in a string as per Spiffy?
 (: safe-path? (string string --> boolean))
 (define (safe-path? root-dir path)
   (when (not (absolute-pathname? root-dir))
@@ -62,6 +63,7 @@
       (and (not (substring-index "./" path))
            (not (substring-index ".." path))
            (not (substring-index "\\" path))
+           (not (substring-index "\x00" path))
            (equal? n-root-base n-path-base)
            (or (not n-root-elements)
                (and n-path-elements

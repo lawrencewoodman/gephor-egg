@@ -135,12 +135,13 @@
                test-paths) ) )
 
 
-  (test "safe-path? returns #f if a path contains: '\', './' or '..'"
-        '(#f #f #f #f)
+  (test "safe-path? returns #f if a path contains: '\', './', '..' or NUL"
+        '(#f #f #f #f #f)
         (let ((test-paths '("/tmp\\here"
                             "/tmp./"
                             "/tmp/./"
-                            "/tmp/t/..")))
+                            "/tmp/t/.."
+                            "/tmp/t/\x00/")))
           (map (lambda (p) (safe-path? "/tmp" p))
                test-paths) ) )
 
