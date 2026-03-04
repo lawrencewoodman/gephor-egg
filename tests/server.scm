@@ -133,7 +133,7 @@
 
 
   (test "server logs a warning message if the connection is broken while waiting for the selector"
-        "ts=#t level=warning msg=\"exception when reading selector\" client-address=127.0.0.1 exception-msg=\"bad argument type\"\n"
+        "ts=#t level=warning msg=\"read selector failed, connection probably terminated\" client-address=127.0.0.1\n"
         (let* ((port 7070)
                (router (make-router (cons "*"
                                           (lambda (request)

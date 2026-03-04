@@ -205,9 +205,8 @@
       (log-warning "read selector timeout" (cons 'client-address client-address))
       #f)
     (ex (exn)
-      (log-warning "exception when reading selector"
-                   (cons 'client-address client-address)
-                   (cons 'exception-msg (get-condition-property ex 'exn 'message)))
+      (log-warning "read selector failed, connection probably terminated"
+                   (cons 'client-address client-address))
       #f) ) )
 
 
