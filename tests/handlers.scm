@@ -5,7 +5,6 @@
   (parameterize ((server-hostname "localhost")
                  (server-port 70))
 
-  ;; TODO: Add Test for working through the three handlers in serve-path
 
   (test "serve-dir raises an error if listing a directory that isn't world readable"
         (list (string-intersperse '(
