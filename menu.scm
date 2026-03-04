@@ -119,12 +119,12 @@
                (menu-item itemtype username path host (or port 70))))
            ((telnet)
              (if userinfo
-                 (menu-item 'telnet
+                 (menu-item 'html
                             username
                             (sprintf "URL:~A" url)
                             (server-hostname)
                             (server-port))
-                 (menu-item '|8| username path host (or port 23))))
+                 (menu-item 'telnet username path host (or port 23))))
            (else
              (menu-item 'html
                         username

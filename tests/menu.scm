@@ -188,31 +188,42 @@
           (menu-render menu) ) ) )
 
 
-(test "menu-item-url handles telnet URL scheme"
+(test "menu-item-url handles telnet URL scheme using '8' itemtype if no username"
       (string-intersperse '(
         "8some telnet bbs\t\texample.com\t23"
         "8some telnet bbs\t\texample.com\t23"
-        "8some telnet bbs - my user\tURL:telnet://myuser@example.com\tlocalhost\t70"
-        "8some telnet bbs - my user\tURL:telnet://myuser@example.com/\tlocalhost\t70"
-
-        "8some telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com\tlocalhost\t70"
-        "8some telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com/\tlocalhost\t70"
         "8some telnet bbs\t\texample.com\t2320"
         "8some telnet bbs\t\texample.com\t2320"
-        "8some telnet bbs - my user\tURL:telnet://myuser@example.com:2320\tlocalhost\t70"
-        "8some telnet bbs - my user\tURL:telnet://myuser@example.com:2320/\tlocalhost\t70"
         ".\r\n")
         "\r\n")
       (parameterize ((server-hostname "localhost") (server-port 70))
         (let* ((urls '(
                  ("telnet://example.com" . "some telnet bbs")
                  ("telnet://example.com/" . "some telnet bbs")
+                 ("telnet://example.com:2320" . "some telnet bbs")
+                 ("telnet://example.com:2320/" . "some telnet bbs")))
+               (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
+                          urls)))
+          (menu-render menu) ) ) )
+
+
+(test "menu-item-url handles telnet URL scheme using 'h' itemtype if username"
+      (string-intersperse '(
+        "hsome telnet bbs - my user\tURL:telnet://myuser@example.com\tlocalhost\t70"
+        "hsome telnet bbs - my user\tURL:telnet://myuser@example.com/\tlocalhost\t70"
+
+        "hsome telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com\tlocalhost\t70"
+        "hsome telnet bbs - my user\tURL:telnet://myuser:mypassword@example.com/\tlocalhost\t70"
+        "hsome telnet bbs - my user\tURL:telnet://myuser@example.com:2320\tlocalhost\t70"
+        "hsome telnet bbs - my user\tURL:telnet://myuser@example.com:2320/\tlocalhost\t70"
+        ".\r\n")
+        "\r\n")
+      (parameterize ((server-hostname "localhost") (server-port 70))
+        (let* ((urls '(
                  ("telnet://myuser@example.com" . "some telnet bbs - my user")
                  ("telnet://myuser@example.com/" . "some telnet bbs - my user")
                  ("telnet://myuser:mypassword@example.com" . "some telnet bbs - my user")
                  ("telnet://myuser:mypassword@example.com/" . "some telnet bbs - my user")
-                 ("telnet://example.com:2320" . "some telnet bbs")
-                 ("telnet://example.com:2320/" . "some telnet bbs")
                  ("telnet://myuser@example.com:2320" . "some telnet bbs - my user")
                  ("telnet://myuser@example.com:2320/" . "some telnet bbs - my user")))
                (menu (map (lambda (x) (menu-item-url (cdr x) (car x)))
