@@ -45,7 +45,6 @@
         (serve-dir fixtures-dir (make-request "" "127.0.0.1") ) )
 
 
-  ;; TODO: test against serve-file as well
   (test "serve-dir supports subpath ('dir-a') selector"
         ;; Directories come before regular files and each in alphabetical order
         (string-intersperse '(
