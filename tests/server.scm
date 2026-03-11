@@ -20,7 +20,7 @@
       (start-server hostname: "localhost" port: port router: router) ) )
 
 
-  (test "server responds correctly to simple routes without a splat"
+  (test "server responds correctly to routes without a splat"
         '("hello friend" "bye friend")
         (let* ((port 7070)
                (router (make-router (cons "hello"
@@ -31,6 +31,27 @@
           (let ((responses (map (lambda (selector)
                                   (gopher-test-get port selector))
                                 '("hello" "bye"))))
+            (stop-server thread)
+            responses) ) )
+
+
+  (test "server responds correctly to routes with a splat"
+        '("blog selector: blog/something/today/scheme"
+          "guestbook selector: guestbook/sign/hello")
+        (let* ((port 7070)
+               (router (make-router (cons "blog/something/*"
+                                          (lambda (request)
+                                            (sprintf "blog selector: ~A"
+                                                     (request-selector request))))
+                                    (cons "guestbook/sign/*"
+                                          (lambda (request)
+                                            (sprintf "guestbook selector: ~A"
+                                                     (request-selector request))))))
+               (thread (start-test-server port router)))
+          (let ((responses (map (lambda (selector)
+                                  (gopher-test-get port selector))
+                                '("blog/something/today/scheme"
+                                  "guestbook/sign/hello"))))
             (stop-server thread)
             responses) ) )
 
