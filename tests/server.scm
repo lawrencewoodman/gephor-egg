@@ -1,9 +1,5 @@
 ;;; Tests for the main server procedures
 
-
-;; TODO: Add tests using a handler such as serve-file?
-
-
 (test-group "server"
 
   (define (gopher-test-get port selector)
@@ -83,8 +79,7 @@
   (test "server returns a 'resource unavailable' error menu and logs an error if data to send is > max-response-size bytes"
         '("3resource unavailable\t\tlocalhost\t7070\r\n.\r\n"
           "ts=#t level=error msg=\"exception raised in run handler\" exception-location=send-response exception-msg=\"response is too big to send\" num-connections=1 client-address=127.0.0.1 selector=hello\n")
-        (let ((log-test-port (open-output-string))
-              (port 7070)
+        (let ((port 7070)
               (router (make-router (cons "hello"
                                          (lambda (request)
                                            (make-string 61 #\A))))))
@@ -126,31 +121,43 @@
             responses) ) )
 
 
+  (test "server responds correctly to request going to serve-file"
+        '("hello\n" "hello aa\n")
+        (let* ((port 7070)
+               (router (make-router (cons "*"
+                                          (lambda (request)
+                                            (serve-file fixtures-dir request)))))
+               (thread (start-test-server port router)))
+          (let ((responses (map (lambda (selector) (gopher-test-get port selector))
+                                '("a.txt" "dir-a/aa.txt"))))
+            (stop-server thread)
+            responses) ) )
+
+
   (test "server logs a warning message if there is a timeout while waiting for the selector"
         "ts=#t level=warning msg=\"read selector timeout\" client-address=127.0.0.1\n"
-        (let ((log-test-port (open-output-string)))
-          (parameterize ((tcp-read-timeout 0)
-                         (log-level 'warning)
-                         (log-port log-test-port))
-            (let* ((port 7070)
-                   (router (make-router (cons "*"
-                                              (lambda (request)
-                                                (request-selector request)))))
-                   (thread (start-test-server port router))
-                   (test-timeout-limit (+ (current-process-milliseconds) 1000)))
-              (let-values (((in out) (tcp-connect "localhost" port)))
-                (let ((final-log-entry
+        (parameterize ((tcp-read-timeout 0)
+                       (log-level 'warning)
+                       (log-port (open-output-string)))
+          (let* ((port 7070)
+                 (router (make-router (cons "*"
+                                            (lambda (request)
+                                              (request-selector request)))))
+                 (thread (start-test-server port router))
+                 (test-timeout-limit (+ (current-process-milliseconds) 1000)))
+            (let-values (((in out) (tcp-connect "localhost" port)))
+              (let ((final-log-entry
                       (let loop ()
                         (if (> (current-process-milliseconds) test-timeout-limit)
                             "test timeout"
-                             (let ((log-entry (get-output-string log-test-port)))
+                             (let ((log-entry (get-output-string (log-port))))
                                (if (not (equal? log-entry ""))
                                    log-entry
                                    (loop)))))))
-                     (close-input-port in)
-                     (close-output-port out)
-                     (stop-server thread)
-                     (confirm-log-entries-valid-timestamp final-log-entry) ) ) ) ) ) )
+                   (close-input-port in)
+                   (close-output-port out)
+                   (stop-server thread)
+                   (confirm-log-entries-valid-timestamp final-log-entry) ) ) ) ) )
 
 
   (test "server logs a warning message if the connection is broken while waiting for the selector"
@@ -184,6 +191,8 @@
                   (close-output-port out)
                   (stop-server thread)))))
             "\n" #t) ) ) )
+
+
 
 )
 
