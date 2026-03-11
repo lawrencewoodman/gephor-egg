@@ -37,8 +37,8 @@
 (: serve-dir (string * -> (or string false)))
 (define (serve-dir root-dir request)
   (let* ((selector (request-selector request))
-         ;; local-path is formed here rather than being passed
-         ;; in, to ensure that it is formed safely
+         ;; local-path is formed here rather than being passed in
+         ;; to ensure that it is formed safely
          (local-path (selector->local-path root-dir selector)))
     (and local-path
          (directory? local-path)
@@ -57,8 +57,8 @@
 (: serve-file (string * -> (or string false)))
 (define (serve-file root-dir request)
   (let* ((selector (request-selector request))
-         ;; local-path is formed here rather than being passed
-         ;; in, to ensure that it is formed safely
+         ;; local-path is formed here rather than being passed in
+         ;; to ensure that it is formed safely
          (local-path (selector->local-path root-dir selector)))
     (and local-path
          (regular-file? local-path)
