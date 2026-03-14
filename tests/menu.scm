@@ -98,9 +98,12 @@
           (menu-render (list item) ) ) )
 
 
-  (test "menu-item returns #f if unknown itemtype is longer than a single letter"
-        #f
-        (menu-item 'uu "something" "/fred/hi" "localhost" 70) )
+  (test "menu-item raises an exception if unknown itemtype is longer than a single letter"
+        '(menu-item "invalid menu item type: uu")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (menu-item 'uu "something" "/fred/hi" "localhost" 70) ) )
 
 
   (test "menu-item allows username > 69 despite RFC 1436 recommended limit"

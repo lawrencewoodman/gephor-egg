@@ -91,7 +91,7 @@
                test-paths) ) )
 
 
-  (test "safe-path? returns #f root-dir is a relative path"
+  (test "safe-path? raises an exception if root-dir is a relative path"
         '((safe-path? "root-dir must be an absolute directory: ")
           (safe-path? "root-dir must be an absolute directory: tmp/")
           (safe-path? "root-dir must be an absolute directory: ./tmp"))
