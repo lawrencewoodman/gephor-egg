@@ -117,8 +117,9 @@
 ;; page which points to the desired URL.  This conforms to:
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
-;; Returns #f if URL is invalid otherwise a menu-item is returned
-;; TODO: Raise exceptions rather than #f ?
+;; Returns:
+;;   A menu item
+;;   #f if URL is invalid
 (: menu-item-url (string string --> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((scheme userinfo host port path itemtype) (split-url url)))
