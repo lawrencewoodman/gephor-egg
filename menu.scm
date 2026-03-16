@@ -67,8 +67,11 @@
 ;; local-path is the path to the file whose itemtype will be determined
 ;; using libmagic unless it is a directory.
 ;;
-;; Returns #f if the file doesn't exist or the type can't be determined,
-;; otherwise a menu-item is returned
+;; Returns:
+;;   A menu-item pointing to the file / directory
+;;   #f if the file / directory doesn't exist
+;; Raises an exception:
+;;   If the type can't be determined
 (: menu-item-file (string string string -> (or menu-item false)))
 (define (menu-item-file local-path username selector)
   (and (file-exists? local-path)
@@ -76,24 +79,27 @@
            (menu-item 'menu username selector (server-hostname) (server-port))
            (let* ((mime-type (identify local-path 'mime))
                   (mime-match (irregex-search mime-split-regex mime-type)))
-             (and (irregex-match-data? mime-match)
-                  (let ((media-type (irregex-match-substring mime-match 1))
-                        (media-subtype (irregex-match-substring mime-match 2)))
-                    (let ((itemtype (cond
-                                      ((string=? media-type "image")
-                                        (if (string=? media-subtype "gif")
-                                            'gif
-                                            'image))
-                                      ((string=? media-type "text")
-                                        (if (string=? media-subtype "html")
-                                            'html)
-                                            'text)
-                                      (else 'binary))))
-                       (menu-item itemtype
-                                  username
-                                  selector
-                                  (server-hostname)
-                                  (server-port) ) ) ) ) ) ) ) )
+             (unless (irregex-match-data? mime-match)
+                     (error* 'menu-item-file
+                             "can't determine type of file: ~A"
+                             local-path))
+               (let ((media-type (irregex-match-substring mime-match 1))
+                     (media-subtype (irregex-match-substring mime-match 2)))
+                 (let ((itemtype (cond
+                                   ((string=? media-type "image")
+                                     (if (string=? media-subtype "gif")
+                                         'gif
+                                         'image))
+                                   ((string=? media-type "text")
+                                     (if (string=? media-subtype "html")
+                                         'html)
+                                         'text)
+                                   (else 'binary))))
+                    (menu-item itemtype
+                               username
+                               selector
+                               (server-hostname)
+                               (server-port) ) ) ) ) ) ) )
 
 
 ;; Turn a URL into a menu item
@@ -112,6 +118,7 @@
 ;;   gopher://bitreich.org:70/1/scm/gopher-protocol/file/references/h_type.txt.gph
 ;;
 ;; Returns #f if URL is invalid otherwise a menu-item is returned
+;; TODO: Raise exceptions rather than #f ?
 (: menu-item-url (string string --> (or menu-item false)))
 (define (menu-item-url username url)
   (let-values (((scheme userinfo host port path itemtype) (split-url url)))

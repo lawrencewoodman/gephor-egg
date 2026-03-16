@@ -104,7 +104,7 @@
                test-roots) ) )
 
 
-  (test "safe-path? returns #f path is a relative path"
+  (test "safe-path? returns #f if path is a relative path"
         '(#f #f #f #f)
         (let ((test-paths '("" "tmp" "tmp/t" "./tmp")))
           (map (lambda (p) (safe-path? "/" p))
