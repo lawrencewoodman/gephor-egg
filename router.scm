@@ -69,10 +69,16 @@
     (or (not splat-index) (= splat-index (sub1 (string-length pattern) ) ) ) ) )
 
 
-;; Sort routes in descending order of length of string before '*'
-;; so that most general matches are at the end of the list.  If two
-;; patterns are the same length sort in lexical order
-;; TODO: rewrite explanation as it isn't quite right
+;; Sort routes as follows:
+;;   Patterns without a '*' will come before patterns with a '*'.
+;;   Shorter patterns with a '*' will come before longer patterns with a '*'.
+;;   The above two rules will ensure that the patterns are sorted from
+;;   the more specific to the more general.
+;;   When two patterns are equal according to the above rules they will
+;;   be sorted in lexical order.
+;;
+;; Returns:
+;;   A list of sorted rules
 (: sort-routes (router --> router))
 (define (sort-routes router)
   (sort router
