@@ -6,6 +6,14 @@
                  (server-port 70))
 
 
+  (test "serve-dir raises an exception if root-dir is empty"
+        '(safe-path? "root-dir must be an absolute directory: ")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (serve-dir "" (make-request "dir-a" "127.0.0.1") ) ) )
+
+
   (test "serve-dir raises an error if listing a directory that isn't world readable"
         (list (string-intersperse '(
                 "1dir-a\tdir-a\tlocalhost\t70"
@@ -62,6 +70,12 @@
         (serve-dir fixtures-dir (make-request "a.txt" "127.0.0.1") ) )
 
 
+  (test "serve-dir returns #f if root-dir doesn't exist"
+        #f
+        (serve-dir (make-pathname fixtures-dir "nothere")
+                   (make-request "" "127.0.0.1") ) )
+
+
   (test "serve-dir returns #f if path doesn't exist"
         #f
         (serve-dir fixtures-dir (make-request "notexist.txt" "127.0.0.1") ) )
@@ -70,6 +84,14 @@
   (test "serve-dir returns #f if director is empty"
         #f
         (serve-dir fixtures-dir (make-request "dir-empty" "127.0.0.1") ) )
+
+
+  (test "serve-file raises an exception if root-dir is empty"
+        '(safe-path? "root-dir must be an absolute directory: ")
+        (handle-exceptions ex
+          (list (get-condition-property ex 'exn 'location)
+                (get-condition-property ex 'exn 'message))
+          (serve-file "" (make-request "a.txt" "127.0.0.1") ) ) )
 
 
   (test "serve-file raises an error if trying to serve a file that isn't world readable"
@@ -149,6 +171,12 @@
   (test "serve-file returns #f if path doesn't exist"
         #f
         (serve-file fixtures-dir (make-request "notexist.txt" "127.0.0.1") ) )
+
+
+  (test "serve-file returns #f if root-dir doesn't exist"
+        #f
+        (serve-file (make-pathname fixtures-dir "nothere")
+                    (make-request "a.txt" "127.0.0.1") ) )
 
 
   (test "serve-path returns #f if path doesn't exist"
