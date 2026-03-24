@@ -12,17 +12,12 @@
             response) ) )
 
 
-  (test "send-response raises an error if the response > max-response-size"
-        '((() (send-response "response is too big to send")) "123456")
+  (test "send-response returns #f if the response > max-response-size"
+        '((#t #f) "123456")
         (let ((test-responses '("123456" "1234567"))
               (out (open-output-string)))
           (parameterize ((max-response-size 6))
-            (list (map (lambda (r)
-                         (handle-exceptions ex
-                           (list (get-condition-property ex 'exn 'location)
-                                 (get-condition-property ex 'exn 'message))
-                           (send-response r out)
-                           '()))
+            (list (map (lambda (r) (send-response r out))
                        test-responses)
                   (let ((output (get-output-string out)))
                     (close-output-port out)

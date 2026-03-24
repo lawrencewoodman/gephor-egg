@@ -77,6 +77,18 @@
            (cons 'num-connections (num-connections))
            (log-context) ) )
 
+  (define (log-response-too-big)
+    (apply log-error
+           "response is too big to send"
+           (cons 'num-connections (num-connections))
+           (log-context) ) )
+
+  (define (log-no-handler-for-selector)
+    (apply log-warning
+           "no handler for selector"
+           (cons 'num-connections (num-connections))
+           (log-context) ) )
+
   (define (log-exception-in-listen exn)
     (log-error "exception in listen"
                (cons 'exception-location (get-condition-property exn 'exn 'location))
@@ -106,12 +118,14 @@
                          (send-response/error-menu "resource unavailable" out))
                        (let ((response (handler request)))
                          (if response
-                             (when (send-response response out)
-                                   (log-connection-handled))
+                             (if (send-response response out)
+                                 (log-connection-handled)
+                                 (begin
+                                   (log-response-too-big)
+                                   (send-response/error-menu "resource unavailable"
+                                                             out)))
                              (begin
-                               (apply log-warning "no handler for selector"
-                               (cons 'num-connections (num-connections))
-                               (log-context))
+                               (log-no-handler-for-selector)
                                (send-response/error-menu "path not found" out) ) ) ) ) )
 
   (define (handle-connect in out)
