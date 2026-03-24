@@ -76,24 +76,19 @@
 ;; Read the contents of a file
 ;;
 ;; Returns:
-;;   Contents of the file
-;; Raises an error if:
-;;   The file doesn't exist
-;;   The file isn't world readable
-;;   The file path isn't safe
+;;   The contents of the file
+;;   #f if the file can't be read for any of the following reasons:
+;;     The file doesn't exist
+;;     The file isn't world readable
+;;     The file path isn't safe
+;; Raises an exception if:
 ;;   The file is bigger than max-size
-(: safe-read-file (integer string string --> string))
+(: safe-read-file (integer string string --> (or string false)))
 (define (safe-read-file max-size root-dir path)
-  (if (file-exists? path)
-      (if (world-readable? path)
-          (if (safe-path? root-dir path)
-              (unsafe-read-file max-size path)
-              (error* 'safe-read-file
-                      "can't read file, file path isn't safe: ~A" path))
-          (error* 'safe-read-file
-                  "can't read file, file isn't world readable: ~A" path))
-      (error* 'safe-read-file
-              "can't read file, file doesn't exist: ~A" path) ) )
+  (and (file-exists? path)
+       (world-readable? path)
+       (safe-path? root-dir path)
+       (unsafe-read-file max-size path) ) )
 
 
 ;; Similar to error but passes arguments after location to sprintf to form
@@ -115,7 +110,7 @@
 ;;
 ;; Returns:
 ;;   Contents of the file
-;; Raises an error if:
+;; Raises an exception if:
 ;;   The file is bigger than max-size
 (: unsafe-read-file (integer string --> string))
 (define (unsafe-read-file max-size path)

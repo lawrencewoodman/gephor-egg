@@ -90,9 +90,9 @@
           (serve-file "" (make-request "a.txt" "127.0.0.1") ) ) )
 
 
-  (test "serve-file raises an error if trying to serve a file that isn't world readable"
+  (test "serve-file returns #f if trying to serve a file that isn't world readable"
         '("Hello, this is used to test serving a non world readable file.\n"
-          (safe-read-file "can't read file, file isn't world readable: /tmp/#t"))
+          #f)
         (let ((tmpdir (create-temporary-directory))
               (request (make-request "hello.txt" "127.0.0.1")))
           (copy-file (make-pathname (list fixtures-dir "dir-world_readable")
@@ -100,9 +100,7 @@
                      (make-pathname tmpdir "hello.txt"))
           (let ((response1 (serve-file tmpdir request))
                 (response2
-                  (handle-exceptions ex
-                    (list (get-condition-property ex 'exn 'location)
-                          (confirm-exn-msg-regex ex "\/tmp\/.*?$" "/tmp\/#t"))
+                  (begin
                     ;; Make tmpdir non world readable
                     (set-file-permissions! (make-pathname tmpdir "hello.txt")
                                            (bitwise-and (file-permissions tmpdir)
