@@ -14,22 +14,18 @@
           (serve-dir "" (make-request "dir-a" "127.0.0.1") ) ) )
 
 
-  (test "serve-dir raises an error if listing a directory that isn't world readable"
-        (list (string-intersperse '(
-                "1dir-a\tdir-a\tlocalhost\t70"
-                "1dir-b\tdir-b\tlocalhost\t70"
-                ".\r\n")
-                "\r\n")
-              (list 'list-dir "can't list dir, path isn't world readable: /tmp/#t"))
+  (test "serve-dir returns #f if listing a directory that isn't world readable"
+        (list (conc "1dir-a\tdir-a\tlocalhost\t70\r\n"
+                    "1dir-b\tdir-b\tlocalhost\t70\r\n"
+                    ".\r\n")
+              #f)
         (let* ((tmpdir (create-temporary-directory))
                (request (make-request "" "127.0.0.1")))
           (create-directory (make-pathname tmpdir "dir-a"))
           (create-directory (make-pathname tmpdir "dir-b"))
           (let ((response1 (serve-dir tmpdir request))
                 (response2
-                  (handle-exceptions ex
-                    (list (get-condition-property ex 'exn 'location)
-                          (confirm-exn-msg-regex ex "\/tmp\/.*?$" "/tmp\/#t"))
+                  (begin
                     ;; Make tmpdir non world readable
                     (set-file-permissions! tmpdir
                                            (bitwise-and (file-permissions tmpdir)

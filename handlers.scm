@@ -42,7 +42,7 @@
          (local-path (selector->local-path root-dir selector)))
     (and local-path
          (directory? local-path)
-         (let ((menu (list-dir selector local-path)))
+         (and-let* ((menu (list-dir selector local-path)))
            (and (not (null? menu))
                 (menu-render menu) ) ) ) ) )
 
@@ -113,9 +113,8 @@
 ;; Use selector->local-path to create local-path safely.
 ;; Returns:
 ;;   The directory as a list of menu items representing the files in the directory
-;; Raises an error:
-;;   If not world readable
-(: list-dir (string string --> (list-of menu-item)))
+;;   #f if local-path isn't world readable
+(: list-dir (string string --> (or (list-of menu-item) false)))
 (define (list-dir selector local-path)
   ;; An entry consists of a list (filename is-dir? selector)
   ;; This trims the selector to create a correct menu entry
@@ -129,21 +128,24 @@
               (list filename #f selector))
             (else #f) ) ) )
 
-  (define (make-menu entries)
-    (do ((entries entries (cdr entries))
-         (result '() (let ((item (dir-entry->menu-item local-path
-                                                       (car entries))))
-                       (if item
-                           (cons item result)
-                           result))))
-        ((null? entries) result) ) )
 
-  (if (world-readable? local-path)
-      (let* ((filenames (directory local-path))
-             (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
-             (menu (make-menu entries)))
-        (reverse menu))
-      (error* 'list-dir "can't list dir, path isn't world readable: ~A" local-path) ) )
+  (and (world-readable? local-path)
+       (let* ((filenames (directory local-path))
+              (entries (sort-dir-entries (filter-map make-dir-entry filenames)))
+              (menu (make-dir-menu local-path entries)))
+         (reverse menu) ) ) )
+
+
+;; Return a menu from a list of dir entries
+(: make-dir-menu (string (list-of dir-entry) --> (list-of menu-item)))
+(define (make-dir-menu local-path entries)
+  (do ((entries entries (cdr entries))
+       (result '() (let ((item (dir-entry->menu-item local-path
+                                                     (car entries))))
+                     (if item
+                         (cons item result)
+                         result))))
+      ((null? entries) result) ) )
 
 
 ;; Return a menu item from a directory entry in list-dir
